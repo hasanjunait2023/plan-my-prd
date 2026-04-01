@@ -29,7 +29,7 @@ const App = () => (
       <BrowserRouter>
         <Layout>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<CurrencyStrength />} />
             <Route path="/journal" element={<TradeJournal />} />
             <Route path="/new-trade" element={<NewTrade />} />
             <Route path="/analytics" element={<Analytics />} />
