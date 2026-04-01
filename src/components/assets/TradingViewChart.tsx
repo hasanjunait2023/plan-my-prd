@@ -60,6 +60,7 @@ export function TradingViewChart({ symbol, title }: TradingViewChartProps) {
       ],
       hide_top_toolbar: false,
       hide_legend: false,
+      save_image: false,
       allow_symbol_change: false,
       overrides: {
         "sessVis.visible": true,
@@ -67,8 +68,6 @@ export function TradingViewChart({ symbol, title }: TradingViewChartProps) {
         "sessVis.graphics.vertlines.sessBreaks.style": 2,
         "sessVis.graphics.vertlines.sessBreaks.width": 1,
       },
-      save_image: false,
-      allow_symbol_change: false,
       width: '100%',
       height: '100%',
       support_host: 'https://www.tradingview.com',
