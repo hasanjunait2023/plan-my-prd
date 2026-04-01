@@ -107,7 +107,7 @@ serve(async (req) => {
     if (pairs.length === 0) {
       pairs = ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD"];
     }
-    pairs = pairs.slice(0, 4);
+    pairs = pairs.slice(0, 3);
 
     const scanBatchId = crypto.randomUUID();
     const alignmentRows: any[] = [];
