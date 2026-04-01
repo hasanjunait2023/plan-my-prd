@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      adr_data: {
+        Row: {
+          adr_percent_used: number
+          adr_pips: number
+          created_at: string
+          fetched_at: string
+          id: string
+          pair: string
+          status: string
+          today_high: number
+          today_low: number
+          today_range_pips: number
+        }
+        Insert: {
+          adr_percent_used?: number
+          adr_pips?: number
+          created_at?: string
+          fetched_at?: string
+          id?: string
+          pair: string
+          status?: string
+          today_high?: number
+          today_low?: number
+          today_range_pips?: number
+        }
+        Update: {
+          adr_percent_used?: number
+          adr_pips?: number
+          created_at?: string
+          fetched_at?: string
+          id?: string
+          pair?: string
+          status?: string
+          today_high?: number
+          today_low?: number
+          today_range_pips?: number
+        }
+        Relationships: []
+      }
+      confluence_scores: {
+        Row: {
+          active_session: string | null
+          base_currency: string | null
+          calculated_at: string
+          created_at: string
+          direction: string
+          ema_score: number
+          grade: string
+          id: string
+          pair: string
+          quote_currency: string | null
+          session_active: boolean
+          strength_diff: number
+        }
+        Insert: {
+          active_session?: string | null
+          base_currency?: string | null
+          calculated_at?: string
+          created_at?: string
+          direction?: string
+          ema_score?: number
+          grade?: string
+          id?: string
+          pair: string
+          quote_currency?: string | null
+          session_active?: boolean
+          strength_diff?: number
+        }
+        Update: {
+          active_session?: string | null
+          base_currency?: string | null
+          calculated_at?: string
+          created_at?: string
+          direction?: string
+          ema_score?: number
+          grade?: string
+          id?: string
+          pair?: string
+          quote_currency?: string | null
+          session_active?: boolean
+          strength_diff?: number
+        }
+        Relationships: []
+      }
       currency_strength: {
         Row: {
           category: string
