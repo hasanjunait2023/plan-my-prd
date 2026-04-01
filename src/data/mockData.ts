@@ -91,7 +91,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'পরে price আমার original TP তে গেছে। SL সরানো ভুল ছিল।',
     whatWentWell: 'Setup identification ঠিক ছিল।',
     improvementNotes: 'SL BE তে সরানোর আগে price কে আরো room দেওয়া দরকার। তাড়াহুড়ো করা উচিত নয়।',
-    screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-29T16:00:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-29T16:00:00Z',
   },
   {
     id: '5', date: '2026-03-28', pair: 'XAU/USD', direction: 'LONG', session: 'New York',
