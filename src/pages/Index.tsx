@@ -45,75 +45,80 @@ const Dashboard = () => {
     return filteredTrades.filter(t => t.date === '2026-03-31').reduce((sum, t) => sum + t.pnl, 0);
   }, [filteredTrades]);
 
-  const weeklyPnL = useMemo(() => mockDailyPnL.reduce((sum, d) => sum + d.pnl, 0), []);
+  const weeklyPnL = useMemo(() => filteredDailyPnL.reduce((sum, d) => sum + d.pnl, 0), [filteredDailyPnL]);
   const weeklyTarget = 1500;
 
   const stats = useMemo(() => {
-    const wins = mockTrades.filter(t => t.outcome === 'WIN').length;
-    const losses = mockTrades.filter(t => t.outcome === 'LOSS').length;
-    const winRate = (wins / mockTrades.length) * 100;
-    const avgWin = mockTrades.filter(t => t.outcome === 'WIN').reduce((s, t) => s + t.pnl, 0) / wins;
-    const avgLoss = Math.abs(mockTrades.filter(t => t.outcome === 'LOSS').reduce((s, t) => s + t.pnl, 0) / losses);
-    const profitFactor = avgWin * wins / (avgLoss * losses);
+    if (filteredTrades.length === 0) return { winRate: 0, profitFactor: 0, maxDrawdown: 0, avgWin: 0, avgLoss: 0 };
+    const wins = filteredTrades.filter(t => t.outcome === 'WIN').length;
+    const losses = filteredTrades.filter(t => t.outcome === 'LOSS').length;
+    const winRate = (wins / filteredTrades.length) * 100;
+    const avgWin = wins ? filteredTrades.filter(t => t.outcome === 'WIN').reduce((s, t) => s + t.pnl, 0) / wins : 0;
+    const avgLoss = losses ? Math.abs(filteredTrades.filter(t => t.outcome === 'LOSS').reduce((s, t) => s + t.pnl, 0) / losses) : 0;
+    const profitFactor = avgLoss * losses > 0 ? (avgWin * wins) / (avgLoss * losses) : 0;
     let maxDD = 0, peak = 0, running = 0;
-    mockDailyPnL.forEach(d => {
+    filteredDailyPnL.forEach(d => {
       running += d.pnl;
       if (running > peak) peak = running;
       const dd = peak - running;
       if (dd > maxDD) maxDD = dd;
     });
     return { winRate, profitFactor, maxDrawdown: maxDD, avgWin, avgLoss };
-  }, []);
+  }, [filteredTrades, filteredDailyPnL]);
 
   const equityCurve = useMemo(() => {
     let balance = mockAccountSettings.startingBalance;
-    return mockDailyPnL.map(d => {
+    return filteredDailyPnL.map(d => {
       balance += d.pnl;
       return { date: d.date.slice(5), balance };
     });
-  }, []);
+  }, [filteredDailyPnL]);
 
-  const lastTrade = mockTrades[0];
+  const lastTrade = filteredTrades[0];
   const ruleOfDay = mockRules[Math.floor(Date.now() / 86400000) % mockRules.length];
-  const latestPsych = mockPsychologyLogs[0];
+  const latestPsych = filteredPsychLogs[0];
 
   const winStreak = (() => {
     let streak = 0;
-    for (const t of mockTrades) {
+    for (const t of filteredTrades) {
       if (t.outcome === 'WIN') streak++;
       else break;
     }
     return streak;
   })();
 
-  const journalStreak = mockPsychologyLogs.length;
+  const journalStreak = filteredPsychLogs.length;
 
   // === New metrics ===
   const avgRRR = useMemo(() => {
-    return mockTrades.reduce((sum, t) => sum + t.rrr, 0) / mockTrades.length;
-  }, []);
+    if (filteredTrades.length === 0) return 0;
+    return filteredTrades.reduce((sum, t) => sum + t.rrr, 0) / filteredTrades.length;
+  }, [filteredTrades]);
 
   const planAdherencePercent = useMemo(() => {
-    const adherent = mockTrades.filter(t => t.planAdherence).length;
-    return (adherent / mockTrades.length) * 100;
-  }, []);
+    if (filteredTrades.length === 0) return 0;
+    const adherent = filteredTrades.filter(t => t.planAdherence).length;
+    return (adherent / filteredTrades.length) * 100;
+  }, [filteredTrades]);
 
   const bestWorstPair = useMemo(() => {
+    if (filteredTrades.length === 0) return { best: { pair: '-', pnl: 0 }, worst: { pair: '-', pnl: 0 } };
     const pairPnL: Record<string, number> = {};
-    mockTrades.forEach(t => { pairPnL[t.pair] = (pairPnL[t.pair] || 0) + t.pnl; });
+    filteredTrades.forEach(t => { pairPnL[t.pair] = (pairPnL[t.pair] || 0) + t.pnl; });
     const entries = Object.entries(pairPnL);
     const best = entries.reduce((a, b) => a[1] > b[1] ? a : b);
     const worst = entries.reduce((a, b) => a[1] < b[1] ? a : b);
     return { best: { pair: best[0], pnl: best[1] }, worst: { pair: worst[0], pnl: worst[1] } };
-  }, []);
+  }, [filteredTrades]);
 
   const avgConfidence = useMemo(() => {
-    return mockTrades.reduce((sum, t) => sum + t.confidenceLevel, 0) / mockTrades.length;
-  }, []);
+    if (filteredTrades.length === 0) return 0;
+    return filteredTrades.reduce((sum, t) => sum + t.confidenceLevel, 0) / filteredTrades.length;
+  }, [filteredTrades]);
 
   const strategyPerformance = useMemo(() => {
     const map: Record<string, { wins: number; total: number; pnl: number; rrr: number }> = {};
-    mockTrades.forEach(t => {
+    filteredTrades.forEach(t => {
       if (!map[t.strategy]) map[t.strategy] = { wins: 0, total: 0, pnl: 0, rrr: 0 };
       map[t.strategy].total++;
       map[t.strategy].pnl += t.pnl;
@@ -127,30 +132,30 @@ const Dashboard = () => {
       trades: d.total,
       avgRRR: d.rrr / d.total,
     })).sort((a, b) => b.pnl - a.pnl);
-  }, []);
+  }, [filteredTrades]);
 
   const sessionPerformance = useMemo(() => {
     const sessions = ['Asian', 'London', 'New York', 'London Close'];
     return sessions.map(session => {
-      const trades = mockTrades.filter(t => t.session === session);
+      const trades = filteredTrades.filter(t => t.session === session);
       const pnl = trades.reduce((sum, t) => sum + t.pnl, 0);
       return { session, pnl, trades: trades.length };
     });
-  }, []);
+  }, [filteredTrades]);
 
   const mistakeFrequency = useMemo(() => {
     const map: Record<string, number> = {};
-    mockTrades.forEach(t => t.mistakes.forEach(m => { map[m] = (map[m] || 0) + 1; }));
+    filteredTrades.forEach(t => t.mistakes.forEach(m => { map[m] = (map[m] || 0) + 1; }));
     return Object.entries(map).map(([mistake, count]) => ({ mistake, count })).sort((a, b) => b.count - a.count);
-  }, []);
+  }, [filteredTrades]);
 
   const psychCorrelation = useMemo(() => {
-    const high = mockTrades.filter(t => t.psychologyState >= 7);
-    const low = mockTrades.filter(t => t.psychologyState < 7);
+    const high = filteredTrades.filter(t => t.psychologyState >= 7);
+    const low = filteredTrades.filter(t => t.psychologyState < 7);
     const highWinRate = high.length ? (high.filter(t => t.outcome === 'WIN').length / high.length) * 100 : 0;
     const lowWinRate = low.length ? (low.filter(t => t.outcome === 'WIN').length / low.length) * 100 : 0;
     return { highWinRate, lowWinRate, highCount: high.length, lowCount: low.length };
-  }, []);
+  }, [filteredTrades]);
 
   const sessionBarColors = ['hsl(200, 70%, 50%)', 'hsl(145, 63%, 49%)', 'hsl(35, 90%, 55%)', 'hsl(280, 60%, 55%)'];
 
