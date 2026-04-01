@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 const MODELS = [
-  "google/gemini-2.0-flash-exp:free",
-  "meta-llama/llama-4-maverick:free",
+  "google/gemma-3-27b-it:free",
+  "google/gemma-3-12b-it:free",
 ];
 
 const systemPrompt = `You are an expert forex/trading chart analyzer. Given a trading chart screenshot, extract as much trade data as possible.
