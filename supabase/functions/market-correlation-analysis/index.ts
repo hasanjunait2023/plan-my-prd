@@ -11,10 +11,15 @@ const ALL_PAIRS = [
   'CHF/JPY'
 ];
 
-const BATCH_1_PAIRS = ALL_PAIRS.slice(0, 14);
-const BATCH_2_PAIRS = ALL_PAIRS.slice(14);
+// Split into 3 batches to stay within edge function timeout (~100s each)
+const BATCHES: Record<number, string[]> = {
+  1: ALL_PAIRS.slice(0, 10),   // 10 pairs
+  2: ALL_PAIRS.slice(10, 20),  // 10 pairs
+  3: ALL_PAIRS.slice(20),      // 8 pairs
+};
 
 const CURRENCIES = ['EUR','USD','GBP','JPY','AUD','NZD','CAD','CHF'];
+const DELAY_MS = 10000; // 10s between calls = 6 calls/min (under 8/min limit)
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -49,23 +54,23 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const batch = body.batch || 1;
-    const session = body.session || 'New York';
-    const scanId = body.scan_id || crypto.randomUUID();
+    const batch: number = body.batch || 1;
+    const session: string = body.session || 'New York';
+    const scanId: string = body.scan_id || crypto.randomUUID();
+    const isLastBatch = batch === 3;
 
-    const pairs = batch === 1 ? BATCH_1_PAIRS : BATCH_2_PAIRS;
+    const pairs = BATCHES[batch] || BATCHES[1];
 
-    console.log(`Starting batch ${batch}, scan_id: ${scanId}, pairs: ${pairs.length}`);
+    console.log(`Starting batch ${batch}/3, scan_id: ${scanId}, pairs: ${pairs.length}`);
 
     // Phase A: Fetch real-time data from TwelveData sequentially
     const pairData: Array<{ pair: string; current_price: number; previous_close: number; change_percent: number }> = [];
 
     for (let i = 0; i < pairs.length; i++) {
       const pair = pairs[i];
-      const symbol = pair; // TwelveData uses EUR/USD format with slash
 
       try {
-        const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1h&outputsize=2&apikey=${TWELVEDATA_API_KEY}`;
+        const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=1h&outputsize=2&apikey=${TWELVEDATA_API_KEY}`;
         const resp = await fetch(url);
         const data = await resp.json();
 
@@ -88,9 +93,9 @@ Deno.serve(async (req) => {
         console.error(`[${i + 1}/${pairs.length}] ${pair}: Fetch error - ${err}`);
       }
 
-      // Rate limit: wait 8s between calls (except after last)
+      // Rate limit: wait between calls (except after last)
       if (i < pairs.length - 1) {
-        await sleep(8000);
+        await sleep(DELAY_MS);
       }
     }
 
@@ -110,21 +115,21 @@ Deno.serve(async (req) => {
       }
     }
 
-    // If batch 1, return scan_id for batch 2
-    if (batch === 1) {
+    // If not last batch, return scan_id for next batch
+    if (!isLastBatch) {
       return new Response(JSON.stringify({
         ok: true,
-        batch: 1,
+        batch,
         scan_id: scanId,
         pairs_fetched: pairData.length,
-        message: 'Batch 1 complete. Call batch 2 now.'
+        message: `Batch ${batch} complete. Call batch ${batch + 1} now.`
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Phase B (Batch 2 only): Merge all data and run AI analysis
-    console.log('Batch 2: Fetching all temp data...');
+    // Phase B (Last batch): Merge all data and run AI analysis
+    console.log('Last batch: Fetching all temp data...');
 
     const { data: allTempData, error: tempErr } = await supabase
       .from('market_scan_temp')
@@ -157,7 +162,7 @@ Deno.serve(async (req) => {
       }
       if (currencyPerf[quote]) {
         currencyPerf[quote].pairCount++;
-        currencyPerf[quote].totalChange -= change; // inverse for quote
+        currencyPerf[quote].totalChange -= change;
         if (change < 0) currencyPerf[quote].wins++;
         else currencyPerf[quote].losses++;
       }
@@ -220,7 +225,6 @@ No explanation, just the JSON array.`;
     let strengthResults: Array<{ currency: string; strength: number; category: string }> = [];
 
     try {
-      // Try to find JSON array in response
       const jsonMatch = aiContent.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         strengthResults = JSON.parse(jsonMatch[0]);
@@ -242,7 +246,6 @@ No explanation, just the JSON array.`;
       strengthResults = CURRENCIES.map(c => {
         const p = currencyPerf[c];
         const avgChange = p.totalChange / (p.pairCount || 1);
-        // Normalize to -10 to +10 scale (assuming max change ~0.5%)
         const score = Math.max(-10, Math.min(10, Math.round(avgChange * 20)));
         return { currency: c, strength: score, category: getCategory(score) };
       });
@@ -285,7 +288,6 @@ No explanation, just the JSON array.`;
           const midWeak = sorted.filter(r => r.category === 'MID WEAK').map(r => `${r.currency} (${r.strength > 0 ? '+' : ''}${r.strength})`).join(', ');
           const weak = sorted.filter(r => r.category === 'WEAK').map(r => `${r.currency} (${r.strength > 0 ? '+' : ''}${r.strength})`).join(', ');
 
-          // Find best pair suggestions
           const strongest = sorted[0];
           const weakest = sorted[sorted.length - 1];
           const bestBuy = `${strongest.currency}/${weakest.currency} BUY`;
@@ -313,7 +315,7 @@ No explanation, just the JSON array.`;
 
     return new Response(JSON.stringify({
       ok: true,
-      batch: 2,
+      batch: 3,
       session,
       results: strengthResults,
       pairs_total: allTempData.length,
