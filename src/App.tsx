@@ -13,6 +13,8 @@ import Settings from "./pages/Settings.tsx";
 import CurrencyStrength from "./pages/CurrencyStrength.tsx";
 import EmaScanner from "./pages/EmaScanner.tsx";
 import TradeIntelligence from "./pages/TradeIntelligence.tsx";
+import Commodities from "./pages/Commodities.tsx";
+import Crypto from "./pages/Crypto.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -34,6 +36,8 @@ const App = () => (
             <Route path="/currency-strength" element={<CurrencyStrength />} />
             <Route path="/ema-scanner" element={<EmaScanner />} />
             <Route path="/trade-intelligence" element={<TradeIntelligence />} />
+            <Route path="/commodities" element={<Commodities />} />
+            <Route path="/crypto" element={<Crypto />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

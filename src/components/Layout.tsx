@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap, LogOut
+  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap, LogOut, Gem, Bitcoin
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -35,6 +35,8 @@ const mainNavItems = [
 ];
 
 const profileMenuItems = [
+  { title: 'Commodities', url: '/commodities', icon: Gem },
+  { title: 'Crypto', url: '/crypto', icon: Bitcoin },
   { title: 'Psychology', url: '/psychology', icon: Brain },
   { title: 'Intel', url: '/trade-intelligence', icon: Zap },
   { title: 'Settings', url: '/settings', icon: Settings },
