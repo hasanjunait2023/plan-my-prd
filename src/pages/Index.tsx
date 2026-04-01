@@ -254,6 +254,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
-// Need to import BookOpen for journal streak icon
-import { BookOpen } from 'lucide-react';
