@@ -2,26 +2,40 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CurrencyStrengthRecord } from '@/types/correlation';
 import { StrengthMeter } from '@/components/correlation/StrengthMeter';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { SummaryCards } from '@/components/correlation/SummaryCards';
+import { PairSuggestions } from '@/components/correlation/PairSuggestions';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RefreshCw, TrendingUp } from 'lucide-react';
-import { format } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RefreshCw, TrendingUp, CalendarIcon } from 'lucide-react';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 
-function useCurrencyStrength(timeframe: string) {
+function useCurrencyStrength(timeframe: string, selectedDate: Date) {
   return useQuery({
-    queryKey: ['currency-strength', timeframe],
+    queryKey: ['currency-strength', timeframe, selectedDate.toISOString()],
     queryFn: async () => {
+      const dayStart = startOfDay(selectedDate).toISOString();
+      const dayEnd = endOfDay(selectedDate).toISOString();
+
       const { data, error } = await supabase
         .from('currency_strength')
         .select('*')
         .eq('timeframe', timeframe)
-        .order('strength', { ascending: false });
+        .gte('recorded_at', dayStart)
+        .lte('recorded_at', dayEnd)
+        .order('recorded_at', { ascending: false });
 
       if (error) throw error;
-      return data as CurrencyStrengthRecord[];
+
+      // Get only the latest batch for this timeframe+date
+      if (!data || data.length === 0) return [];
+      const latestTime = data[0].recorded_at;
+      return data.filter(d => d.recorded_at === latestTime) as CurrencyStrengthRecord[];
     },
     refetchInterval: 60000,
   });
@@ -29,14 +43,15 @@ function useCurrencyStrength(timeframe: string) {
 
 export default function CurrencyStrength() {
   const [activeTab, setActiveTab] = useState('1H');
-  const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab, selectedDate);
 
   const lastUpdated = data?.[0]?.recorded_at;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
             <TrendingUp className="w-5 h-5 text-primary" />
@@ -50,23 +65,48 @@ export default function CurrencyStrength() {
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-          রিফ্রেশ
-        </Button>
+
+        <div className="flex items-center gap-2">
+          {/* Date Picker */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <CalendarIcon className="w-4 h-4" />
+                {format(selectedDate, 'dd MMM yyyy')}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(d) => d && setSelectedDate(d)}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            রিফ্রেশ
+          </Button>
+        </div>
       </div>
 
-      {/* Tabs */}
+      {/* Summary Cards */}
+      {!isLoading && data && data.length > 0 && <SummaryCards data={data} />}
+
+      {/* Strength Meter */}
       <Card className="border-border/50">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">FX Co-Relation Strength</CardTitle>
+            <CardTitle className="text-lg">Strength Ranking</CardTitle>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList>
                 <TabsTrigger value="1H">1H</TabsTrigger>
@@ -80,7 +120,7 @@ export default function CurrencyStrength() {
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-8 w-full" />
+                <Skeleton key={i} className="h-7 w-full" />
               ))}
             </div>
           ) : data && data.length > 0 ? (
@@ -88,13 +128,16 @@ export default function CurrencyStrength() {
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <p className="text-lg mb-2">কোনো ডেটা নেই</p>
-              <p className="text-sm">n8n workflow execute হলে এখানে currency strength দেখাবে।</p>
+              <p className="text-sm">এই তারিখে কোনো currency strength data পাওয়া যায়নি।</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Info */}
+      {/* Pair Suggestions */}
+      {!isLoading && data && data.length > 0 && <PairSuggestions data={data} />}
+
+      {/* Legend */}
       <Card className="border-border/50">
         <CardContent className="pt-6">
           <div className="grid grid-cols-4 gap-4 text-center text-xs">

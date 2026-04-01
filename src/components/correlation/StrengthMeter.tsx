@@ -9,8 +9,8 @@ export function StrengthMeter({ data }: StrengthMeterProps) {
   const maxAbs = 10;
 
   return (
-    <div className="space-y-3">
-      {sorted.map((item) => {
+    <div className="space-y-2">
+      {sorted.map((item, index) => {
         const percent = Math.abs(item.strength) / maxAbs * 100;
         const isPositive = item.strength >= 0;
         const color = CATEGORY_COLORS[item.category] || 'hsl(0, 0%, 50%)';
@@ -18,16 +18,21 @@ export function StrengthMeter({ data }: StrengthMeterProps) {
 
         return (
           <div key={item.currency} className="flex items-center gap-3">
+            {/* Rank */}
+            <span className="text-xs text-muted-foreground w-5 text-right shrink-0 font-mono">
+              {index + 1}
+            </span>
+
             {/* Currency label */}
-            <div className="flex items-center gap-2 w-24 shrink-0">
+            <div className="flex items-center gap-2 w-20 shrink-0">
               <span className="text-lg">{flag}</span>
               <span className="font-semibold text-foreground text-sm">{item.currency}</span>
             </div>
 
             {/* Bar container */}
-            <div className="flex-1 relative h-8 rounded bg-muted/30 overflow-hidden">
+            <div className="flex-1 relative h-7 rounded bg-muted/20 overflow-hidden">
               {/* Center line */}
-              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-muted-foreground/30 z-10" />
+              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-muted-foreground/20 z-10" />
 
               {/* Bar */}
               <div
@@ -44,14 +49,16 @@ export function StrengthMeter({ data }: StrengthMeterProps) {
             </div>
 
             {/* Score */}
-            <div className="w-12 text-right shrink-0">
-              <span
-                className="font-bold text-sm"
-                style={{ color }}
-              >
+            <div className="w-10 text-right shrink-0">
+              <span className="font-bold text-sm" style={{ color }}>
                 {item.strength > 0 ? '+' : ''}{item.strength}
               </span>
             </div>
+
+            {/* Direction arrow */}
+            <span className="w-5 text-center shrink-0" style={{ color }}>
+              {item.strength > 0 ? '↑' : item.strength < 0 ? '↓' : '—'}
+            </span>
 
             {/* Category badge */}
             <div
