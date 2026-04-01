@@ -1,48 +1,71 @@
 
 
-# Mobile Nav Bar Restructure — Profile Dropdown Plan
+# Trade Journal Export Feature — Updated Plan
 
-## সমস্যা
-Mobile bottom bar এ 9টা nav item আছে — অনেক বেশি, cramped দেখায়।
+## কি করতে হবে
+Journal page থেকে trades export — PDF বা DOCX format এ, date filter + **trade outcome filter** সহ।
 
-## পরিকল্পনা
+## UI Design
 
-### Bottom Bar থেকে সরানো হবে
-- **Psychology** (Brain)
-- **Intel** (Zap)
-- **Settings** (Settings)
+### Export Button
+Journal header এ "New Trade" button এর পাশে **Export** button (Download icon)। Click করলে Export Dialog open হবে।
 
-এগুলো header এর **Avatar/Profile button** এ click করলে dropdown menu তে দেখাবে।
+### Export Dialog (`ExportDialog.tsx`)
 
-### Mobile Bottom Bar এ থাকবে (6টা item)
-1. Dashboard (Home)
-2. Journal (Jrnl)
-3. New Trade (New)
-4. Analytics (Ana)
-5. Strength (Str)
-6. EMA Scan (EMA)
+1. **Format Selection**: PDF / DOCX (radio buttons)
 
-### Profile Dropdown (Avatar click)
-Avatar click করলে একটা dropdown menu open হবে (DropdownMenu component ব্যবহার করে):
-- 🧠 Psychology
-- ⚡ Intel
-- ⚙️ Settings
-- (divider)
-- Sign Out (placeholder)
+2. **Date Range Selection** (3 options):
+   - **Monthly** — Month + Year picker
+   - **Yearly** — Year picker
+   - **Custom Range** — Start date + End date
 
-**Desktop nav এ কোনো পরিবর্তন হবে না** — সব 9টা tab আগের মতোই থাকবে।
+3. **Trade Outcome Filter** (multi-select checkboxes, সব default selected):
+   - ✅ Winning Trades
+   - ✅ Losing Trades
+   - ✅ Breakeven Trades
 
-### Technical Changes
+4. **Preview**: "12 trades found" — filter অনুযায়ী count দেখাবে
 
-**File: `src/components/Layout.tsx`**
+5. **Export Button** — file generate + download
 
-1. `navItems` array কে দুই ভাগ করা:
-   - `mainNavItems` — 6টা (Dashboard → EMA Scan)
-   - `profileMenuItems` — 3টা (Psychology, Intel, Settings)
+## Filtering Logic
 
-2. Avatar কে `DropdownMenu` দিয়ে wrap করা — click এ profileMenuItems দেখাবে with icons, `useNavigate` দিয়ে route change
+```text
+Date filter:
+  Monthly → trades.filter(t => t.date starts with "YYYY-MM")
+  Yearly  → trades.filter(t => t.date starts with "YYYY")
+  Custom  → trades.filter(t => t.date >= start && t.date <= end)
 
-3. Mobile bottom bar শুধু `mainNavItems` render করবে
+Outcome filter:
+  trades.filter(t => selectedOutcomes.includes(t.outcome))
+  // t.outcome is 'WIN' | 'LOSS' | 'BREAKEVEN'
 
-4. Desktop nav সব items (mainNavItems + profileMenuItems) দেখাবে আগের মতোই
+Combined: date filter first, then outcome filter
+```
+
+## Export File Content
+
+1. **Header** — "TradeVault Pro — Trade Journal Report", date range, applied filters (e.g., "Winning & Breakeven trades only")
+2. **Summary Stats** — Total P&L, Win Rate, Total Pips, Avg RRR (filtered trades এর)
+3. **Summary Table** — Date, Pair, Direction, Session, P&L, Pips, Outcome
+4. **Individual Trade Details** — Entry/Exit, SMC Tags, Notes, Psychology (date-wise grouped)
+
+## Technical Changes
+
+### New Files
+- **`src/components/journal/ExportDialog.tsx`** — Dialog with format, date range, outcome filter
+- **`src/lib/exportTrades.ts`** — PDF generation (`jspdf` + `jspdf-autotable`), DOCX generation (`docx` package)
+
+### Modified Files
+- **`src/pages/TradeJournal.tsx`** — Export button + dialog state
+
+### Libraries to Install
+- `jspdf` + `jspdf-autotable` — client-side PDF
+- `docx` + `file-saver` — client-side DOCX
+
+### Flow
+1. User selects format + date range + outcome filter
+2. `mockTrades` filtered by date then outcome
+3. Client-side file generation (no backend)
+4. Auto-download via `Blob` + `URL.createObjectURL`
 
