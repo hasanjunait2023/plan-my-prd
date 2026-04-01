@@ -62,10 +62,10 @@ Deno.serve(async (req) => {
 
     for (let i = 0; i < pairs.length; i++) {
       const pair = pairs[i];
-      const symbol = pair.replace('/', '');
+      const symbol = pair; // TwelveData uses EUR/USD format with slash
 
       try {
-        const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1h&outputsize=2&apikey=${TWELVEDATA_API_KEY}`;
+        const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1h&outputsize=2&apikey=${TWELVEDATA_API_KEY}`;
         const resp = await fetch(url);
         const data = await resp.json();
 
