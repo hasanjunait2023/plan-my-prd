@@ -162,14 +162,30 @@ const Dashboard = () => {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Premium Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
-          <LayoutDashboard className="w-5 h-5 text-primary" />
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+            <LayoutDashboard className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground text-sm">Welcome back, Trader. Here's your overview.</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground text-sm">Welcome back, Trader. Here's your overview.</p>
-        </div>
+        <ToggleGroup type="single" value={dateRange} onValueChange={(v) => v && setDateRange(v as DateRange)} className="bg-muted/30 rounded-lg p-1 border border-border/30">
+          <ToggleGroupItem value="7d" className="text-xs px-3 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md">
+            <Calendar className="w-3 h-3 mr-1" />
+            7 Days
+          </ToggleGroupItem>
+          <ToggleGroupItem value="30d" className="text-xs px-3 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md">
+            <Calendar className="w-3 h-3 mr-1" />
+            30 Days
+          </ToggleGroupItem>
+          <ToggleGroupItem value="all" className="text-xs px-3 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md">
+            <Calendar className="w-3 h-3 mr-1" />
+            All Time
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
       <SessionPanel />
