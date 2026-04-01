@@ -53,8 +53,18 @@ export default function EmaScanner() {
   const triggerScan = async () => {
     setScanning(true);
     try {
-      const { error } = await supabase.functions.invoke('scan-ema-alignment');
-      if (error) throw error;
+      // Scan pairs one by one (API rate limit)
+      const { data } = await supabase.functions.invoke('scan-ema-alignment');
+      const allPairs: string[] = data?.all_pairs || [];
+      
+      // Scan remaining pairs with 65s delay between each
+      for (let i = 1; i < Math.min(allPairs.length, 4); i++) {
+        await new Promise(r => setTimeout(r, 65000));
+        await supabase.functions.invoke('scan-ema-alignment', {
+          body: { pair: allPairs[i] },
+        });
+      }
+      
       await fetchLatestScan();
     } catch (e) {
       console.error('Scan trigger error:', e);
