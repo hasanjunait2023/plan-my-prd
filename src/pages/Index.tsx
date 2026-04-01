@@ -202,7 +202,7 @@ const Dashboard = () => {
               {todayPnL >= 0 ? '+' : ''}${todayPnL.toFixed(2)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {mockTrades.filter(t => t.date === '2026-03-31').length} trades today
+              {filteredTrades.filter(t => t.date === '2026-03-31').length} trades today
             </p>
           </CardContent>
         </Card>
@@ -215,7 +215,7 @@ const Dashboard = () => {
             </div>
             <p className="text-3xl font-bold mt-1">{stats.winRate.toFixed(1)}%</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {mockTrades.filter(t => t.outcome === 'WIN').length}W / {mockTrades.filter(t => t.outcome === 'LOSS').length}L
+              {filteredTrades.filter(t => t.outcome === 'WIN').length}W / {filteredTrades.filter(t => t.outcome === 'LOSS').length}L
             </p>
           </CardContent>
         </Card>
@@ -405,7 +405,7 @@ const Dashboard = () => {
             </div>
             <p className="text-3xl font-bold mt-1">{planAdherencePercent.toFixed(0)}%</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {mockTrades.filter(t => t.planAdherence).length}/{mockTrades.length} trades followed plan
+              {filteredTrades.filter(t => t.planAdherence).length}/{filteredTrades.length} trades followed plan
             </p>
           </CardContent>
         </Card>
@@ -534,7 +534,7 @@ const Dashboard = () => {
                       <span>{m.mistake}</span>
                       <span className="text-muted-foreground">{m.count}x</span>
                     </div>
-                    <Progress value={(m.count / mockTrades.length) * 100} className="h-2" />
+                    <Progress value={(m.count / filteredTrades.length) * 100} className="h-2" />
                   </div>
                 ))
               )}
