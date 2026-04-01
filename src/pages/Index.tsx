@@ -345,40 +345,42 @@ const Dashboard = () => {
       </div>
 
       {/* Last Trade */}
-      <Card className={glassCard}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
-                <Star className="w-3 h-3 text-primary" />
+      {lastTrade && (
+        <Card className={glassCard}>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                  <Star className="w-3 h-3 text-primary" />
+                </div>
+                Last Trade
+              </CardTitle>
+              {lastTrade.starred && <Star className="w-4 h-4 text-warning fill-warning" />}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Badge variant={lastTrade.direction === 'LONG' ? 'default' : 'destructive'}>
+                  {lastTrade.direction}
+                </Badge>
+                <PairWithFlags pair={lastTrade.pair} className="font-semibold" />
               </div>
-              Last Trade
-            </CardTitle>
-            {lastTrade.starred && <Star className="w-4 h-4 text-warning fill-warning" />}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Badge variant={lastTrade.direction === 'LONG' ? 'default' : 'destructive'}>
-                {lastTrade.direction}
-              </Badge>
-              <PairWithFlags pair={lastTrade.pair} className="font-semibold" />
+              <span className="text-sm text-muted-foreground">{lastTrade.strategy}</span>
+              <span className="text-sm text-muted-foreground">{lastTrade.session} / {lastTrade.timeframe}</span>
+              <span className={`font-bold ${lastTrade.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+                {lastTrade.pnl >= 0 ? '+' : ''}${lastTrade.pnl.toFixed(2)}
+              </span>
+              <span className="text-sm text-muted-foreground">RRR: {lastTrade.rrr}</span>
+              <div className="flex gap-1">
+                {lastTrade.smcTags.map(tag => (
+                  <Badge key={tag} variant="outline" className="text-[10px]">{tag}</Badge>
+                ))}
+              </div>
             </div>
-            <span className="text-sm text-muted-foreground">{lastTrade.strategy}</span>
-            <span className="text-sm text-muted-foreground">{lastTrade.session} / {lastTrade.timeframe}</span>
-            <span className={`font-bold ${lastTrade.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>
-              {lastTrade.pnl >= 0 ? '+' : ''}${lastTrade.pnl.toFixed(2)}
-            </span>
-            <span className="text-sm text-muted-foreground">RRR: {lastTrade.rrr}</span>
-            <div className="flex gap-1">
-              {lastTrade.smcTags.map(tag => (
-                <Badge key={tag} variant="outline" className="text-[10px]">{tag}</Badge>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ===== NEW SECTIONS ===== */}
 
