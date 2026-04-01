@@ -1,82 +1,84 @@
 
 
-# Currency Strength Page — n8n Workflow Result Visualization
+# Currency Strength Page — Enhanced Visualization + Date History
 
-## তোমার Workflow Output Format
-```
-💱 FX Co-Relation Strength On 1H
-⏰ April 1st 2026, 12:00:00 pm
-🟢 STRONG: EUR → 6, JPY → 6
-🟡 NEUTRAL: USD → 3, AUD → 1, CHF → -1, GBP → -2
-🟠 MID WEAK: CAD → -4
-🔴 WEAK: NZD → -7
-```
+## বর্তমান অবস্থা
+এখন শুধু একটা horizontal bar chart আছে timeframe tabs সহ। তুমি চাও:
+1. **আরো visual structures** — যাতে seconds এ বোঝা যায় কে strong, কে weak
+2. **Date-wise history** — পুরনো data stored থাকবে, যেকোনো date এর data দেখা যাবে
+3. **Additional features** — আরো কী কী useful হতে পারে
 
-Strength score range: -10 to +10, 4টা category — STRONG, NEUTRAL, MID WEAK, WEAK।
+## Plan
 
-## Architecture
+### 1. Summary Cards (Top Row)
+Page এর top এ 4টা summary card:
+- 🟢 **Strongest Currency** — flag + name + score (বড় করে)
+- 🔴 **Weakest Currency** — flag + name + score
+- 📊 **Best Pair to Trade** — strongest vs weakest (e.g. "EUR/NZD — BUY")
+- ⚡ **Strength Gap** — strongest আর weakest এর মধ্যে difference
 
-```text
-n8n Workflow (scheduled)
-       │
-       ▼
-Supabase Table (currency_strength)  ◄── Edge Function (webhook endpoint)
-       │
-       ▼
-React Page (reads from table, visualizes)
-```
+এতে এক নজরে বুঝে যাবে কোন pair trade করতে হবে।
 
-**Flow:**
-1. n8n workflow execute হলে result কে Supabase table এ store করবে (edge function webhook দিয়ে)
-2. Frontend table থেকে latest data read করবে
-3. Manual "Refresh" button দিয়ে on-demand n8n workflow trigger করা যাবে
+### 2. Ranking Table
+Bar chart এর পাশে একটা compact **ranking list**:
+- 1st, 2nd, 3rd... rank number
+- Flag + Currency + Score
+- Category color dot
+- Arrow icon (↑ bullish / ↓ bearish)
 
-## Supabase Table — `currency_strength`
+### 3. Pair Suggestion Grid
+Strongest আর weakest currencies combine করে automatically **tradable pair suggestions** দেখাবে:
+- Top 3 BUY pairs (strong vs weak)
+- Top 3 SELL pairs (weak vs strong)
+- Direction + expected strength
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | PK |
-| currency | text | EUR, USD, GBP, etc. |
-| strength | integer | -10 to +10 |
-| category | text | STRONG / NEUTRAL / MID WEAK / WEAK |
-| timeframe | text | 1H / 15M / 3M |
-| recorded_at | timestamptz | কখন record হয়েছে |
-| created_at | timestamptz | default now() |
+### 4. Date Picker — Historical Data
+- Page এ একটা **date picker** add করবো
+- Default: আজকের date
+- যেকোনো পুরনো date select করলে সেই দিনের data দেখাবে
+- Query: `recorded_at` column filter করে সেই date এর data আনবে
 
-## Page Layout
+### 5. DB Change — Data Retention
+বর্তমানে edge function পুরনো data delete করে নতুন data insert করে। পরিবর্তন:
+- **Delete বন্ধ** — পুরনো data রাখবো
+- শুধু নতুন data insert হবে
+- Frontend এ latest data default দেখাবে, date picker দিয়ে পুরনো দেখা যাবে
 
-### Currency Strength Meter
-- 8টা currency horizontal bar chart — left to right
-- Bar color: 🟢 STRONG (green), 🟡 NEUTRAL (yellow/gray), 🟠 MID WEAK (orange), 🔴 WEAK (red)
-- Score number দেখাবে bar এর পাশে
-- Country flag emoji প্রতিটা currency র পাশে
-- Timeframe tabs: **1H** / **15M** / **3M**
-- Last updated timestamp top এ দেখাবে
+### 6. Strength Change Indicator (Bonus)
+যদি আগের দিনের data থাকে:
+- প্রতিটা currency র পাশে ↑↓ arrow দেখাবে — আগের দিনের তুলনায় strength বেড়েছে না কমেছে
 
-### Visual Style
-- Dark background (existing black theme)
-- Bars: gradient fill based on category
-- Sorted by strength (strongest → weakest)
-- Clean, minimal — trading terminal feel
-
-## Files to Create/Change
+## Files to Change
 
 | File | Change |
 |------|--------|
-| **Migration** | `currency_strength` table create |
-| `supabase/functions/store-currency-strength/index.ts` (new) | Webhook endpoint — n8n calls this to store results |
-| `src/types/correlation.ts` (new) | TypeScript interfaces |
-| `src/pages/CurrencyStrength.tsx` (new) | Main page — strength meter visualization |
-| `src/components/correlation/StrengthMeter.tsx` (new) | Bar chart component |
-| `src/App.tsx` | Add `/currency-strength` route |
-| `src/components/AppSidebar.tsx` | Add nav item |
+| `src/pages/CurrencyStrength.tsx` | Date picker, summary cards, pair suggestions, ranking table add |
+| `src/components/correlation/StrengthMeter.tsx` | Ranking numbers + change indicators add |
+| `src/components/correlation/SummaryCards.tsx` (new) | Top summary cards component |
+| `src/components/correlation/PairSuggestions.tsx` (new) | Auto pair suggestion grid |
+| `supabase/functions/store-currency-strength/index.ts` | Delete logic সরাবো — শুধু insert করবে |
+| `src/types/correlation.ts` | PairSuggestion interface add |
 
-## Edge Function — `store-currency-strength`
-- n8n workflow থেকে POST request নেবে
-- Body: `{ timeframe: "1H", currencies: [{ currency: "EUR", strength: 6, category: "STRONG" }, ...] }`
-- Supabase table এ insert করবে
-- পুরনো same timeframe data replace করবে
+## Visual Layout
 
-## n8n Integration Note
-তোমার n8n workflow এ একটা HTTP Request node add করতে হবে যেটা edge function এর webhook URL এ POST করবে parsed result। এটা তুমি n8n এ করবে — আমি edge function এর URL দিয়ে দেবো।
+```text
+┌─────────────────────────────────────────────────────┐
+│  💱 Currency Strength    [Date Picker] [1H|15M|3M]  │
+│  আপডেট: 01 Apr 2026, 12:00 PM         [রিফ্রেশ]   │
+├──────────┬──────────┬──────────┬────────────────────┤
+│ 🟢 EUR   │ 🔴 NZD   │ 📊 BUY   │ ⚡ Gap: 13       │
+│ Strongest│ Weakest  │ EUR/NZD  │ (6 vs -7)         │
+│ +6       │ -7       │          │                    │
+├──────────┴──────────┴──────────┴────────────────────┤
+│  [Strength Meter Bars — existing + rank numbers]    │
+│  1. 🇪🇺 EUR  ████████████▓  +6  STRONG             │
+│  2. 🇯🇵 JPY  ████████████▓  +6  STRONG             │
+│  3. 🇺🇸 USD  ██████▓        +3  NEUTRAL            │
+│  ...                                                │
+├─────────────────────────────────────────────────────┤
+│  📈 Suggested Pairs                                 │
+│  BUY: EUR/NZD, JPY/NZD, EUR/CAD                    │
+│  SELL: NZD/EUR, NZD/JPY, CAD/EUR                   │
+└─────────────────────────────────────────────────────┘
+```
 
