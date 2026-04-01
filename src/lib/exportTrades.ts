@@ -245,7 +245,7 @@ export async function exportToPdf({ trades, dateLabel, outcomeFilters, includeSc
 
 // ─── DOCX Export ───
 
-export async function exportToDocx({ trades, dateLabel, outcomeFilters }: ExportOptions) {
+export async function exportToDocx({ trades, dateLabel, outcomeFilters, includeScreenshots }: ExportOptions) {
   const stats = calcStats(trades);
   const cellBorder = { style: BorderStyle.SINGLE, size: 1, color: '999999' };
   const borders = { top: cellBorder, bottom: cellBorder, left: cellBorder, right: cellBorder };
