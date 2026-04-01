@@ -123,9 +123,10 @@ serve(async (req) => {
 
       for (const tf of TIMEFRAMES) {
         if (callCount > 0 && callCount % 7 === 0) {
-          // Wait 60s after every 7 calls to respect rate limit
           console.log(`Rate limit pause after ${callCount} calls...`);
-          await sleep(60000);
+          await sleep(62000);
+        } else if (callCount > 0) {
+          await sleep(1500); // Small delay between calls, burst-friendly
         }
 
         const result = await fetchTimeSeriesAndEmas(pair, tf, apiKey);
