@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp
+  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, User
 } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const navItems = [
   { title: 'Dashboard', short: 'Home', url: '/', icon: LayoutDashboard },
