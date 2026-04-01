@@ -1,78 +1,68 @@
 
 
-# Screenshot-Based Trade Data Extraction Plan
+# Trade Journal — Notebook/Diary Style Redesign
 
-## তোমার যা চাই
-তুমি trading chart এর screenshot paste/upload করবে, এবং AI সেটা analyze করে automatically trade এর data extract করবে — pair, entry price, SL, TP, lot size, timeframe, session, risk amount, RRR ইত্যাদি। আর প্রতিটা trade এ 2টা situation screenshot থাকবে: **Entry situation** আর **Exit situation**।
+## ধারণা
+তোমার uploaded OneNote screenshot এর মতো — বাম পাশে **sections/dates** এর navigation, আর ডান পাশে **pages/trades** এর content। একটা notebook/diary এর feel — date wise sections, trade wise pages, structured ও revision-friendly।
 
-## How It Works
-
-### AI-Powered Screenshot Analysis
-- তুমি screenshot paste/drag-drop করবে New Trade form এ
-- একটা **"AI দিয়ে Analyze করো"** button থাকবে
-- Click করলে screenshot Supabase Edge Function এ যাবে → সেখান থেকে AI model (Gemini) কে পাঠাবে
-- AI chart image থেকে extract করবে:
-  - **Pair** (e.g. USD/JPY — chart title থেকে)
-  - **Timeframe** (e.g. 15M — chart title থেকে)
-  - **Entry Price, Exit Price** (visible trade markers থেকে)
-  - **Stop Loss, Take Profit** (visible lines/levels থেকে)
-  - **Lot Size** (if visible in trade overlay, e.g. "0.06")
-  - **Risk Amount** (e.g. "-11.77 USD" from P&L overlay)
-  - **Session** (time axis থেকে estimate — London/NY/Asian)
-  - **Direction** (LONG/SHORT — trade marker position থেকে)
-- Extracted data auto-fill হবে form এর fields এ
-- তুমি verify/edit করতে পারবে before saving
-
-### 2-Situation Screenshots (Entry & Exit)
-বর্তমানে একটাই `screenshots: string[]` আছে। এটা restructure হবে:
+## Layout Design
 
 ```text
-Trade
-├── entryScreenshots: string[]    ← Entry এর সময়ের situation
-├── exitScreenshots: string[]     ← Exit এর পরের situation
-└── screenshots: string[]         ← অন্যান্য (optional)
+┌─────────────────────────────────────────────────────────┐
+│  📒 Trade Journal                          [Search] [+] │
+├──────────────┬──────────────────────────────────────────┤
+│              │                                          │
+│  SECTIONS    │  PAGES (trades)     CONTENT AREA         │
+│  (dates)     │                                          │
+│              │  ┌─────────┐  ┌──────────────────────┐   │
+│  ▸ Apr 2026  │  │ Trade 1 │  │                      │   │
+│    31 Mar    │  │ Trade 2 │  │  Full Trade Document  │   │
+│  ► 30 Mar ◄ │  │ Trade 3 │  │  (diary page view)    │   │
+│    29 Mar    │  │         │  │                      │   │
+│    28 Mar    │  │         │  │  screenshots, notes,  │   │
+│              │  │         │  │  analysis, mistakes   │   │
+│  ▸ Mar 2026  │  │         │  │                      │   │
+│              │  │         │  │                      │   │
+│              │  └─────────┘  └──────────────────────┘   │
+│              │                                          │
+│  Daily P&L   │  Pair | Outcome                          │
+│  Win/Loss    │  P&L summary                             │
+└──────────────┴──────────────────────────────────────────┘
 ```
 
-Journal document view তেও 2টা আলাদা section থাকবে:
-- **📸 Entry Situation** — entry এর সময়ের chart screenshots
-- **📸 Exit Situation** — exit এর পরের chart screenshots
+## 3-Panel Notebook Layout
 
-### Paste Support
-- Clipboard paste (`Ctrl+V`) support — screenshot copy করে directly paste করা যাবে upload area তে
-- Drag & drop ও support করবে
+### Panel 1 — Date Sections (বাম sidebar)
+- মাস অনুযায়ী grouped dates (collapsible months)
+- প্রতিটা date এ ছোট summary: trade count, total P&L, win/loss color indicator
+- Active date highlighted (accent border left)
+- Search/filter bar at top
 
-## Technical Implementation
+### Panel 2 — Trade Pages (মাঝের narrow column)
+- Selected date এর trades list — compact cards
+- Pair name, direction icon, outcome badge, P&L
+- Active trade highlighted
+- Click করলে Panel 3 তে full document load হয়
 
-| Change | Details |
-|--------|---------|
-| **Supabase Edge Function** `analyze-trade-screenshot` | Screenshot receive করে → AI model কে পাঠায় → structured JSON return করে (pair, prices, lot, timeframe, session, direction) |
-| **`src/types/trade.ts`** | `entryScreenshots` ও `exitScreenshots` fields add |
-| **`src/components/journal/ImageUpload.tsx`** | Clipboard paste support (`onPaste` event) + drag-drop |
-| **`src/components/journal/ScreenshotAnalyzer.tsx`** (new) | Upload → AI analyze → preview extracted data → confirm → auto-fill form |
-| **`src/pages/NewTrade.tsx`** | Entry/Exit screenshot sections আলাদা + AI analyze button + auto-fill logic |
-| **`src/components/journal/TradeDocument.tsx`** | Entry ও Exit situation screenshots আলাদা sections |
-| **`src/data/mockData.ts`** | Update with new screenshot fields |
+### Panel 3 — Content Area (ডান পাশের বড় area)
+- Existing `TradeDocument` component — full diary page view
+- Scrollable, all sections visible (screenshots, notes, analysis, psychology)
+- Revision-friendly reading experience
 
-### AI Extraction Schema
-Edge function AI কে এই structure এ data চাইবে:
-```json
-{
-  "pair": "USD/JPY",
-  "timeframe": "15M",
-  "direction": "SHORT",
-  "entryPrice": 159.317,
-  "exitPrice": 158.515,
-  "stopLoss": 159.709,
-  "takeProfit": 158.211,
-  "lotSize": 0.06,
-  "riskAmount": 11.77,
-  "profitAmount": 30.09,
-  "session": "London"
-}
-```
+## Technical Changes
 
-### Limitations / Notes
-- AI extraction 100% accurate নাও হতে পারে — সবসময় user verify করবে
-- যেসব data chart এ visible না (like strategy, SMC tags), সেগুলো manually দিতে হবে
-- Edge function deploy করতে হবে Supabase তে
+| File | Change |
+|------|--------|
+| `src/pages/TradeJournal.tsx` | Complete rewrite — 3-panel notebook layout with date sidebar, trade list, and document content area |
+| `src/components/journal/NotebookSidebar.tsx` (new) | Date sections panel — month groups, date items with P&L summaries |
+| `src/components/journal/TradePageList.tsx` (new) | Trade list panel for selected date — compact trade items |
+| `src/components/journal/TradeDocument.tsx` | Minor tweaks — remove back button (navigation is via sidebar now), adjust max-width for panel fit |
+| `src/index.css` | Notebook-specific styles — section dividers, active states, notebook paper texture/lines (subtle) |
+
+## Key Details
+- **Resizable panels** using existing `resizable` UI component
+- **Keyboard navigation**: Arrow keys দিয়ে dates আর trades navigate করা যাবে
+- **Mobile**: Panels collapse — date list → trade list → document (step-by-step drill-down)
+- **Empty state**: যদি কোনো date select না থাকে, content area তে "একটি তারিখ বেছে নাও" message
+- **Notebook feel**: Subtle left border accent on active items, clean dividers between sections, paper-like content background (`#1A2B3C` slightly lighter for content area)
 
