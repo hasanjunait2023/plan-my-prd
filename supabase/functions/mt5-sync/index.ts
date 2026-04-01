@@ -7,6 +7,12 @@ const corsHeaders = {
 
 const META_API_BASE = 'https://mt-client-api-v1.agiliumtrade.agiliumtrade.ai';
 
+// Create HTTP client that accepts MetaApi's certificate
+const httpClient = Deno.createHttpClient({ caCerts: [] });
+
+const metaFetch = (url: string, headers: Record<string, string>) =>
+  fetch(url, { headers, client: httpClient } as any);
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
