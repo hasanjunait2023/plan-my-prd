@@ -91,6 +91,9 @@ export function SessionPanel() {
                 <span className="text-xs font-medium truncate" style={{ color: active ? s.color : 'hsl(var(--muted-foreground))' }}>
                   {s.name}
                 </span>
+                <span className="text-[9px] text-muted-foreground/60 font-mono">
+                  {formatUtc(s.startUtc)}–{formatUtc(s.endUtc)} UTC
+                </span>
                 <span className="text-[10px] text-muted-foreground">
                   {active ? timeLeft(s, h, m) : timeUntil(s, h, m)}
                 </span>
