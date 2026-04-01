@@ -13,7 +13,7 @@ const MODELS = [
 
 const systemPrompt = `You are an expert forex/trading chart analyzer. Given a trading chart screenshot, extract as much trade data as possible.
 
-Return a JSON object using the tool provided. Extract these fields from the chart:
+You MUST respond with ONLY a valid JSON object (no markdown, no explanation). Extract these fields:
 - pair: The currency pair or instrument (e.g. "USD/JPY", "EUR/USD", "XAU/USD")
 - timeframe: Chart timeframe (e.g. "1M", "5M", "15M", "1H", "4H", "D", "W")
 - direction: "LONG" or "SHORT" based on the trade direction visible
@@ -27,7 +27,7 @@ Return a JSON object using the tool provided. Extract these fields from the char
 - session: Estimate the trading session based on time axis ("Asian", "London", "New York", "London Close")
 - pips: Number of pips gained/lost (if calculable)
 
-Only include fields you can confidently extract. Use null for fields you cannot determine.`;
+Only include fields you can confidently extract. Omit fields you cannot determine. Response must be pure JSON only.`;
 
 const tools = [
   {
