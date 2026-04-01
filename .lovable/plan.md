@@ -1,96 +1,41 @@
 
 
-# Commodities & Crypto Pages — Plan
+# TradingView Chart — EMA, RSI ও Timeframe Selector
 
-## নতুন Pages
-
-### 1. Commodities Page (`/commodities`)
-Gold (XAUUSD), Silver (XAGUSD), Oil (USOIL/WTICL) — তিনটা asset নিয়ে।
-
-### 2. Crypto Page (`/crypto`)
-BTC (BTCUSD) নিয়ে।
-
-## প্রতিটা Page এ কি কি থাকবে
-
-### A. Live Price & Chart
-- **TradingView Embed Widget** (free, no API key needed) — lightweight chart embed করবো প্রতিটা asset এর জন্য
-- Real-time price display with 24h change %
-
-### B. Key Trading Metrics Card
-- **ADR (Average Daily Range)** — current day range vs average
-- **Session Activity** — কোন session এ সবচেয়ে বেশি move হয়
-- **Spread Indicator** — typical spread info (static data)
-
-### C. Technical Snapshot
-- **EMA Alignment Status** — existing EMA scan edge function reuse করে asset-specific scan
-- **Trend Direction** — current trend (Bullish/Bearish/Ranging) based on EMA data
-- **Key Levels** — static/manually updated support & resistance levels
-
-### D. Trading Tips Card (Static)
-- **Commodities**: Gold এর জন্য session correlation (London/NY best), Silver এর Gold correlation, Oil এর inventory report timing
-- **Crypto**: BTC volatility patterns, weekend vs weekday behavior, halving cycle info
-
-### E. Correlation Card
-- **Gold**: USD inverse correlation meter
-- **Silver**: Gold-Silver ratio display
-- **Oil**: Geopolitical risk indicator (static)
-- **BTC**: BTC dominance % (static/manual)
-
-## Data Sources
-
-| Source | Usage | Cost |
-|--------|-------|------|
-| TradingView Widget | Chart embed | Free (no API key) |
-| Yahoo Finance (via edge function) | Live price, 24h change | Free |
-| Existing Supabase data | EMA scan, ADR | Already setup |
-
-### Yahoo Finance Edge Function
-নতুন edge function `fetch-asset-price` — Yahoo Finance API থেকে price fetch করবে Gold, Silver, Oil, BTC এর জন্য। Free, no API key needed।
+## কি করতে হবে
+TradingView chart embed এ **EMA 9, 15, 200** ও **RSI** indicators যোগ করা, এবং **timeframe switch** (3M, 15M, 1H) করার UI দেওয়া।
 
 ## Technical Changes
 
-### New Files
-1. **`src/pages/Commodities.tsx`** — Gold, Silver, Oil page with tabs
-2. **`src/pages/Crypto.tsx`** — BTC focused page
-3. **`src/components/assets/AssetPriceCard.tsx`** — Live price display card (reusable)
-4. **`src/components/assets/TradingViewChart.tsx`** — TradingView widget embed (reusable)
-5. **`src/components/assets/TradingTipsCard.tsx`** — Static trading tips
-6. **`src/components/assets/CorrelationInfo.tsx`** — Correlation display card
-7. **`supabase/functions/fetch-asset-price/index.ts`** — Yahoo Finance price fetcher
+**File: `src/components/assets/TradingViewChart.tsx`**
 
-### Modified Files
-- **`src/App.tsx`** — নতুন routes যোগ
-- **`src/components/Layout.tsx`** — nav items এ Commodities ও Crypto যোগ (bottom bar restructure needed — mobile এ 8টা item হয়ে যাবে, তাই Commodities ও Crypto কে profile dropdown এ রাখা ভালো, অথবা mainNav এ রেখে আরো compact করা)
-- **`src/lib/pairFlags.tsx`** — Oil (USOIL) এর জন্য flag যোগ: `🛢️`
+1. **State যোগ**: `useState` দিয়ে selected timeframe track করা (default: `60` i.e. 1H)
 
-### Nav Strategy
-Bottom bar already 6টা item আছে। নতুন 2টা page যোগ করলে cramped হবে। তাই:
-- **Desktop sidebar**: সব items দেখাবে
-- **Mobile bottom bar**: Commodities ও Crypto কে profile dropdown menu তে যোগ করবো (Psychology, Intel, Settings এর সাথে)
+2. **Timeframe buttons**: Chart header এ 3টা button — `3M`, `15M`, `1H`। Active button highlighted।
 
-### TradingView Widget
-```text
-Lightweight embed — iframe based, free:
-- XAUUSD chart for Gold
-- XAGUSD chart for Silver  
-- USOIL chart for Oil
-- BTCUSD chart for BTC
-```
+3. **iframe URL update**:
+   - `"interval"` parameter: `"3"` / `"15"` / `"60"` (timeframe অনুযায়ী)
+   - `"studies"` parameter: `["MAExp@tv-basicstudies@9","MAExp@tv-basicstudies@15","MAExp@tv-basicstudies@200","RSI@tv-basicstudies"]`
 
-## Page Layout (Both Pages)
+4. **useEffect dependency**: `symbol` ও `timeframe` দুটোতেই re-render হবে
 
 ```text
-┌─────────────────────────────────┐
-│  🥇 Commodities / ₿ Crypto     │
-│  [Gold] [Silver] [Oil] tabs     │  ← Commodities only
-├─────────────────────────────────┤
-│  Live Price Card    │ 24h Chg   │
-├─────────────────────────────────┤
-│  TradingView Chart (embed)      │
-├────────────────┬────────────────┤
-│ Trading Metrics│ Correlation    │
-├────────────────┴────────────────┤
-│ Trading Tips & Best Practices   │
-└─────────────────────────────────┘
+Timeframe map:
+  "3M"  → interval: "3"
+  "15M" → interval: "15"  
+  "1H"  → interval: "60"
 ```
+
+### UI Layout
+```text
+┌─ Chart Card ──────────────────────┐
+│  📊 Title        [3M] [15M] [1H] │
+│  ┌──────────────────────────────┐ │
+│  │  TradingView Chart           │ │
+│  │  (EMA 9/15/200 + RSI)       │ │
+│  └──────────────────────────────┘ │
+└───────────────────────────────────┘
+```
+
+শুধু একটা file modify হবে: `TradingViewChart.tsx`
 
