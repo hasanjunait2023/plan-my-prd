@@ -13,6 +13,7 @@ import { Direction, Session, Timeframe, PsychEmotion } from '@/types/trade';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
 import ImageUpload from '@/components/journal/ImageUpload';
+import ScreenshotAnalyzer, { ExtractedTradeData } from '@/components/journal/ScreenshotAnalyzer';
 
 const sessions: Session[] = ['Asian', 'London', 'New York', 'London Close'];
 const timeframes: Timeframe[] = ['1M', '5M', '15M', '1H', '4H', 'D', 'W'];
@@ -35,7 +36,11 @@ const NewTrade = () => {
   const [psychEmotion, setPsychEmotion] = useState<string>('');
   const [planAdherence, setPlanAdherence] = useState(true);
   const [partialCloses, setPartialCloses] = useState<{ lots: string; price: string }[]>([]);
-  const [screenshots, setScreenshots] = useState<string[]>([]);
+
+  // Screenshots - entry & exit
+  const [entryScreenshots, setEntryScreenshots] = useState<string[]>([]);
+  const [exitScreenshots, setExitScreenshots] = useState<string[]>([]);
+  const [lastAddedImage, setLastAddedImage] = useState<string | null>(null);
 
   // New structured fields
   const [reasonForEntry, setReasonForEntry] = useState('');
@@ -67,6 +72,18 @@ const NewTrade = () => {
 
   const addPartialClose = () => setPartialCloses([...partialCloses, { lots: '', price: '' }]);
   const removePartialClose = (i: number) => setPartialCloses(partialCloses.filter((_, idx) => idx !== i));
+
+  const handleDataExtracted = (data: ExtractedTradeData) => {
+    if (data.pair && pairOptions.includes(data.pair)) setPair(data.pair);
+    if (data.direction) setDirection(data.direction);
+    if (data.timeframe && timeframes.includes(data.timeframe as Timeframe)) setTimeframe(data.timeframe);
+    if (data.session && sessions.includes(data.session as Session)) setSession(data.session);
+    if (data.entryPrice) setEntryPrice(String(data.entryPrice));
+    if (data.exitPrice) setExitPrice(String(data.exitPrice));
+    if (data.stopLoss) setStopLoss(String(data.stopLoss));
+    if (data.takeProfit) setTakeProfit(String(data.takeProfit));
+    if (data.lotSize) setLotSize(String(data.lotSize));
+  };
 
   const handleSubmit = () => {
     if (!pair || !entryPrice || !exitPrice || !stopLoss) {
@@ -100,6 +117,25 @@ const NewTrade = () => {
           ↓ SHORT
         </Button>
       </div>
+
+      {/* Entry Screenshots */}
+      <Card>
+        <CardHeader><CardTitle className="text-sm">📸 Entry Situation Screenshots</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <ImageUpload
+            images={entryScreenshots}
+            onImagesChange={setEntryScreenshots}
+            label="Entry এর সময়ের screenshot paste/upload করো"
+            onImageAdded={(img) => setLastAddedImage(img)}
+          />
+          {lastAddedImage && entryScreenshots.includes(lastAddedImage) && (
+            <ScreenshotAnalyzer
+              imageBase64={lastAddedImage}
+              onDataExtracted={handleDataExtracted}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       {/* Core Trade Info */}
       <Card>
@@ -175,14 +211,6 @@ const NewTrade = () => {
         </CardContent>
       </Card>
 
-      {/* Screenshots */}
-      <Card>
-        <CardHeader><CardTitle className="text-sm">🖼️ Screenshots</CardTitle></CardHeader>
-        <CardContent>
-          <ImageUpload images={screenshots} onImagesChange={setScreenshots} />
-        </CardContent>
-      </Card>
-
       {/* Reason for Entry */}
       <Card>
         <CardHeader><CardTitle className="text-sm">📝 Trade নেওয়ার কারণ (Reason for Entry)</CardTitle></CardHeader>
@@ -239,6 +267,18 @@ const NewTrade = () => {
             placeholder="Trade চলাকালীন কি হয়েছিল? Price কিভাবে move করেছিল?"
             rows={4}
             className="text-base"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Exit Screenshots */}
+      <Card>
+        <CardHeader><CardTitle className="text-sm">📸 Exit Situation Screenshots</CardTitle></CardHeader>
+        <CardContent>
+          <ImageUpload
+            images={exitScreenshots}
+            onImagesChange={setExitScreenshots}
+            label="Exit এর পরের screenshot paste/upload করো"
           />
         </CardContent>
       </Card>

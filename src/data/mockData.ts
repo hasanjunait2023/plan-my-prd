@@ -36,7 +36,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'Price TP এর কাছে পৌঁছেছে। সুন্দর execution ছিল।',
     whatWentWell: 'ধৈর্য ধরে trade hold করেছিলাম। Setup সঠিকভাবে identify করতে পেরেছি।',
     improvementNotes: 'Partial close 1:1 এ নেওয়া উচিত ছিল risk management এর জন্য।',
-    screenshots: [], partialCloses: [], starred: true, createdAt: '2026-03-31T10:30:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: true, createdAt: '2026-03-31T10:30:00Z',
   },
   {
     id: '2', date: '2026-03-31', pair: 'GBP/USD', direction: 'SHORT', session: 'New York',
@@ -54,7 +54,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'SL hit হয়েছে। HTF trend সঠিক ছিল — bullish continuation হয়েছে।',
     whatWentWell: 'SL সরাইনি, সেটা ভালো ছিল।',
     improvementNotes: 'HTF trend এর বিপরীতে trade নেওয়া বন্ধ করতে হবে। Confirmation এর জন্য অপেক্ষা করা দরকার।',
-    screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-31T15:00:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-31T15:00:00Z',
   },
   {
     id: '3', date: '2026-03-30', pair: 'USD/JPY', direction: 'LONG', session: 'Asian',
@@ -71,7 +71,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'বাকি position TP তে close হয়েছে। Perfect execution।',
     whatWentWell: 'ধৈর্য ধরে setup এর জন্য অপেক্ষা করেছি। Partial close সঠিক সময়ে নিয়েছি।',
     improvementNotes: 'এই ধরনের setup এ আরো বড় position নেওয়া যেত।',
-    screenshots: [],
+    entryScreenshots: [], exitScreenshots: [], screenshots: [],
     partialCloses: [{ id: 'p1', lots: 0.2, exitPrice: 150.60, pnl: 80 }],
     starred: true, createdAt: '2026-03-30T04:00:00Z',
   },
@@ -91,7 +91,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'পরে price আমার original TP তে গেছে। SL সরানো ভুল ছিল।',
     whatWentWell: 'Setup identification ঠিক ছিল।',
     improvementNotes: 'SL BE তে সরানোর আগে price কে আরো room দেওয়া দরকার। তাড়াহুড়ো করা উচিত নয়।',
-    screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-29T16:00:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-29T16:00:00Z',
   },
   {
     id: '5', date: '2026-03-28', pair: 'XAU/USD', direction: 'LONG', session: 'New York',
@@ -108,7 +108,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'Price TP এর কাছে গেছে। Excellent trade।',
     whatWentWell: 'Pullback এ ভয় পাইনি। Conviction ছিল analysis এ।',
     improvementNotes: '',
-    screenshots: [], partialCloses: [], starred: true, createdAt: '2026-03-28T14:30:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: true, createdAt: '2026-03-28T14:30:00Z',
   },
   {
     id: '6', date: '2026-03-27', pair: 'GBP/JPY', direction: 'SHORT', session: 'London',
@@ -126,7 +126,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'SL hit। আরো loss। দিনটা বন্ধ করা উচিত ছিল আগের loss এর পরেই।',
     whatWentWell: 'কিছুই না।',
     improvementNotes: 'Loss এর পর trading বন্ধ করা উচিত। Revenge trade কখনো করা যাবে না। Rule follow করতে হবে।',
-    screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-27T09:00:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-27T09:00:00Z',
   },
   {
     id: '7', date: '2026-03-26', pair: 'EUR/USD', direction: 'LONG', session: 'New York',
@@ -143,7 +143,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'TP hit। Clean trade।',
     whatWentWell: 'সবকিছু plan অনুযায়ী হয়েছে।',
     improvementNotes: '',
-    screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-26T14:00:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-26T14:00:00Z',
   },
   {
     id: '8', date: '2026-03-25', pair: 'USD/CAD', direction: 'SHORT', session: 'New York',
@@ -160,7 +160,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'TP hit হয়েছে। ধৈর্যের পুরস্কার পেয়েছি।',
     whatWentWell: 'ধৈর্য ধরে setup এর জন্য অপেক্ষা করেছি। Plan follow করেছি।',
     improvementNotes: '',
-    screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-25T15:30:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-25T15:30:00Z',
   },
 ];
 

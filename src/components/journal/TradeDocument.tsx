@@ -97,10 +97,16 @@ const TradeDocument = ({ trade, onBack }: TradeDocumentProps) => {
         )}
       </Section>
 
-      {/* Screenshots */}
-      <Section emoji="🖼️" title="Screenshots">
-        <ImageUpload images={trade.screenshots} onImagesChange={() => {}} readOnly />
-      </Section>
+      {/* Entry Situation Screenshots */}
+      {(trade.entryScreenshots?.length > 0 || trade.screenshots?.length > 0) && (
+        <Section emoji="📸" title="Entry Situation Screenshots">
+          <ImageUpload
+            images={trade.entryScreenshots?.length > 0 ? trade.entryScreenshots : trade.screenshots}
+            onImagesChange={() => {}}
+            readOnly
+          />
+        </Section>
+      )}
 
       {/* Reason for Entry */}
       <Section emoji="📝" title="Trade নেওয়ার কারণ (Reason for Entry)">
@@ -129,6 +135,13 @@ const TradeDocument = ({ trade, onBack }: TradeDocumentProps) => {
       <Section emoji="⏳" title="Trade চলাকালীন Situation (During Trade)">
         <NoteBlock text={trade.duringSituation} />
       </Section>
+
+      {/* Exit Situation Screenshots */}
+      {trade.exitScreenshots?.length > 0 && (
+        <Section emoji="📸" title="Exit Situation Screenshots">
+          <ImageUpload images={trade.exitScreenshots} onImagesChange={() => {}} readOnly />
+        </Section>
+      )}
 
       {/* Post Situation */}
       <Section emoji="📍" title="Trade এর পরে Situation (Post-Trade)">

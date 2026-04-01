@@ -44,6 +44,8 @@ export interface Trade {
   postSituation: string;
   whatWentWell: string;
   improvementNotes: string;
+  entryScreenshots: string[];
+  exitScreenshots: string[];
   screenshots: string[];
   partialCloses: PartialClose[];
   starred: boolean;
