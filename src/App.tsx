@@ -31,6 +31,7 @@ const App = () => (
             <Route path="/psychology" element={<Psychology />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/currency-strength" element={<CurrencyStrength />} />
+            <Route path="/ema-scanner" element={<EmaScanner />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
