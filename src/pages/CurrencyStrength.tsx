@@ -73,27 +73,18 @@ export default function CurrencyStrength() {
       const utcHour = new Date().getUTCHours();
       const session = utcHour >= 13 ? 'New York' : 'London';
 
-      // Batch 1
-      setScanProgress(`Batch 1/2 — Scanning pairs 1-14... (~2 min)`);
-      const resp1 = await supabase.functions.invoke('market-correlation-analysis', {
-        body: { batch: 1, session }
+      setScanProgress(`Scanning 28 pairs + AI analysis... (~2 min)`);
+      const resp = await supabase.functions.invoke('market-correlation-analysis', {
+        body: { session }
       });
 
-      if (resp1.error) throw new Error(resp1.error.message || 'Batch 1 failed');
-      const scanId = resp1.data?.scan_id;
-      if (!scanId) throw new Error('No scan_id returned');
+      if (resp.error) throw new Error(resp.error.message || 'Analysis failed');
 
-      toast.success(`Batch 1 complete: ${resp1.data?.pairs_fetched || 0} pairs fetched`);
+      if (resp.data?.error) {
+        throw new Error(resp.data.error + (resp.data.message ? `: ${resp.data.message}` : ''));
+      }
 
-      // Batch 2
-      setScanProgress(`Batch 2/2 — Scanning pairs 15-28 + AI analysis... (~2 min)`);
-      const resp2 = await supabase.functions.invoke('market-correlation-analysis', {
-        body: { batch: 2, session, scan_id: scanId }
-      });
-
-      if (resp2.error) throw new Error(resp2.error.message || 'Batch 2 failed');
-
-      toast.success(`${session} Session analysis complete! ${resp2.data?.pairs_total || 0} pairs analyzed`);
+      toast.success(`${session} Session analysis complete! ${resp.data?.pairs_total || 0} pairs analyzed`);
       setSessionTab(session);
       refetch();
     } catch (err) {
