@@ -166,11 +166,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
                     }`
                   }
-                      isActive
-                        ? 'text-primary bg-primary/10 shadow-[0_0_8px_hsla(145,63%,49%,0.15)]'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
-                    }`
-                  }
                 >
                   {({ isActive }) => (
                     <>
