@@ -7,8 +7,9 @@ import TradePageList from '@/components/journal/TradePageList';
 import TradeDocument from '@/components/journal/TradeDocument';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Plus, BookOpen } from 'lucide-react';
+import { Plus, BookOpen, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import ExportDialog from '@/components/journal/ExportDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const TradeJournal = () => {
