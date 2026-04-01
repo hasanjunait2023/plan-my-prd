@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, TrendingUp
+  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, TrendingUp, Gauge
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
@@ -14,6 +14,7 @@ const navItems = [
   { title: 'New Trade', url: '/new-trade', icon: PlusCircle },
   { title: 'Analytics', url: '/analytics', icon: BarChart3 },
   { title: 'Psychology', url: '/psychology', icon: Brain },
+  { title: 'Currency Strength', url: '/currency-strength', icon: Gauge },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
 
