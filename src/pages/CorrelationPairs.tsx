@@ -77,30 +77,54 @@ export default function CorrelationPairs() {
         ))}
       </div>
 
-      {/* Timeframe Selector */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground font-medium">Timeframe:</span>
-        <div className="flex gap-1">
-          {TIMEFRAMES.map(tf => (
+      {/* Timeframe & Layout Selector */}
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-medium">Timeframe:</span>
+          <div className="flex gap-1">
+            {TIMEFRAMES.map(tf => (
+              <Button
+                key={tf.value}
+                size="sm"
+                variant={interval === tf.value ? 'default' : 'ghost'}
+                className={`h-7 px-2.5 text-xs ${
+                  interval === tf.value
+                    ? 'bg-primary/20 text-primary'
+                    : 'text-muted-foreground'
+                }`}
+                onClick={() => setInterval(tf.value)}
+              >
+                {tf.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-medium">Layout:</span>
+          <div className="flex gap-1">
             <Button
-              key={tf.value}
               size="sm"
-              variant={interval === tf.value ? 'default' : 'ghost'}
-              className={`h-7 px-2.5 text-xs ${
-                interval === tf.value
-                  ? 'bg-primary/20 text-primary'
-                  : 'text-muted-foreground'
-              }`}
-              onClick={() => setInterval(tf.value)}
+              variant={cols === 2 ? 'default' : 'ghost'}
+              className={`h-7 px-2 text-xs ${cols === 2 ? 'bg-primary/20 text-primary' : 'text-muted-foreground'}`}
+              onClick={() => setCols(2)}
             >
-              {tf.label}
+              <Grid2x2 className="h-3.5 w-3.5 mr-1" /> 2×3
             </Button>
-          ))}
+            <Button
+              size="sm"
+              variant={cols === 3 ? 'default' : 'ghost'}
+              className={`h-7 px-2 text-xs ${cols === 3 ? 'bg-primary/20 text-primary' : 'text-muted-foreground'}`}
+              onClick={() => setCols(3)}
+            >
+              <LayoutGrid className="h-3.5 w-3.5 mr-1" /> 3×2
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* 2x3 Chart Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Chart Grid */}
+      <div className={`grid grid-cols-1 gap-4 ${cols === 2 ? 'lg:grid-cols-2 gap-6' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
         {pairs.map(pair => (
           <MiniChart
             key={`${pair}-${interval}`}
