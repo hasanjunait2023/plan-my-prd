@@ -1,56 +1,47 @@
 
 
-# OpenRouter দিয়ে Screenshot Analysis — Plan
+# Currency Pair Flags — Trading Environment Enhancement Plan
 
 ## কি করতে হবে
-বর্তমানে screenshot analysis Lovable AI Gateway ব্যবহার করে। এটা পরিবর্তন করে **OpenRouter API** ব্যবহার করবো, free vision models দিয়ে।
+সব জায়গায় যেখানে currency pair (e.g., EURUSD, GBPJPY) দেখায়, সেখানে pair এর দুই currency র flag emoji যোগ করা। যেমন: `🇪🇺🇺🇸 EURUSD`। এটা পুরো app এ trading terminal এর feel আনবে।
 
-## OpenRouter Free Vision Models
-- `google/gemini-2.0-flash-exp:free` — ভালো vision support, free
-- `meta-llama/llama-4-maverick:free` — free, multimodal
-- Fallback strategy: primary model fail করলে secondary try করবে
+## Helper Utility
+**New: `src/lib/pairFlags.ts`**
 
-## Technical Changes
+`CURRENCY_FLAGS` map already আছে `src/types/correlation.ts` এ। একটা helper function বানাবো:
 
-### Step 1: Secret Store
-- `OPENROUTER_API_KEY` নামে Supabase secret হিসেবে store করবো (user কে নতুন key দিতে বলবো কারণ এটা leaked)
-
-### Step 2: Edge Function Update
-**File: `supabase/functions/analyze-trade-screenshot/index.ts`**
-
-পরিবর্তন:
-- API URL: `https://ai.gateway.lovable.dev/...` → `https://openrouter.ai/api/v1/chat/completions`
-- Auth header: `LOVABLE_API_KEY` → `OPENROUTER_API_KEY`
-- Model: `google/gemini-2.5-flash` → `google/gemini-2.0-flash-exp:free`
-- Extra headers: `HTTP-Referer` এবং `X-Title` (OpenRouter requires)
-- Fallback: primary model 429/error দিলে `meta-llama/llama-4-maverick:free` try করবে
-
-### Step 3: Frontend — No Change
-`ScreenshotAnalyzer.tsx` এ কোনো পরিবর্তন নেই — edge function invoke আগের মতোই থাকবে।
-
-## Architecture
-
-```text
-ScreenshotAnalyzer.tsx
-  → supabase.functions.invoke('analyze-trade-screenshot')
-    → Edge Function
-      → OpenRouter API (free model)
-        → google/gemini-2.0-flash-exp:free (primary)
-        → meta-llama/llama-4-maverick:free (fallback)
-      → Extracted trade data JSON
-    ← { data: ExtractedTradeData }
+```typescript
+export function getPairFlags(pair: string): { base: string; quote: string } 
+// "EURUSD" → { base: "🇪🇺", quote: "🇺🇸" }
+// "GBPJPY" → { base: "🇬🇧", quote: "🇯🇵" }
 ```
 
-## Edge Function Changes Summary
-
-```text
-BEFORE                              AFTER
-──────                              ─────
-LOVABLE_API_KEY                     OPENROUTER_API_KEY
-ai.gateway.lovable.dev/v1/...       openrouter.ai/api/v1/...
-google/gemini-2.5-flash             google/gemini-2.0-flash-exp:free
-No fallback                         Fallback to llama-4-maverick:free
+এবং একটা reusable component:
+```typescript
+export function PairWithFlags({ pair }: { pair: string })
+// Renders: 🇪🇺🇺🇸 EURUSD
 ```
 
-Tool calling, system prompt, response parsing — সব একই থাকবে কারণ OpenRouter OpenAI-compatible API।
+## যেসব জায়গায় Flag যোগ হবে
+
+| File | Location |
+|------|----------|
+| `TradeCard.tsx` | Journal card — pair name এর আগে |
+| `TradeDocument.tsx` | Export document — pair heading এ |
+| `Index.tsx` (Dashboard) | Last trade display, recent trades list |
+| `NewTrade.tsx` | Pair dropdown options এ |
+| `ConfluenceCard.tsx` | Pair name এর আগে |
+| `AdrGauge.tsx` | Pair name এর আগে |
+| `AlignmentCard.tsx` | EMA scan pair display |
+| `EmaScanner.tsx` | Pair grouping headers |
+| `TradeIntelligence.tsx` | Top setups badges |
+| `Layout.tsx` | Notification items এ pair name |
+
+## Technical Details
+
+- `CURRENCY_FLAGS` map কে `correlation.ts` থেকে re-export বা `pairFlags.ts` এ move করা
+- Pair parsing: প্রথম 3 char = base currency, শেষ 3 char = quote currency
+- XAU, XAG এর জন্য custom flags: `🥇` (Gold), `🥈` (Silver)
+- Unknown currency fallback: empty string (no flag)
+- মোট ~11টা file modify হবে, 1টা নতুন file
 
