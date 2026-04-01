@@ -7,11 +7,38 @@ const corsHeaders = {
 
 const META_API_BASE = 'https://mt-client-api-v1.agiliumtrade.agiliumtrade.ai';
 
-// Create HTTP client that accepts MetaApi's certificate
-const httpClient = Deno.createHttpClient({ caCerts: [] });
+// Use Node.js https module to bypass SSL cert verification for MetaApi
+async function metaFetch(url: string, headers: Record<string, string>): Promise<{ ok: boolean; status: number; text: () => Promise<string>; json: () => Promise<any> }> {
+  const { default: https } = await import('node:https');
+  const { URL } = await import('node:url');
+  
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const options = {
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      method: 'GET',
+      headers,
+      rejectUnauthorized: false, // Skip SSL verification
+    };
 
-const metaFetch = (url: string, headers: Record<string, string>) =>
-  fetch(url, { headers, client: httpClient } as any);
+    const req = https.request(options, (res: any) => {
+      let data = '';
+      res.on('data', (chunk: string) => { data += chunk; });
+      res.on('end', () => {
+        resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          status: res.statusCode,
+          text: async () => data,
+          json: async () => JSON.parse(data),
+        });
+      });
+    });
+
+    req.on('error', reject);
+    req.end();
+  });
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -35,7 +62,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = body.action || 'full';
 
-    const headers = {
+    const headers: Record<string, string> = {
       'auth-token': metaApiToken,
       'Content-Type': 'application/json',
     };
@@ -46,7 +73,7 @@ Deno.serve(async (req) => {
     if (action === 'full' || action === 'account') {
       const res = await metaFetch(
         `${META_API_BASE}/users/current/accounts/${accountId}/account-information`,
-        { headers }
+        headers
       );
       if (!res.ok) {
         const errText = await res.text();
@@ -78,7 +105,7 @@ Deno.serve(async (req) => {
 
       const res = await metaFetch(
         `${META_API_BASE}/users/current/accounts/${accountId}/history-deals/time/${startTime}/${endTime}`,
-        { headers }
+        headers
       );
       if (!res.ok) {
         const errText = await res.text();
@@ -88,7 +115,6 @@ Deno.serve(async (req) => {
         const deals = await res.json();
         const trades = Array.isArray(deals) ? deals : [];
 
-        // Group deals by positionId to pair open/close
         const positionMap = new Map<string, any[]>();
         for (const deal of trades) {
           if (!deal.positionId) continue;
@@ -99,7 +125,6 @@ Deno.serve(async (req) => {
 
         let upsertCount = 0;
         for (const [posId, posDeals] of positionMap) {
-          // Find entry and exit deals
           const entryDeal = posDeals.find((d: any) => d.entryType === 'DEAL_ENTRY_IN') || posDeals[0];
           const exitDeal = posDeals.find((d: any) => d.entryType === 'DEAL_ENTRY_OUT');
 
@@ -136,7 +161,7 @@ Deno.serve(async (req) => {
     if (action === 'full' || action === 'positions') {
       const res = await metaFetch(
         `${META_API_BASE}/users/current/accounts/${accountId}/positions`,
-        { headers }
+        headers
       );
       if (!res.ok) {
         const errText = await res.text();
@@ -146,7 +171,6 @@ Deno.serve(async (req) => {
         const positions = await res.json();
         const posArr = Array.isArray(positions) ? positions : [];
 
-        // Mark all existing open trades as closed first
         await supabase.from('mt5_trades').update({ is_open: false }).eq('is_open', true);
 
         let upsertCount = 0;
