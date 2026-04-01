@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap
+  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap, LogOut
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
-
 interface NotificationItem {
   id: string;
   icon: typeof TrendingUp;
@@ -22,17 +24,22 @@ const staticNotifications: NotificationItem[] = [
   { id: 'local-2', icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false, source: 'local' },
 ];
 
-const navItems = [
+const mainNavItems = [
   { title: 'Dashboard', short: 'Home', url: '/', icon: LayoutDashboard },
   { title: 'Journal', short: 'Jrnl', url: '/journal', icon: BookOpen },
   { title: 'New Trade', short: 'New', url: '/new-trade', icon: PlusCircle },
   { title: 'Analytics', short: 'Ana', url: '/analytics', icon: BarChart3 },
-  { title: 'Psychology', short: 'Psy', url: '/psychology', icon: Brain },
   { title: 'Strength', short: 'Str', url: '/currency-strength', icon: Gauge },
   { title: 'EMA Scan', short: 'EMA', url: '/ema-scanner', icon: Crosshair },
-  { title: 'Intel', short: 'Intel', url: '/trade-intelligence', icon: Zap },
-  { title: 'Settings', short: 'Set', url: '/settings', icon: Settings },
 ];
+
+const profileMenuItems = [
+  { title: 'Psychology', url: '/psychology', icon: Brain },
+  { title: 'Intel', url: '/trade-intelligence', icon: Zap },
+  { title: 'Settings', url: '/settings', icon: Settings },
+];
+
+const allNavItems = [...mainNavItems, ...profileMenuItems];
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -45,6 +52,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationItem[]>(staticNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
@@ -154,7 +162,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {/* Desktop Nav Tabs — hidden on mobile */}
           <nav className="flex-1 overflow-x-auto hidden md:block" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--muted)) transparent' }}>
             <div className="flex items-center gap-0.5">
-              {navItems.map((item) => (
+              {allNavItems.map((item) => (
                 <NavLink
                   key={item.title}
                   to={item.url}
@@ -250,11 +258,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               )}
             </div>
-            <Avatar className="w-8 h-8 border border-border/50 cursor-pointer hover:border-primary/50 transition-colors">
-              <AvatarFallback className="bg-card text-xs font-semibold text-foreground">
-                TV
-              </AvatarFallback>
-            </Avatar>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50">
+                  <Avatar className="w-8 h-8 border border-border/50 cursor-pointer hover:border-primary/50 transition-colors">
+                    <AvatarFallback className="bg-card text-xs font-semibold text-foreground">
+                      TV
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 bg-card border-border/40">
+                {profileMenuItems.map((item) => (
+                  <DropdownMenuItem
+                    key={item.title}
+                    onClick={() => navigate(item.url)}
+                    className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground"
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.title}</span>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator className="bg-border/30" />
+                <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground">
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -268,7 +299,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden backdrop-blur-md bg-background/90 border-t border-border/30"
            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-center justify-around px-1 h-16">
-          {navItems.map((item) => (
+          {mainNavItems.map((item) => (
             <NavLink
               key={item.title}
               to={item.url}
