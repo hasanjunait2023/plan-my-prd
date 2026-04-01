@@ -1,39 +1,75 @@
 
+# MetaApi.cloud দিয়ে MT5 Integration
 
-# Dashboard এ নতুন Trading Metrics যোগ করা
+## Approach
 
-## বর্তমানে যা আছে
-Today's P&L, Win Rate, Profit Factor, Max Drawdown, Equity Curve, Weekly P&L, Win/Journal Streak, Rule of Day, Mental State, Last Trade।
+হ্যাঁ, আরেকটা way আছে — **MetaApi.cloud** নামে একটা third-party service আছে যেটা MT5 এর জন্য REST API provide করে। তুমি শুধু MT5 login, password, আর broker server name দিবে — বাকি সব MetaApi handle করবে। কোনো EA install করা লাগবে না।
 
-## নতুন যা যোগ হবে
+```text
+┌─────────────────┐     REST API      ┌──────────────┐     HTTP      ┌─────────────┐
+│  MetaApi Cloud  │ ←───────────────→ │  Edge Func   │ ←──────────→ │  Web App    │
+│ (connects MT5)  │   trade data      │  (Supabase)  │              │ Fx Junait   │
+└─────────────────┘                   └──────────────┘              └─────────────┘
+```
 
-### Section 1: Performance Breakdown Cards (4-col grid)
-- **Avg RRR (Risk-Reward)** — সব trade এর average RRR, ভালো নাকি improve দরকার বোঝা যাবে
-- **Plan Adherence %** — কতগুলো trade plan অনুযায়ী হয়েছে, discipline measure
-- **Best/Worst Pair** — কোন pair এ সবচেয়ে বেশি profit আর কোনটায় loss
-- **Avg Confidence** — entry confidence level average, low মানে uncertain trades নিচ্ছো
+## কি কি পাবে
 
-### Section 2: Strategy Performance Table
-- প্রতিটা strategy এর আলাদা Win Rate, Total P&L, Trade Count, Avg RRR
-- কোন strategy কাজ করছে আর কোনটা করছে না — এক নজরে বোঝা যাবে
+| Feature | Detail |
+|---------|--------|
+| **Account Info** | Balance, Equity, Margin, Free Margin — real-time |
+| **Trade History** | সব closed trades auto fetch — pair, lot, P&L, entry/exit |
+| **Open Positions** | বর্তমান open trades live দেখা যাবে |
+| **Auto Journal Import** | MT5 trade → Journal এ one-click import |
 
-### Section 3: Session Performance Bar Chart
-- Asian, London, New York, London Close — প্রতিটা session এর P&L bar chart
-- কোন session এ তুমি ভালো perform করো সেটা visualize হবে
+## Setup যা লাগবে (তোমাকে করতে হবে)
 
-### Section 4: Mistake Frequency
-- Common mistakes এর count — horizontal bar chart
-- কোন mistake বারবার হচ্ছে সেটা identify করতে পারবে
+1. **MetaApi.cloud এ free account** খুলতে হবে → [metaapi.cloud](https://metaapi.cloud)
+2. MetaApi dashboard থেকে **API Token** copy করতে হবে
+3. MetaApi dashboard এ তোমার Exness MT5 account add করতে হবে:
+   - MT5 Login number
+   - MT5 Password (investor password দিলেও চলবে — read-only access)
+   - Broker server name (e.g., `Exness-MT5Real`)
+4. MetaApi থেকে **Account ID** পাবে — সেটাও দিতে হবে
 
-### Section 5: Psychology Correlation Mini Card
-- High mental state (7+) এ win rate vs Low mental state (<7) এ win rate
-- Psychology আর performance এর link দেখাবে
+> **Note**: MetaApi free tier এ 1টা account connect করা যায়। Paid plan এ unlimited।
 
-## Changes
+## Implementation Steps
+
+### 1. Secrets যোগ করা
+- `METAAPI_TOKEN` — MetaApi API token
+- `METAAPI_ACCOUNT_ID` — connected MT5 account ID
+
+### 2. Edge Function — `mt5-sync`
+- MetaApi REST API call করে account info + trade history fetch করবে
+- Data Supabase table এ save করবে
+- Endpoint: `GET https://mt-client-api-v1.agiliumtrade.agiliumtrade.ai/users/current/accounts/{accountId}/...`
+
+### 3. Database Tables
+- `mt5_account_info` — balance, equity, margin, last_synced
+- `mt5_trades` — ticket, pair, direction, lot, entry/exit price, pnl, open/close time
+
+### 4. Frontend — MT5 Connection Page
+- Account status card (connected/disconnected, last sync time)
+- Balance/Equity/Margin display
+- Trade history list with "Import to Journal" button
+- Manual "Sync Now" button
+
+### 5. Navigation ও Route যোগ
+
+## Files
 
 | Action | File |
 |--------|------|
-| **Modify** | `src/pages/Index.tsx` — উপরের 5টা section যোগ করবো existing content এর পরে |
+| **Migration** | `mt5_account_info` ও `mt5_trades` tables |
+| **Create** | `supabase/functions/mt5-sync/index.ts` |
+| **Create** | `src/pages/MT5Connection.tsx` |
+| **Create** | `src/components/mt5/AccountCard.tsx` |
+| **Create** | `src/components/mt5/TradesList.tsx` |
+| **Modify** | `src/App.tsx` — route যোগ |
+| **Modify** | `src/components/Layout.tsx` — nav link যোগ |
 
-1টা file change। সব data `mockData.ts` থেকেই আসবে — নতুন data file লাগবে না। Recharts দিয়ে charts হবে, existing Table component দিয়ে strategy table হবে।
-
+## Important
+- MetaApi **paid service** — free tier limited (1 account, limited requests)
+- Investor password দিলে **read-only** access হবে (safer — trade execute করতে পারবে না)
+- Master password দিলে trade execute ও করা যাবে (future feature)
+- PC তে MT5 open না থাকলেও কাজ করবে — MetaApi cloud এ terminal চালায়
