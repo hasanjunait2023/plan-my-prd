@@ -53,6 +53,75 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_log: {
+        Row: {
+          alert_type: string
+          created_at: string
+          id: string
+          message: string
+          metadata: Json | null
+          pair: string | null
+          sent_at: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          pair?: string | null
+          sent_at?: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          pair?: string | null
+          sent_at?: string
+        }
+        Relationships: []
+      }
+      alert_settings: {
+        Row: {
+          confluence_alert: boolean
+          created_at: string
+          ema_shift_alert: boolean
+          id: string
+          min_confluence_grade: string
+          mt5_trade_alert: boolean
+          risk_breach_alert: boolean
+          session_reminder_alert: boolean
+          telegram_chat_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          confluence_alert?: boolean
+          created_at?: string
+          ema_shift_alert?: boolean
+          id?: string
+          min_confluence_grade?: string
+          mt5_trade_alert?: boolean
+          risk_breach_alert?: boolean
+          session_reminder_alert?: boolean
+          telegram_chat_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confluence_alert?: boolean
+          created_at?: string
+          ema_shift_alert?: boolean
+          id?: string
+          min_confluence_grade?: string
+          mt5_trade_alert?: boolean
+          risk_breach_alert?: boolean
+          session_reminder_alert?: boolean
+          telegram_chat_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       confluence_scores: {
         Row: {
           active_session: string | null
