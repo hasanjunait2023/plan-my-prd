@@ -1,40 +1,82 @@
 
 
-# Typography ও Color Scheme পরিবর্তন — Noto Serif Bengali + Red/Green/Black/White
+# Currency Strength Page — n8n Workflow Result Visualization
 
-## কী করবো
+## তোমার Workflow Output Format
+```
+💱 FX Co-Relation Strength On 1H
+⏰ April 1st 2026, 12:00:00 pm
+🟢 STRONG: EUR → 6, JPY → 6
+🟡 NEUTRAL: USD → 3, AUD → 1, CHF → -1, GBP → -2
+🟠 MID WEAK: CAD → -4
+🔴 WEAK: NZD → -7
+```
 
-### 1. Font — Noto Serif Bengali
-- `index.html` এ Google Fonts থেকে **Noto Serif Bengali** (weights: 400, 500, 600, 700) import করবো
-- `src/index.css` এ `body` এর `font-family` পরিবর্তন: `'Noto Serif Bengali', serif`
+Strength score range: -10 to +10, 4টা category — STRONG, NEUTRAL, MID WEAK, WEAK।
 
-### 2. Color Palette — Red, Green, Black, White
-পুরো color scheme বদলে এই 4টা color এর combination এ নিয়ে আসবো:
+## Architecture
 
-| Role | Current | New |
-|------|---------|-----|
-| Background | Deep Navy `#0D1B2A` | **Black** `#0A0A0A` |
-| Card | `#1A2B3C` | **Dark Gray** `#1A1A1A` |
-| Foreground/Text | `#ECF0F1` | **White** `#F5F5F5` |
-| Muted text | `#6B7E94` | **Gray** `#737373` |
-| Primary accent | Teal `#00C9A7` | **Green** `#22C55E` |
-| Destructive/Loss | `#E63946` | **Red** `#EF4444` |
-| Profit | `#2ECC71` | **Green** `#22C55E` |
-| Border | Navy tints | **Dark gray** `#262626` |
-| Sidebar bg | Deep navy | **Near-black** `#0F0F0F` |
-| Ring/focus | Teal | **Green** `#22C55E` |
+```text
+n8n Workflow (scheduled)
+       │
+       ▼
+Supabase Table (currency_strength)  ◄── Edge Function (webhook endpoint)
+       │
+       ▼
+React Page (reads from table, visualizes)
+```
 
-### 3. Files to Change
+**Flow:**
+1. n8n workflow execute হলে result কে Supabase table এ store করবে (edge function webhook দিয়ে)
+2. Frontend table থেকে latest data read করবে
+3. Manual "Refresh" button দিয়ে on-demand n8n workflow trigger করা যাবে
+
+## Supabase Table — `currency_strength`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | PK |
+| currency | text | EUR, USD, GBP, etc. |
+| strength | integer | -10 to +10 |
+| category | text | STRONG / NEUTRAL / MID WEAK / WEAK |
+| timeframe | text | 1H / 15M / 3M |
+| recorded_at | timestamptz | কখন record হয়েছে |
+| created_at | timestamptz | default now() |
+
+## Page Layout
+
+### Currency Strength Meter
+- 8টা currency horizontal bar chart — left to right
+- Bar color: 🟢 STRONG (green), 🟡 NEUTRAL (yellow/gray), 🟠 MID WEAK (orange), 🔴 WEAK (red)
+- Score number দেখাবে bar এর পাশে
+- Country flag emoji প্রতিটা currency র পাশে
+- Timeframe tabs: **1H** / **15M** / **3M**
+- Last updated timestamp top এ দেখাবে
+
+### Visual Style
+- Dark background (existing black theme)
+- Bars: gradient fill based on category
+- Sorted by strength (strongest → weakest)
+- Clean, minimal — trading terminal feel
+
+## Files to Create/Change
 
 | File | Change |
 |------|--------|
-| `index.html` | Google Fonts link add — Noto Serif Bengali |
-| `src/index.css` | CSS variables update (all HSL values) + font-family change |
-| `tailwind.config.ts` | কিছু change নেই — সব CSS variables based, তাই auto update হবে |
+| **Migration** | `currency_strength` table create |
+| `supabase/functions/store-currency-strength/index.ts` (new) | Webhook endpoint — n8n calls this to store results |
+| `src/types/correlation.ts` (new) | TypeScript interfaces |
+| `src/pages/CurrencyStrength.tsx` (new) | Main page — strength meter visualization |
+| `src/components/correlation/StrengthMeter.tsx` (new) | Bar chart component |
+| `src/App.tsx` | Add `/currency-strength` route |
+| `src/components/AppSidebar.tsx` | Add nav item |
 
-### মূল নীতি
-- **Black background** + **white text** = high contrast base
-- **Green** = profit, primary actions, active states
-- **Red** = loss, destructive, warnings
-- Teal/navy সব সরে যাবে — pure monochrome + red/green accent
+## Edge Function — `store-currency-strength`
+- n8n workflow থেকে POST request নেবে
+- Body: `{ timeframe: "1H", currencies: [{ currency: "EUR", strength: 6, category: "STRONG" }, ...] }`
+- Supabase table এ insert করবে
+- পুরনো same timeframe data replace করবে
+
+## n8n Integration Note
+তোমার n8n workflow এ একটা HTTP Request node add করতে হবে যেটা edge function এর webhook URL এ POST করবে parsed result। এটা তুমি n8n এ করবে — আমি edge function এর URL দিয়ে দেবো।
 
