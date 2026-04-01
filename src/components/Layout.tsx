@@ -24,17 +24,22 @@ const staticNotifications: NotificationItem[] = [
   { id: 'local-2', icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false, source: 'local' },
 ];
 
-const navItems = [
+const mainNavItems = [
   { title: 'Dashboard', short: 'Home', url: '/', icon: LayoutDashboard },
   { title: 'Journal', short: 'Jrnl', url: '/journal', icon: BookOpen },
   { title: 'New Trade', short: 'New', url: '/new-trade', icon: PlusCircle },
   { title: 'Analytics', short: 'Ana', url: '/analytics', icon: BarChart3 },
-  { title: 'Psychology', short: 'Psy', url: '/psychology', icon: Brain },
   { title: 'Strength', short: 'Str', url: '/currency-strength', icon: Gauge },
   { title: 'EMA Scan', short: 'EMA', url: '/ema-scanner', icon: Crosshair },
-  { title: 'Intel', short: 'Intel', url: '/trade-intelligence', icon: Zap },
-  { title: 'Settings', short: 'Set', url: '/settings', icon: Settings },
 ];
+
+const profileMenuItems = [
+  { title: 'Psychology', url: '/psychology', icon: Brain },
+  { title: 'Intel', url: '/trade-intelligence', icon: Zap },
+  { title: 'Settings', url: '/settings', icon: Settings },
+];
+
+const allNavItems = [...mainNavItems, ...profileMenuItems];
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
