@@ -23,12 +23,6 @@ export function AssetPriceCard({ symbol, name, icon }: AssetPriceCardProps) {
   const { data, isLoading, error, refetch } = useQuery<PriceData>({
     queryKey: ['asset-price', symbol],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('fetch-asset-price', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        body: undefined,
-      });
-      // Use query params via direct fetch since invoke doesn't support query params well
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const res = await fetch(
         `https://${projectId}.supabase.co/functions/v1/fetch-asset-price?symbol=${symbol}`,
