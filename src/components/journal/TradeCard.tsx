@@ -1,6 +1,7 @@
 import { Trade } from '@/types/trade';
 import { Badge } from '@/components/ui/badge';
 import { Star, ArrowUp, ArrowDown, ChevronRight } from 'lucide-react';
+import { PairWithFlags } from '@/lib/pairFlags';
 
 interface TradeCardProps {
   trade: Trade;
