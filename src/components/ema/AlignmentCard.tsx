@@ -1,5 +1,6 @@
 import { TrendingUp, TrendingDown, CheckCircle2, XCircle } from 'lucide-react';
 import type { PairAlignmentSummary } from '@/types/ema';
+import { PairWithFlags } from '@/lib/pairFlags';
 
 interface AlignmentCardProps {
   data: PairAlignmentSummary;
