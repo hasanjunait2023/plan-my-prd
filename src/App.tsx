@@ -33,6 +33,7 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/currency-strength" element={<CurrencyStrength />} />
             <Route path="/ema-scanner" element={<EmaScanner />} />
+            <Route path="/trade-intelligence" element={<TradeIntelligence />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

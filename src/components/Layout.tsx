@@ -30,6 +30,7 @@ const navItems = [
   { title: 'Psychology', short: 'Psy', url: '/psychology', icon: Brain },
   { title: 'Strength', short: 'Str', url: '/currency-strength', icon: Gauge },
   { title: 'EMA Scan', short: 'EMA', url: '/ema-scanner', icon: Crosshair },
+  { title: 'Intel', short: 'Intel', url: '/trade-intelligence', icon: Zap },
   { title: 'Settings', short: 'Set', url: '/settings', icon: Settings },
 ];
 
