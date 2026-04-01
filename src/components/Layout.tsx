@@ -37,6 +37,7 @@ const mainNavItems = [
 const profileMenuItems = [
   { title: 'Commodities', url: '/commodities', icon: Gem },
   { title: 'Crypto', url: '/crypto', icon: Bitcoin },
+  { title: 'Correlation', url: '/correlation-pairs', icon: GitCompareArrows },
   { title: 'Psychology', url: '/psychology', icon: Brain },
   { title: 'Intel', url: '/trade-intelligence', icon: Zap },
   { title: 'Settings', url: '/settings', icon: Settings },
