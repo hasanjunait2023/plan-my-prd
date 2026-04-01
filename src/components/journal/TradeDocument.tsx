@@ -5,6 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Star, CheckCircle, XCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import ImageUpload from './ImageUpload';
 import { format, parseISO } from 'date-fns';
+import { PairWithFlags } from '@/lib/pairFlags';
 
 interface TradeDocumentProps {
   trade: Trade;
