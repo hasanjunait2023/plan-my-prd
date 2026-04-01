@@ -19,6 +19,7 @@ const TradeJournal = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [mobileView, setMobileView] = useState<'dates' | 'trades' | 'document'>('dates');
+  const [exportOpen, setExportOpen] = useState(false);
 
   const filteredTrades = useMemo(() => {
     if (!searchQuery) return mockTrades;
