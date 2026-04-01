@@ -74,7 +74,8 @@ export default function CurrencyStrength() {
       const session = utcHour >= 13 ? 'New York' : 'London';
 
       // Batch 1
-      setScanProgress(`Batch 1/2 — Scanning pairs 1-14... (~2 min)`);
+      // Batch 1 (10 pairs)
+      setScanProgress(`Batch 1/3 — Scanning pairs 1-10... (~1.5 min)`);
       const resp1 = await supabase.functions.invoke('market-correlation-analysis', {
         body: { batch: 1, session }
       });
@@ -85,15 +86,24 @@ export default function CurrencyStrength() {
 
       toast.success(`Batch 1 complete: ${resp1.data?.pairs_fetched || 0} pairs fetched`);
 
-      // Batch 2
-      setScanProgress(`Batch 2/2 — Scanning pairs 15-28 + AI analysis... (~2 min)`);
+      // Batch 2 (10 pairs)
+      setScanProgress(`Batch 2/3 — Scanning pairs 11-20... (~1.5 min)`);
       const resp2 = await supabase.functions.invoke('market-correlation-analysis', {
         body: { batch: 2, session, scan_id: scanId }
       });
 
       if (resp2.error) throw new Error(resp2.error.message || 'Batch 2 failed');
+      toast.success(`Batch 2 complete: ${resp2.data?.pairs_fetched || 0} pairs fetched`);
 
-      toast.success(`${session} Session analysis complete! ${resp2.data?.pairs_total || 0} pairs analyzed`);
+      // Batch 3 (8 pairs + AI analysis)
+      setScanProgress(`Batch 3/3 — Scanning pairs 21-28 + AI analysis... (~2 min)`);
+      const resp3 = await supabase.functions.invoke('market-correlation-analysis', {
+        body: { batch: 3, session, scan_id: scanId }
+      });
+
+      if (resp3.error) throw new Error(resp3.error.message || 'Batch 3 failed');
+
+      toast.success(`${session} Session analysis complete! ${resp3.data?.pairs_total || 0} pairs analyzed`);
       setSessionTab(session);
       refetch();
     } catch (err) {
