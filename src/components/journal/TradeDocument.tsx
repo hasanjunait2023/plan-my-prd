@@ -16,16 +16,16 @@ const TradeDocument = ({ trade }: TradeDocumentProps) => {
   const isLoss = trade.outcome === 'LOSS';
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-12">
+    <div className="max-w-3xl mx-auto space-y-6 pb-12 overflow-x-hidden">
       {/* Header */}
       <div className="space-y-3">
-        <div className="flex items-start justify-between">
+        <p className="text-sm text-muted-foreground">
+          📅 {format(parseISO(trade.date), 'MMMM d, yyyy')}
+        </p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
           <div>
-            <p className="text-sm text-muted-foreground">
-              📅 {format(parseISO(trade.date), 'MMMM d, yyyy')}
-            </p>
-            <h1 className="text-2xl font-bold flex items-center gap-3 mt-1">
-              <span className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 flex-wrap">
+              <span className="flex items-center gap-1.5">
                 {trade.direction === 'LONG' ? (
                   <ArrowUp className="w-5 h-5 text-profit" />
                 ) : (
@@ -39,16 +39,16 @@ const TradeDocument = ({ trade }: TradeDocumentProps) => {
               </Badge>
               {trade.starred && <Star className="w-5 h-5 text-warning fill-current" />}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               {trade.session} Session &middot; {trade.timeframe} &middot; {trade.strategy}
             </p>
           </div>
-          <div className="text-right">
-            <p className={`text-2xl font-bold ${trade.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+          <div className="flex items-center gap-3 sm:text-right">
+            <p className={`text-xl sm:text-2xl font-bold ${trade.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>
               {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
             </p>
-            <p className="text-sm text-muted-foreground">
-              {trade.pips >= 0 ? '+' : ''}{trade.pips} pips &middot; RRR {trade.rrr.toFixed(1)}
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              {trade.pips >= 0 ? '+' : ''}{trade.pips} pips &middot; RR {trade.rrr.toFixed(1)}
             </p>
           </div>
         </div>

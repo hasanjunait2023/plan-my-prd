@@ -107,11 +107,11 @@ const TradeJournal = () => {
         )}
 
         {mobileView === 'document' && selectedTrade && (
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
             <div className="p-2 border-b border-border/30">
               <button onClick={() => setMobileView('trades')} className="text-xs text-primary">← Trades</button>
             </div>
-            <div className="p-4">
+            <div className="px-3 py-4">
               <TradeDocument trade={selectedTrade} />
             </div>
           </div>
