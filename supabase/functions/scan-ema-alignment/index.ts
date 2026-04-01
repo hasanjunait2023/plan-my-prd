@@ -7,63 +7,64 @@ const corsHeaders = {
 };
 
 const TWELVEDATA_BASE = "https://api.twelvedata.com";
-const CURRENCIES = ["EUR", "GBP", "USD", "JPY", "AUD", "NZD", "CAD", "CHF"];
 const TIMEFRAMES = ["5min", "15min", "1h"];
-const EMA_PERIODS = [9, 15, 200];
-
-// Rate limiter: max 7 calls per minute to stay under 8/min limit
-const DELAY_MS = 9000; // ~6.6 calls/min
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function fetchEma(
+// Use time_series to get price + compute EMA alignment from raw data
+// This uses 1 API call per pair/timeframe instead of 4
+async function fetchTimeSeriesAndEmas(
   symbol: string,
   interval: string,
-  timePeriod: number,
   apiKey: string
-): Promise<number | null> {
+): Promise<{ price: number; ema9: number; ema15: number; ema200: number } | null> {
   try {
-    const url = `${TWELVEDATA_BASE}/ema?symbol=${symbol}&interval=${interval}&time_period=${timePeriod}&outputsize=1&apikey=${apiKey}`;
+    const url = `${TWELVEDATA_BASE}/time_series?symbol=${symbol}&interval=${interval}&outputsize=210&apikey=${apiKey}`;
     const res = await fetch(url);
     const data = await res.json();
-    if (data.status === "error") {
-      console.error(`EMA error for ${symbol} ${interval} EMA${timePeriod}:`, data.message);
+    
+    if (data.status === "error" || !data.values || data.values.length < 200) {
+      console.error(`Time series error for ${symbol} ${interval}:`, data.message || "Insufficient data");
       return null;
     }
-    return parseFloat(data.values?.[0]?.ema);
+
+    const closes = data.values.map((v: any) => parseFloat(v.close));
+    const price = closes[0];
+
+    // Calculate EMAs
+    const ema9 = calculateEma(closes, 9);
+    const ema15 = calculateEma(closes, 15);
+    const ema200 = calculateEma(closes, 200);
+
+    return { price, ema9, ema15, ema200 };
   } catch (e) {
-    console.error(`Fetch failed for ${symbol} ${interval} EMA${timePeriod}:`, e);
+    console.error(`Fetch failed for ${symbol} ${interval}:`, e);
     return null;
   }
 }
 
-async function fetchPrice(symbol: string, apiKey: string): Promise<number | null> {
-  try {
-    const url = `${TWELVEDATA_BASE}/price?symbol=${symbol}&apikey=${apiKey}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.status === "error") return null;
-    return parseFloat(data.price);
-  } catch {
-    return null;
+function calculateEma(prices: number[], period: number): number {
+  // prices[0] is most recent
+  const reversed = prices.slice(0, Math.max(period * 2, 210)).reverse();
+  const k = 2 / (period + 1);
+  let ema = reversed[0];
+  for (let i = 1; i < reversed.length; i++) {
+    ema = reversed[i] * k + ema * (1 - k);
   }
+  return ema;
 }
 
 function getStrongWeakPairs(strengthData: { currency: string; strength: number }[]): string[] {
   if (strengthData.length === 0) return [];
-  
   const sorted = [...strengthData].sort((a, b) => b.strength - a.strength);
-  const strong = sorted.slice(0, 3).map((s) => s.currency);
-  const weak = sorted.slice(-3).map((s) => s.currency);
-  
+  const strong = sorted.slice(0, 2).map((s) => s.currency);
+  const weak = sorted.slice(-2).map((s) => s.currency);
   const pairs: string[] = [];
   for (const s of strong) {
     for (const w of weak) {
-      if (s !== w) {
-        pairs.push(`${s}/${w}`);
-      }
+      if (s !== w) pairs.push(`${s}/${w}`);
     }
   }
   return pairs;
@@ -76,9 +77,7 @@ serve(async (req) => {
 
   try {
     const apiKey = Deno.env.get("TWELVEDATA_API_KEY");
-    if (!apiKey) {
-      throw new Error("TWELVEDATA_API_KEY not configured");
-    }
+    if (!apiKey) throw new Error("TWELVEDATA_API_KEY not configured");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -93,7 +92,6 @@ serve(async (req) => {
 
     if (strengthError) throw strengthError;
 
-    // Deduplicate by currency (take latest)
     const currencyMap = new Map<string, number>();
     for (const row of strengthData || []) {
       if (!currencyMap.has(row.currency)) {
@@ -101,142 +99,119 @@ serve(async (req) => {
       }
     }
     const uniqueStrength = Array.from(currencyMap.entries()).map(([currency, strength]) => ({
-      currency,
-      strength,
+      currency, strength,
     }));
 
-    // 2. Generate strong/weak pairs
+    // 2. Generate pairs (max 4 to stay within API limits)
     let pairs = getStrongWeakPairs(uniqueStrength);
     if (pairs.length === 0) {
-      // Fallback: use major pairs
-      pairs = ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "EUR/GBP", "GBP/JPY"];
+      pairs = ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD"];
     }
-
-    // Limit to 6 pairs max to respect API limits
-    pairs = pairs.slice(0, 6);
+    pairs = pairs.slice(0, 4);
 
     const scanBatchId = crypto.randomUUID();
     const alignmentRows: any[] = [];
-    const pairScores: Map<string, { direction: string; score: number }> = new Map();
+    const pairScores = new Map<string, { direction: string; score: number }>();
+    
+    // 3. Fetch data: 1 call per pair per timeframe = 4 pairs × 3 TFs = 12 calls
+    // With 8 calls/min limit, add 8s delay between calls
+    let callCount = 0;
 
-    // 3. For each pair, fetch EMA data across timeframes
     for (const pair of pairs) {
-      // Fetch current price first
-      const price = await fetchPrice(pair, apiKey);
-      await sleep(DELAY_MS);
-      
-      if (price === null) {
-        console.log(`Skipping ${pair} — price fetch failed`);
-        continue;
-      }
-
       let totalAligned = 0;
       let direction = "NONE";
 
       for (const tf of TIMEFRAMES) {
-        const ema9 = await fetchEma(pair, tf, 9, apiKey);
-        await sleep(DELAY_MS);
-        const ema15 = await fetchEma(pair, tf, 15, apiKey);
-        await sleep(DELAY_MS);
-        const ema200 = await fetchEma(pair, tf, 200, apiKey);
-        await sleep(DELAY_MS);
+        if (callCount > 0 && callCount % 7 === 0) {
+          // Wait 60s after every 7 calls to respect rate limit
+          console.log(`Rate limit pause after ${callCount} calls...`);
+          await sleep(60000);
+        }
 
-        if (ema9 === null || ema15 === null || ema200 === null) {
+        const result = await fetchTimeSeriesAndEmas(pair, tf, apiKey);
+        callCount++;
+        await sleep(8500); // ~7 calls/min
+
+        if (!result) {
           alignmentRows.push({
-            pair,
-            direction: "NONE",
-            timeframe: tf,
-            ema_9: ema9 ?? 0,
-            ema_15: ema15 ?? 0,
-            ema_200: ema200 ?? 0,
-            current_price: price,
-            is_aligned: false,
-            alignment_type: "NONE",
-            scan_batch_id: scanBatchId,
+            pair, direction: "NONE", timeframe: tf,
+            ema_9: 0, ema_15: 0, ema_200: 0, current_price: 0,
+            is_aligned: false, alignment_type: "NONE", scan_batch_id: scanBatchId,
           });
           continue;
         }
 
+        const { price, ema9, ema15, ema200 } = result;
         const isBullish = price > ema9 && ema9 > ema15 && ema15 > ema200;
         const isBearish = price < ema9 && ema9 < ema15 && ema15 < ema200;
         const isAligned = isBullish || isBearish;
         const alignmentType = isBullish ? "BULLISH" : isBearish ? "BEARISH" : "NONE";
 
         if (isAligned) {
-          totalAligned += 3; // 3 EMAs aligned in this TF
+          totalAligned += 3;
           direction = isBullish ? "BUY" : "SELL";
         } else {
-          // Count partial alignments
-          if (isBullish || (price > ema9 && ema9 > ema15)) totalAligned += 2;
-          else if (price > ema9) totalAligned += 1;
-          if (isBearish || (price < ema9 && ema9 < ema15)) totalAligned += 2;
-          else if (price < ema9) totalAligned += 1;
+          // Partial scoring
+          if (price > ema9) totalAligned++;
+          if (ema9 > ema15) totalAligned++;
+          if (ema15 > ema200) totalAligned++;
         }
 
         alignmentRows.push({
           pair,
-          direction: alignmentType === "BULLISH" ? "BUY" : alignmentType === "BEARISH" ? "SELL" : "NONE",
+          direction: isBullish ? "BUY" : isBearish ? "SELL" : "NONE",
           timeframe: tf,
-          ema_9: ema9,
-          ema_15: ema15,
-          ema_200: ema200,
+          ema_9: ema9, ema_15: ema15, ema_200: ema200,
           current_price: price,
-          is_aligned: isAligned,
-          alignment_type: alignmentType,
+          is_aligned: isAligned, alignment_type: alignmentType,
           scan_batch_id: scanBatchId,
         });
       }
 
-      if (direction !== "NONE") {
-        pairScores.set(pair, { direction, score: totalAligned });
+      if (direction !== "NONE" || totalAligned > 0) {
+        const bestDir = totalAligned > 4 ? (direction !== "NONE" ? direction : "BUY") : (direction !== "NONE" ? direction : "SELL");
+        pairScores.set(pair, { direction: bestDir, score: totalAligned });
       }
     }
 
-    // 4. Insert alignment results
+    // 4. Insert results
     if (alignmentRows.length > 0) {
-      const { error: insertError } = await supabase
-        .from("ema_alignments")
-        .insert(alignmentRows);
+      const { error: insertError } = await supabase.from("ema_alignments").insert(alignmentRows);
       if (insertError) console.error("Insert alignments error:", insertError);
     }
 
-    // 5. Create notifications for aligned pairs (score >= 6)
+    // 5. Notifications for aligned pairs (score >= 6)
     const notifications: any[] = [];
     for (const [pair, { direction, score }] of pairScores) {
       if (score >= 6) {
         notifications.push({
-          pair,
-          direction,
-          alignment_score: score,
-          message: `${pair} ${direction} alignment detected — Score ${score}/9 across multiple timeframes`,
-          is_read: false,
-          scan_batch_id: scanBatchId,
+          pair, direction, alignment_score: score,
+          message: `${pair} ${direction} alignment — Score ${score}/9`,
+          is_read: false, scan_batch_id: scanBatchId,
         });
       }
     }
 
     if (notifications.length > 0) {
-      const { error: notifError } = await supabase
-        .from("ema_scan_notifications")
-        .insert(notifications);
+      const { error: notifError } = await supabase.from("ema_scan_notifications").insert(notifications);
       if (notifError) console.error("Insert notifications error:", notifError);
     }
 
-    // 6. Cleanup old data (keep last 7 days)
+    // 6. Cleanup old data (7 days)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     await supabase.from("ema_alignments").delete().lt("scanned_at", sevenDaysAgo);
     await supabase.from("ema_scan_notifications").delete().lt("created_at", sevenDaysAgo);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        scan_batch_id: scanBatchId,
-        pairs_scanned: pairs.length,
-        alignments_found: pairScores.size,
-        notifications_created: notifications.length,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const result = {
+      success: true, scan_batch_id: scanBatchId,
+      pairs_scanned: pairs.length, alignments_found: pairScores.size,
+      notifications_created: notifications.length,
+    };
+    console.log("Scan complete:", result);
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Scan error:", error);
     return new Response(
