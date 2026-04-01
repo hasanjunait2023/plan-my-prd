@@ -191,7 +191,18 @@ const ExportDialog = ({ open, onOpenChange, trades }: ExportDialogProps) => {
             </div>
           </div>
 
-          {/* Preview count */}
+          {/* Include Screenshots */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={includeScreenshots}
+                onCheckedChange={(checked) => setIncludeScreenshots(checked === true)}
+              />
+              <span className="text-sm font-medium">Include Screenshots</span>
+              <span className="text-xs text-muted-foreground">(Entry, Exit, Trade screenshots)</span>
+            </label>
+          </div>
+
           <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/30 border border-border/30">
             <span className="text-sm text-muted-foreground">Trades found</span>
             <span className={cn("text-sm font-bold", filteredTrades.length > 0 ? 'text-primary' : 'text-destructive')}>
