@@ -212,7 +212,31 @@ export async function exportToPdf({ trades, dateLabel, outcomeFilters, includeSc
 
       doc.setFontSize(8);
       doc.text(`Psychology: ${trade.psychologyEmotion} (${trade.psychologyState}/10)  |  Confidence: ${trade.confidenceLevel}/10  |  Plan: ${trade.planAdherence ? 'Yes' : 'No'}`, 14, cy);
-      cy += 10;
+      cy += 8;
+
+      // Screenshots
+      if (includeScreenshots) {
+        const shots = getAllScreenshots(trade);
+        for (const shot of shots) {
+          const imgData = await fetchImageAsBase64(shot.url);
+          if (!imgData) continue;
+          if (cy > 200) { doc.addPage(); cy = 20; }
+          doc.setFontSize(7);
+          doc.setTextColor(120, 120, 120);
+          doc.text(shot.label, 14, cy);
+          cy += 4;
+          try {
+            const imgWidth = 80;
+            const imgHeight = 50;
+            doc.addImage(imgData.base64, imgData.format, 14, cy, imgWidth, imgHeight);
+            cy += imgHeight + 6;
+          } catch {
+            doc.text('[Image could not be loaded]', 14, cy);
+            cy += 5;
+          }
+        }
+      }
+      cy += 4;
     }
   }
 
