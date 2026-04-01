@@ -56,7 +56,7 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function ThemeToggleButton() {
+const ThemeToggleButton = () => {
   const { theme, toggleTheme } = useTheme();
   return (
     <button
@@ -67,7 +67,7 @@ function ThemeToggleButton() {
       {theme === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
     </button>
   );
-}
+};
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
