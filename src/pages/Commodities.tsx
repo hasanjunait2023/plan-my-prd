@@ -4,6 +4,7 @@ import { AssetPriceCard } from '@/components/assets/AssetPriceCard';
 import { TradingViewChart } from '@/components/assets/TradingViewChart';
 import { TradingTipsCard } from '@/components/assets/TradingTipsCard';
 import { CorrelationInfo } from '@/components/assets/CorrelationInfo';
+import { SessionPanel } from '@/components/correlation/SessionPanel';
 
 const ASSETS = [
   { key: 'XAUUSD', name: 'Gold', icon: '🥇', label: '🥇 Gold' },
