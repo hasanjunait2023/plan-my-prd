@@ -123,6 +123,7 @@ const TradeJournal = () => {
             </div>
           </div>
         )}
+        <ExportDialog open={exportOpen} onOpenChange={setExportOpen} trades={filteredTrades} />
       </div>
     );
   }
