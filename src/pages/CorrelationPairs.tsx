@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LayoutGrid, Grid2x2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MiniChart } from '@/components/correlation/MiniChart';
+import { SessionPanel } from '@/components/correlation/SessionPanel';
 
 const CURRENCIES = [
   { code: 'EUR', flag: '🇪🇺' },
@@ -122,6 +123,9 @@ export default function CorrelationPairs() {
           </div>
         </div>
       </div>
+
+      {/* Session Panel */}
+      <SessionPanel />
 
       {/* Chart Grid */}
       <div className={`grid grid-cols-1 gap-4 ${cols === 2 ? 'lg:grid-cols-2 gap-6' : 'md:grid-cols-2 lg:grid-cols-3'}`}>

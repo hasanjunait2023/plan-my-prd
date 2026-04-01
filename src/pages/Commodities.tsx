@@ -4,6 +4,7 @@ import { AssetPriceCard } from '@/components/assets/AssetPriceCard';
 import { TradingViewChart } from '@/components/assets/TradingViewChart';
 import { TradingTipsCard } from '@/components/assets/TradingTipsCard';
 import { CorrelationInfo } from '@/components/assets/CorrelationInfo';
+import { SessionPanel } from '@/components/correlation/SessionPanel';
 
 const ASSETS = [
   { key: 'XAUUSD', name: 'Gold', icon: '🥇', label: '🥇 Gold' },
@@ -24,6 +25,9 @@ export default function Commodities() {
         </h1>
         <p className="text-xs text-muted-foreground mt-1">Gold, Silver & Oil — live prices, charts ও trading insights</p>
       </div>
+
+      {/* Session Panel */}
+      <SessionPanel />
 
       {/* Asset Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
