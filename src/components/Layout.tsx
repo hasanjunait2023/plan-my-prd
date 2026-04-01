@@ -1,8 +1,17 @@
+import { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, User
+  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
+const mockNotifications = [
+  { id: 1, icon: TrendingUp, color: 'text-green-400', title: 'EUR/USD +2.3%', desc: 'Take profit hit — $124 profit', time: '5m ago', unread: true },
+  { id: 2, icon: AlertTriangle, color: 'text-yellow-400', title: 'GBP weakening', desc: 'Strength dropped below 3.0', time: '12m ago', unread: true },
+  { id: 3, icon: TrendingDown, color: 'text-red-400', title: 'USD/JPY -1.1%', desc: 'Stop loss triggered — $45 loss', time: '1h ago', unread: false },
+  { id: 4, icon: CheckCircle2, color: 'text-primary', title: 'Journal saved', desc: 'Trade #47 entry added', time: '2h ago', unread: false },
+  { id: 5, icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false },
+];
 
 const navItems = [
   { title: 'Dashboard', short: 'Home', url: '/', icon: LayoutDashboard },
@@ -15,6 +24,23 @@ const navItems = [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const [showNotifications, setShowNotifications] = useState(false);
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const unreadCount = mockNotifications.filter(n => n.unread).length;
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        panelRef.current && !panelRef.current.contains(e.target as Node) &&
+        bellRef.current && !bellRef.current.contains(e.target as Node)
+      ) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
   return (
     <div className="min-h-screen flex flex-col w-full">
       {/* Top Header */}
@@ -63,10 +89,62 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Right side — Bell + Avatar */}
           <div className="flex items-center gap-2 shrink-0">
-            <button className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-card/50 transition-all duration-200">
-              <Bell className="w-[18px] h-[18px]" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full shadow-[0_0_6px_hsla(var(--primary)/0.6)]" />
-            </button>
+            <div className="relative">
+              <button
+                ref={bellRef}
+                onClick={() => setShowNotifications(prev => !prev)}
+                className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-card/50 transition-all duration-200"
+              >
+                <Bell className="w-[18px] h-[18px]" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full shadow-[0_0_6px_hsla(145,63%,49%,0.5)]" />
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div
+                  ref={panelRef}
+                  className="absolute right-0 top-full mt-2 w-80 max-h-[420px] overflow-y-auto rounded-xl border border-border/40 bg-card/95 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] z-[60] animate-in fade-in-0 slide-in-from-top-2 duration-200"
+                >
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+                    <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  <div className="py-1">
+                    {mockNotifications.map((n) => (
+                      <div
+                        key={n.id}
+                        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer ${
+                          n.unread ? 'bg-primary/[0.03]' : ''
+                        }`}
+                      >
+                        <div className={`mt-0.5 p-1.5 rounded-lg bg-muted/50 ${n.color}`}>
+                          <n.icon className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-foreground truncate">{n.title}</span>
+                            {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{n.desc}</p>
+                          <span className="text-[10px] text-muted-foreground/60 mt-1 block">{n.time}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-border/30 px-4 py-2.5">
+                    <button className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors w-full text-center">
+                      View all notifications
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <Avatar className="w-8 h-8 border border-border/50 cursor-pointer hover:border-primary/50 transition-colors">
               <AvatarFallback className="bg-card text-xs font-semibold text-foreground">
                 TV
