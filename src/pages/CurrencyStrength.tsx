@@ -4,6 +4,7 @@ import { CurrencyStrengthRecord } from '@/types/correlation';
 import { StrengthMeter } from '@/components/correlation/StrengthMeter';
 import { SummaryCards } from '@/components/correlation/SummaryCards';
 import { PairSuggestions } from '@/components/correlation/PairSuggestions';
+import { StrengthTrendChart } from '@/components/correlation/StrengthTrendChart';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -136,6 +137,16 @@ export default function CurrencyStrength() {
 
       {/* Pair Suggestions */}
       {!isLoading && data && data.length > 0 && <PairSuggestions data={data} />}
+
+      {/* Trend Chart */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">📈 Strength Trend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StrengthTrendChart timeframe={activeTab} />
+        </CardContent>
+      </Card>
 
       {/* Legend */}
       <Card className="border-border/50">
