@@ -29,35 +29,6 @@ You MUST respond with ONLY a valid JSON object (no markdown, no explanation). Ex
 
 Only include fields you can confidently extract. Omit fields you cannot determine. Response must be pure JSON only.`;
 
-const tools = [
-  {
-    type: "function",
-    function: {
-      name: "extract_trade_data",
-      description: "Extract structured trade data from a chart screenshot",
-      parameters: {
-        type: "object",
-        properties: {
-          pair: { type: "string", description: "Currency pair e.g. USD/JPY" },
-          timeframe: { type: "string", enum: ["1M", "5M", "15M", "1H", "4H", "D", "W"] },
-          direction: { type: "string", enum: ["LONG", "SHORT"] },
-          entryPrice: { type: "number" },
-          exitPrice: { type: "number" },
-          stopLoss: { type: "number" },
-          takeProfit: { type: "number" },
-          lotSize: { type: "number" },
-          riskAmount: { type: "number" },
-          profitAmount: { type: "number" },
-          session: { type: "string", enum: ["Asian", "London", "New York", "London Close"] },
-          pips: { type: "number" },
-        },
-        required: ["pair"],
-        additionalProperties: false,
-      },
-    },
-  },
-];
-
 async function callOpenRouter(apiKey: string, model: string, imageBase64: string) {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
