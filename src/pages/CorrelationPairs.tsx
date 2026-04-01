@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LayoutGrid, Grid2x2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MiniChart } from '@/components/correlation/MiniChart';
+import { SessionPanel } from '@/components/correlation/SessionPanel';
 
 const CURRENCIES = [
   { code: 'EUR', flag: '🇪🇺' },
