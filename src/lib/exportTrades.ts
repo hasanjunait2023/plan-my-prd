@@ -1,7 +1,7 @@
 import { Trade, TradeOutcome } from '@/types/trade';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, HeadingLevel, AlignmentType, WidthType, ShadingType, BorderStyle, PageBreak } from 'docx';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, HeadingLevel, AlignmentType, WidthType, ShadingType, BorderStyle, PageBreak, ImageRun } from 'docx';
 import { saveAs } from 'file-saver';
 
 interface ExportOptions {
@@ -9,6 +9,7 @@ interface ExportOptions {
   trades: Trade[];
   dateLabel: string;
   outcomeFilters: TradeOutcome[];
+  includeScreenshots?: boolean;
 }
 
 function calcStats(trades: Trade[]) {
@@ -25,9 +26,47 @@ function outcomeLabel(filters: TradeOutcome[]): string {
   return filters.map(f => f === 'WIN' ? 'Winning' : f === 'LOSS' ? 'Losing' : 'Breakeven').join(' & ') + ' trades';
 }
 
+function getAllScreenshots(trade: Trade): { label: string; url: string }[] {
+  const shots: { label: string; url: string }[] = [];
+  trade.entryScreenshots.forEach((url, i) => shots.push({ label: `Entry Screenshot ${i + 1}`, url }));
+  trade.exitScreenshots.forEach((url, i) => shots.push({ label: `Exit Screenshot ${i + 1}`, url }));
+  trade.screenshots.forEach((url, i) => shots.push({ label: `Screenshot ${i + 1}`, url }));
+  return shots;
+}
+
+async function fetchImageAsBase64(url: string): Promise<{ base64: string; format: string } | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const format = blob.type.includes('png') ? 'PNG' : 'JPEG';
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve({ base64: reader.result as string, format });
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function fetchImageAsArrayBuffer(url: string): Promise<{ buffer: ArrayBuffer; type: 'png' | 'jpg' } | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const type = blob.type.includes('png') ? 'png' as const : 'jpg' as const;
+    const buffer = await blob.arrayBuffer();
+    return { buffer, type };
+  } catch {
+    return null;
+  }
+}
+
 // ─── PDF Export ───
 
-export async function exportToPdf({ trades, dateLabel, outcomeFilters }: ExportOptions) {
+export async function exportToPdf({ trades, dateLabel, outcomeFilters, includeScreenshots }: ExportOptions) {
   const doc = new jsPDF();
   const stats = calcStats(trades);
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -173,7 +212,31 @@ export async function exportToPdf({ trades, dateLabel, outcomeFilters }: ExportO
 
       doc.setFontSize(8);
       doc.text(`Psychology: ${trade.psychologyEmotion} (${trade.psychologyState}/10)  |  Confidence: ${trade.confidenceLevel}/10  |  Plan: ${trade.planAdherence ? 'Yes' : 'No'}`, 14, cy);
-      cy += 10;
+      cy += 8;
+
+      // Screenshots
+      if (includeScreenshots) {
+        const shots = getAllScreenshots(trade);
+        for (const shot of shots) {
+          const imgData = await fetchImageAsBase64(shot.url);
+          if (!imgData) continue;
+          if (cy > 200) { doc.addPage(); cy = 20; }
+          doc.setFontSize(7);
+          doc.setTextColor(120, 120, 120);
+          doc.text(shot.label, 14, cy);
+          cy += 4;
+          try {
+            const imgWidth = 80;
+            const imgHeight = 50;
+            doc.addImage(imgData.base64, imgData.format, 14, cy, imgWidth, imgHeight);
+            cy += imgHeight + 6;
+          } catch {
+            doc.text('[Image could not be loaded]', 14, cy);
+            cy += 5;
+          }
+        }
+      }
+      cy += 4;
     }
   }
 
@@ -182,7 +245,7 @@ export async function exportToPdf({ trades, dateLabel, outcomeFilters }: ExportO
 
 // ─── DOCX Export ───
 
-export async function exportToDocx({ trades, dateLabel, outcomeFilters }: ExportOptions) {
+export async function exportToDocx({ trades, dateLabel, outcomeFilters, includeScreenshots }: ExportOptions) {
   const stats = calcStats(trades);
   const cellBorder = { style: BorderStyle.SINGLE, size: 1, color: '999999' };
   const borders = { top: cellBorder, bottom: cellBorder, left: cellBorder, right: cellBorder };
@@ -314,11 +377,41 @@ export async function exportToDocx({ trades, dateLabel, outcomeFilters }: Export
       addNote('Improvement', trade.improvementNotes);
 
       children.push(new Paragraph({
-        spacing: { before: 80, after: 200 },
+        spacing: { before: 80, after: 100 },
         children: [
           new TextRun({ text: `Psychology: ${trade.psychologyEmotion} (${trade.psychologyState}/10)  |  Confidence: ${trade.confidenceLevel}/10  |  Plan Followed: ${trade.planAdherence ? 'Yes' : 'No'}`, size: 16, color: '888888' }),
         ],
       }));
+
+      // Screenshots
+      if (includeScreenshots) {
+        const shots = getAllScreenshots(trade);
+        for (const shot of shots) {
+          const imgData = await fetchImageAsArrayBuffer(shot.url);
+          if (!imgData) continue;
+          children.push(new Paragraph({
+            spacing: { before: 80 },
+            children: [new TextRun({ text: shot.label, bold: true, size: 16, color: '888888' })],
+          }));
+          try {
+            children.push(new Paragraph({
+              spacing: { after: 100 },
+              children: [new ImageRun({
+                type: imgData.type,
+                data: imgData.buffer,
+                transformation: { width: 400, height: 250 },
+                altText: { title: shot.label, description: shot.label, name: shot.label },
+              })],
+            }));
+          } catch {
+            children.push(new Paragraph({
+              children: [new TextRun({ text: '[Image could not be loaded]', size: 16, italics: true, color: 'AAAAAA' })],
+            }));
+          }
+        }
+      }
+
+      children.push(new Paragraph({ spacing: { after: 200 } }));
     }
   }
 
