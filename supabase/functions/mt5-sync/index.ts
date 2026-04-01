@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
 
     // Fetch account info
     if (action === 'full' || action === 'account') {
-      const res = await fetch(
+      const res = await metaFetch(
         `${META_API_BASE}/users/current/accounts/${accountId}/account-information`,
         { headers }
       );
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       const endTime = new Date().toISOString();
       const startTime = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-      const res = await fetch(
+      const res = await metaFetch(
         `${META_API_BASE}/users/current/accounts/${accountId}/history-deals/time/${startTime}/${endTime}`,
         { headers }
       );
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
 
     // Fetch open positions
     if (action === 'full' || action === 'positions') {
-      const res = await fetch(
+      const res = await metaFetch(
         `${META_API_BASE}/users/current/accounts/${accountId}/positions`,
         { headers }
       );
