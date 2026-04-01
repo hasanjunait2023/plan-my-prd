@@ -18,6 +18,7 @@ import Crypto from "./pages/Crypto.tsx";
 import CorrelationPairs from "./pages/CorrelationPairs.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Install from "./pages/Install.tsx";
+import MT5Connection from "./pages/MT5Connection.tsx";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/crypto" element={<Crypto />} />
             <Route path="/correlation-pairs" element={<CorrelationPairs />} />
             <Route path="/install" element={<Install />} />
+            <Route path="/mt5" element={<MT5Connection />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

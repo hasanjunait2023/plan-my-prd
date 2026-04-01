@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap, LogOut, Gem, Bitcoin, GitCompareArrows, Sun, Moon
+  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap, LogOut, Gem, Bitcoin, GitCompareArrows, Sun, Moon, Cable
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -36,6 +36,7 @@ const mainNavItems = [
 ];
 
 const profileMenuItems = [
+  { title: 'MT5', url: '/mt5', icon: Cable },
   { title: 'Commodities', url: '/commodities', icon: Gem },
   { title: 'Crypto', url: '/crypto', icon: Bitcoin },
   { title: 'Correlation', url: '/correlation-pairs', icon: GitCompareArrows },

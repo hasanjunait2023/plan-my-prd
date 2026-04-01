@@ -209,6 +209,114 @@ export type Database = {
         }
         Relationships: []
       }
+      mt5_account_info: {
+        Row: {
+          account_id: string
+          balance: number
+          broker: string | null
+          created_at: string
+          currency: string | null
+          equity: number
+          free_margin: number
+          id: string
+          leverage: number
+          margin: number
+          server: string | null
+          synced_at: string
+        }
+        Insert: {
+          account_id: string
+          balance?: number
+          broker?: string | null
+          created_at?: string
+          currency?: string | null
+          equity?: number
+          free_margin?: number
+          id?: string
+          leverage?: number
+          margin?: number
+          server?: string | null
+          synced_at?: string
+        }
+        Update: {
+          account_id?: string
+          balance?: number
+          broker?: string | null
+          created_at?: string
+          currency?: string | null
+          equity?: number
+          free_margin?: number
+          id?: string
+          leverage?: number
+          margin?: number
+          server?: string | null
+          synced_at?: string
+        }
+        Relationships: []
+      }
+      mt5_trades: {
+        Row: {
+          close_time: string | null
+          commission: number | null
+          created_at: string
+          direction: string
+          entry_price: number
+          exit_price: number | null
+          id: string
+          imported_to_journal: boolean
+          is_open: boolean
+          lot_size: number
+          open_time: string | null
+          pair: string
+          pips: number | null
+          pnl: number | null
+          sl: number | null
+          swap: number | null
+          ticket: string
+          tp: number | null
+        }
+        Insert: {
+          close_time?: string | null
+          commission?: number | null
+          created_at?: string
+          direction: string
+          entry_price?: number
+          exit_price?: number | null
+          id?: string
+          imported_to_journal?: boolean
+          is_open?: boolean
+          lot_size?: number
+          open_time?: string | null
+          pair: string
+          pips?: number | null
+          pnl?: number | null
+          sl?: number | null
+          swap?: number | null
+          ticket: string
+          tp?: number | null
+        }
+        Update: {
+          close_time?: string | null
+          commission?: number | null
+          created_at?: string
+          direction?: string
+          entry_price?: number
+          exit_price?: number | null
+          id?: string
+          imported_to_journal?: boolean
+          is_open?: boolean
+          lot_size?: number
+          open_time?: string | null
+          pair?: string
+          pips?: number | null
+          pnl?: number | null
+          sl?: number | null
+          swap?: number | null
+          ticket?: string
+          tp?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
