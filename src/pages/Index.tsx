@@ -333,9 +333,9 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground">Today's Mental State</p>
             </div>
             <div className="flex items-center gap-2">
-              <p className="text-2xl font-bold">{latestPsych.overallScore}/10</p>
+              <p className="text-2xl font-bold">{latestPsych?.overallScore ?? '-'}/10</p>
               <div className="flex flex-wrap gap-1">
-                {latestPsych.emotions.map(e => (
+                {latestPsych?.emotions.map(e => (
                   <Badge key={e} variant="secondary" className="text-[10px]">{e}</Badge>
                 ))}
               </div>
