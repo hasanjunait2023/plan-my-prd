@@ -1,91 +1,124 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { mockTrades, mockDailyPnL, mockRules, mockPsychologyLogs, mockAccountSettings } from '@/data/mockData';
-import { TrendingUp, TrendingDown, Target, Activity, Flame, Brain, ShieldCheck, Star, BookOpen, LayoutDashboard, BarChart3, AlertTriangle, Crosshair, Gauge } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Activity, Flame, Brain, ShieldCheck, Star, BookOpen, LayoutDashboard, BarChart3, AlertTriangle, Crosshair, Gauge, Calendar } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { PairWithFlags } from '@/lib/pairFlags';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { subDays, parseISO, isAfter } from 'date-fns';
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 const tooltipStyle = { backgroundColor: 'hsl(0, 0%, 8%)', border: '1px solid hsla(0,0%,100%,0.1)', borderRadius: '8px', color: 'hsl(0, 0%, 95%)' };
 
-const Dashboard = () => {
-  const todayPnL = useMemo(() => {
-    return mockTrades.filter(t => t.date === '2026-03-31').reduce((sum, t) => sum + t.pnl, 0);
-  }, []);
+type DateRange = '7d' | '30d' | 'all';
 
-  const weeklyPnL = useMemo(() => mockDailyPnL.reduce((sum, d) => sum + d.pnl, 0), []);
+const Dashboard = () => {
+  const [dateRange, setDateRange] = useState<DateRange>('all');
+  const referenceDate = parseISO('2026-03-31');
+
+  const filteredTrades = useMemo(() => {
+    if (dateRange === 'all') return mockTrades;
+    const days = dateRange === '7d' ? 7 : 30;
+    const cutoff = subDays(referenceDate, days);
+    return mockTrades.filter(t => isAfter(parseISO(t.date), cutoff) || parseISO(t.date).getTime() === cutoff.getTime());
+  }, [dateRange]);
+
+  const filteredDailyPnL = useMemo(() => {
+    if (dateRange === 'all') return mockDailyPnL;
+    const days = dateRange === '7d' ? 7 : 30;
+    const cutoff = subDays(referenceDate, days);
+    return mockDailyPnL.filter(d => isAfter(parseISO(d.date), cutoff) || parseISO(d.date).getTime() === cutoff.getTime());
+  }, [dateRange]);
+
+  const filteredPsychLogs = useMemo(() => {
+    if (dateRange === 'all') return mockPsychologyLogs;
+    const days = dateRange === '7d' ? 7 : 30;
+    const cutoff = subDays(referenceDate, days);
+    return mockPsychologyLogs.filter(p => isAfter(parseISO(p.date), cutoff) || parseISO(p.date).getTime() === cutoff.getTime());
+  }, [dateRange]);
+
+  const todayPnL = useMemo(() => {
+    return filteredTrades.filter(t => t.date === '2026-03-31').reduce((sum, t) => sum + t.pnl, 0);
+  }, [filteredTrades]);
+
+  const weeklyPnL = useMemo(() => filteredDailyPnL.reduce((sum, d) => sum + d.pnl, 0), [filteredDailyPnL]);
   const weeklyTarget = 1500;
 
   const stats = useMemo(() => {
-    const wins = mockTrades.filter(t => t.outcome === 'WIN').length;
-    const losses = mockTrades.filter(t => t.outcome === 'LOSS').length;
-    const winRate = (wins / mockTrades.length) * 100;
-    const avgWin = mockTrades.filter(t => t.outcome === 'WIN').reduce((s, t) => s + t.pnl, 0) / wins;
-    const avgLoss = Math.abs(mockTrades.filter(t => t.outcome === 'LOSS').reduce((s, t) => s + t.pnl, 0) / losses);
-    const profitFactor = avgWin * wins / (avgLoss * losses);
+    if (filteredTrades.length === 0) return { winRate: 0, profitFactor: 0, maxDrawdown: 0, avgWin: 0, avgLoss: 0 };
+    const wins = filteredTrades.filter(t => t.outcome === 'WIN').length;
+    const losses = filteredTrades.filter(t => t.outcome === 'LOSS').length;
+    const winRate = (wins / filteredTrades.length) * 100;
+    const avgWin = wins ? filteredTrades.filter(t => t.outcome === 'WIN').reduce((s, t) => s + t.pnl, 0) / wins : 0;
+    const avgLoss = losses ? Math.abs(filteredTrades.filter(t => t.outcome === 'LOSS').reduce((s, t) => s + t.pnl, 0) / losses) : 0;
+    const profitFactor = avgLoss * losses > 0 ? (avgWin * wins) / (avgLoss * losses) : 0;
     let maxDD = 0, peak = 0, running = 0;
-    mockDailyPnL.forEach(d => {
+    filteredDailyPnL.forEach(d => {
       running += d.pnl;
       if (running > peak) peak = running;
       const dd = peak - running;
       if (dd > maxDD) maxDD = dd;
     });
     return { winRate, profitFactor, maxDrawdown: maxDD, avgWin, avgLoss };
-  }, []);
+  }, [filteredTrades, filteredDailyPnL]);
 
   const equityCurve = useMemo(() => {
     let balance = mockAccountSettings.startingBalance;
-    return mockDailyPnL.map(d => {
+    return filteredDailyPnL.map(d => {
       balance += d.pnl;
       return { date: d.date.slice(5), balance };
     });
-  }, []);
+  }, [filteredDailyPnL]);
 
-  const lastTrade = mockTrades[0];
+  const lastTrade = filteredTrades[0];
   const ruleOfDay = mockRules[Math.floor(Date.now() / 86400000) % mockRules.length];
-  const latestPsych = mockPsychologyLogs[0];
+  const latestPsych = filteredPsychLogs[0];
 
   const winStreak = (() => {
     let streak = 0;
-    for (const t of mockTrades) {
+    for (const t of filteredTrades) {
       if (t.outcome === 'WIN') streak++;
       else break;
     }
     return streak;
   })();
 
-  const journalStreak = mockPsychologyLogs.length;
+  const journalStreak = filteredPsychLogs.length;
 
   // === New metrics ===
   const avgRRR = useMemo(() => {
-    return mockTrades.reduce((sum, t) => sum + t.rrr, 0) / mockTrades.length;
-  }, []);
+    if (filteredTrades.length === 0) return 0;
+    return filteredTrades.reduce((sum, t) => sum + t.rrr, 0) / filteredTrades.length;
+  }, [filteredTrades]);
 
   const planAdherencePercent = useMemo(() => {
-    const adherent = mockTrades.filter(t => t.planAdherence).length;
-    return (adherent / mockTrades.length) * 100;
-  }, []);
+    if (filteredTrades.length === 0) return 0;
+    const adherent = filteredTrades.filter(t => t.planAdherence).length;
+    return (adherent / filteredTrades.length) * 100;
+  }, [filteredTrades]);
 
   const bestWorstPair = useMemo(() => {
+    if (filteredTrades.length === 0) return { best: { pair: '-', pnl: 0 }, worst: { pair: '-', pnl: 0 } };
     const pairPnL: Record<string, number> = {};
-    mockTrades.forEach(t => { pairPnL[t.pair] = (pairPnL[t.pair] || 0) + t.pnl; });
+    filteredTrades.forEach(t => { pairPnL[t.pair] = (pairPnL[t.pair] || 0) + t.pnl; });
     const entries = Object.entries(pairPnL);
     const best = entries.reduce((a, b) => a[1] > b[1] ? a : b);
     const worst = entries.reduce((a, b) => a[1] < b[1] ? a : b);
     return { best: { pair: best[0], pnl: best[1] }, worst: { pair: worst[0], pnl: worst[1] } };
-  }, []);
+  }, [filteredTrades]);
 
   const avgConfidence = useMemo(() => {
-    return mockTrades.reduce((sum, t) => sum + t.confidenceLevel, 0) / mockTrades.length;
-  }, []);
+    if (filteredTrades.length === 0) return 0;
+    return filteredTrades.reduce((sum, t) => sum + t.confidenceLevel, 0) / filteredTrades.length;
+  }, [filteredTrades]);
 
   const strategyPerformance = useMemo(() => {
     const map: Record<string, { wins: number; total: number; pnl: number; rrr: number }> = {};
-    mockTrades.forEach(t => {
+    filteredTrades.forEach(t => {
       if (!map[t.strategy]) map[t.strategy] = { wins: 0, total: 0, pnl: 0, rrr: 0 };
       map[t.strategy].total++;
       map[t.strategy].pnl += t.pnl;
@@ -99,44 +132,60 @@ const Dashboard = () => {
       trades: d.total,
       avgRRR: d.rrr / d.total,
     })).sort((a, b) => b.pnl - a.pnl);
-  }, []);
+  }, [filteredTrades]);
 
   const sessionPerformance = useMemo(() => {
     const sessions = ['Asian', 'London', 'New York', 'London Close'];
     return sessions.map(session => {
-      const trades = mockTrades.filter(t => t.session === session);
+      const trades = filteredTrades.filter(t => t.session === session);
       const pnl = trades.reduce((sum, t) => sum + t.pnl, 0);
       return { session, pnl, trades: trades.length };
     });
-  }, []);
+  }, [filteredTrades]);
 
   const mistakeFrequency = useMemo(() => {
     const map: Record<string, number> = {};
-    mockTrades.forEach(t => t.mistakes.forEach(m => { map[m] = (map[m] || 0) + 1; }));
+    filteredTrades.forEach(t => t.mistakes.forEach(m => { map[m] = (map[m] || 0) + 1; }));
     return Object.entries(map).map(([mistake, count]) => ({ mistake, count })).sort((a, b) => b.count - a.count);
-  }, []);
+  }, [filteredTrades]);
 
   const psychCorrelation = useMemo(() => {
-    const high = mockTrades.filter(t => t.psychologyState >= 7);
-    const low = mockTrades.filter(t => t.psychologyState < 7);
+    const high = filteredTrades.filter(t => t.psychologyState >= 7);
+    const low = filteredTrades.filter(t => t.psychologyState < 7);
     const highWinRate = high.length ? (high.filter(t => t.outcome === 'WIN').length / high.length) * 100 : 0;
     const lowWinRate = low.length ? (low.filter(t => t.outcome === 'WIN').length / low.length) * 100 : 0;
     return { highWinRate, lowWinRate, highCount: high.length, lowCount: low.length };
-  }, []);
+  }, [filteredTrades]);
 
   const sessionBarColors = ['hsl(200, 70%, 50%)', 'hsl(145, 63%, 49%)', 'hsl(35, 90%, 55%)', 'hsl(280, 60%, 55%)'];
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Premium Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
-          <LayoutDashboard className="w-5 h-5 text-primary" />
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+            <LayoutDashboard className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground text-sm">Welcome back, Trader. Here's your overview.</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground text-sm">Welcome back, Trader. Here's your overview.</p>
-        </div>
+        <ToggleGroup type="single" value={dateRange} onValueChange={(v) => v && setDateRange(v as DateRange)} className="bg-muted/30 rounded-lg p-1 border border-border/30">
+          <ToggleGroupItem value="7d" className="text-xs px-3 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md">
+            <Calendar className="w-3 h-3 mr-1" />
+            7 Days
+          </ToggleGroupItem>
+          <ToggleGroupItem value="30d" className="text-xs px-3 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md">
+            <Calendar className="w-3 h-3 mr-1" />
+            30 Days
+          </ToggleGroupItem>
+          <ToggleGroupItem value="all" className="text-xs px-3 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md">
+            <Calendar className="w-3 h-3 mr-1" />
+            All Time
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
       <SessionPanel />
@@ -153,7 +202,7 @@ const Dashboard = () => {
               {todayPnL >= 0 ? '+' : ''}${todayPnL.toFixed(2)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {mockTrades.filter(t => t.date === '2026-03-31').length} trades today
+              {filteredTrades.filter(t => t.date === '2026-03-31').length} trades today
             </p>
           </CardContent>
         </Card>
@@ -166,7 +215,7 @@ const Dashboard = () => {
             </div>
             <p className="text-3xl font-bold mt-1">{stats.winRate.toFixed(1)}%</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {mockTrades.filter(t => t.outcome === 'WIN').length}W / {mockTrades.filter(t => t.outcome === 'LOSS').length}L
+              {filteredTrades.filter(t => t.outcome === 'WIN').length}W / {filteredTrades.filter(t => t.outcome === 'LOSS').length}L
             </p>
           </CardContent>
         </Card>
@@ -284,9 +333,9 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground">Today's Mental State</p>
             </div>
             <div className="flex items-center gap-2">
-              <p className="text-2xl font-bold">{latestPsych.overallScore}/10</p>
+              <p className="text-2xl font-bold">{latestPsych?.overallScore ?? '-'}/10</p>
               <div className="flex flex-wrap gap-1">
-                {latestPsych.emotions.map(e => (
+                {latestPsych?.emotions.map(e => (
                   <Badge key={e} variant="secondary" className="text-[10px]">{e}</Badge>
                 ))}
               </div>
@@ -296,40 +345,42 @@ const Dashboard = () => {
       </div>
 
       {/* Last Trade */}
-      <Card className={glassCard}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
-                <Star className="w-3 h-3 text-primary" />
+      {lastTrade && (
+        <Card className={glassCard}>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                  <Star className="w-3 h-3 text-primary" />
+                </div>
+                Last Trade
+              </CardTitle>
+              {lastTrade.starred && <Star className="w-4 h-4 text-warning fill-warning" />}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Badge variant={lastTrade.direction === 'LONG' ? 'default' : 'destructive'}>
+                  {lastTrade.direction}
+                </Badge>
+                <PairWithFlags pair={lastTrade.pair} className="font-semibold" />
               </div>
-              Last Trade
-            </CardTitle>
-            {lastTrade.starred && <Star className="w-4 h-4 text-warning fill-warning" />}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Badge variant={lastTrade.direction === 'LONG' ? 'default' : 'destructive'}>
-                {lastTrade.direction}
-              </Badge>
-              <PairWithFlags pair={lastTrade.pair} className="font-semibold" />
+              <span className="text-sm text-muted-foreground">{lastTrade.strategy}</span>
+              <span className="text-sm text-muted-foreground">{lastTrade.session} / {lastTrade.timeframe}</span>
+              <span className={`font-bold ${lastTrade.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+                {lastTrade.pnl >= 0 ? '+' : ''}${lastTrade.pnl.toFixed(2)}
+              </span>
+              <span className="text-sm text-muted-foreground">RRR: {lastTrade.rrr}</span>
+              <div className="flex gap-1">
+                {lastTrade.smcTags.map(tag => (
+                  <Badge key={tag} variant="outline" className="text-[10px]">{tag}</Badge>
+                ))}
+              </div>
             </div>
-            <span className="text-sm text-muted-foreground">{lastTrade.strategy}</span>
-            <span className="text-sm text-muted-foreground">{lastTrade.session} / {lastTrade.timeframe}</span>
-            <span className={`font-bold ${lastTrade.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>
-              {lastTrade.pnl >= 0 ? '+' : ''}${lastTrade.pnl.toFixed(2)}
-            </span>
-            <span className="text-sm text-muted-foreground">RRR: {lastTrade.rrr}</span>
-            <div className="flex gap-1">
-              {lastTrade.smcTags.map(tag => (
-                <Badge key={tag} variant="outline" className="text-[10px]">{tag}</Badge>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ===== NEW SECTIONS ===== */}
 
@@ -356,7 +407,7 @@ const Dashboard = () => {
             </div>
             <p className="text-3xl font-bold mt-1">{planAdherencePercent.toFixed(0)}%</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {mockTrades.filter(t => t.planAdherence).length}/{mockTrades.length} trades followed plan
+              {filteredTrades.filter(t => t.planAdherence).length}/{filteredTrades.length} trades followed plan
             </p>
           </CardContent>
         </Card>
@@ -485,7 +536,7 @@ const Dashboard = () => {
                       <span>{m.mistake}</span>
                       <span className="text-muted-foreground">{m.count}x</span>
                     </div>
-                    <Progress value={(m.count / mockTrades.length) * 100} className="h-2" />
+                    <Progress value={(m.count / filteredTrades.length) * 100} className="h-2" />
                   </div>
                 ))
               )}
