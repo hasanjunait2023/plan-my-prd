@@ -46,6 +46,11 @@ function timeUntil(s: Session, h: number, m: number): string {
   const mins = diff % 60;
   return hrs > 0 ? `starts in ${hrs}h ${mins}m` : `starts in ${mins}m`;
 }
+function getProgress(s: Session, h: number, m: number): number {
+  const total = ((s.endUtc - s.startUtc + 24) % 24 || 24) * 60;
+  const elapsed = ((h - s.startUtc + 24) % 24) * 60 + m;
+  return Math.min(Math.max(elapsed / total, 0), 1) * 100;
+}
 
 export function SessionPanel() {
   const [now, setNow] = useState(new Date());
@@ -77,34 +82,45 @@ export function SessionPanel() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {SESSIONS.map(s => {
           const active = isActive(s, h, m);
+          const progress = active ? getProgress(s, h, m) : 0;
           return (
             <div
               key={s.name}
-              className="flex items-center gap-2 rounded-md px-2.5 py-1.5"
+              className="flex flex-col gap-1 rounded-md px-2.5 py-1.5"
               style={{
                 backgroundColor: active ? `${s.color}15` : 'transparent',
                 border: `1px solid ${active ? `${s.color}40` : 'hsl(var(--border) / 0.2)'}`,
               }}
             >
-              <span className="text-sm">{s.emoji}</span>
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-medium truncate" style={{ color: active ? s.color : 'hsl(var(--muted-foreground))' }}>
-                  {s.name}
-                </span>
-                <span className="text-[9px] text-muted-foreground/60 font-mono">
-                  {formatUtc(s.startUtc)}–{formatUtc(s.endUtc)} UTC
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  {active ? timeLeft(s, h, m) : timeUntil(s, h, m)}
-                </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">{s.emoji}</span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-medium truncate" style={{ color: active ? s.color : 'hsl(var(--muted-foreground))' }}>
+                    {s.name}
+                  </span>
+                  <span className="text-[9px] text-muted-foreground/60 font-mono">
+                    {formatUtc(s.startUtc)}–{formatUtc(s.endUtc)} UTC
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {active ? timeLeft(s, h, m) : timeUntil(s, h, m)}
+                  </span>
+                </div>
+                <Badge
+                  variant={active ? 'default' : 'outline'}
+                  className="ml-auto text-[9px] px-1.5 py-0 h-4 shrink-0"
+                  style={active ? { backgroundColor: s.color, color: '#fff', borderColor: s.color } : {}}
+                >
+                  {active ? 'ON' : 'OFF'}
+                </Badge>
               </div>
-              <Badge
-                variant={active ? 'default' : 'outline'}
-                className="ml-auto text-[9px] px-1.5 py-0 h-4 shrink-0"
-                style={active ? { backgroundColor: s.color, color: '#fff', borderColor: s.color } : {}}
-              >
-                {active ? 'ON' : 'OFF'}
-              </Badge>
+              {active && (
+                <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: `${s.color}20` }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-1000"
+                    style={{ width: `${progress}%`, backgroundColor: s.color }}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
