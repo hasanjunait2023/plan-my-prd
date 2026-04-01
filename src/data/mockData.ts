@@ -143,7 +143,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'TP hit। Clean trade।',
     whatWentWell: 'সবকিছু plan অনুযায়ী হয়েছে।',
     improvementNotes: '',
-    screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-26T14:00:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-26T14:00:00Z',
   },
   {
     id: '8', date: '2026-03-25', pair: 'USD/CAD', direction: 'SHORT', session: 'New York',
