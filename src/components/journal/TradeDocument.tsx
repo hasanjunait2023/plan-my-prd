@@ -11,7 +11,7 @@ interface TradeDocumentProps {
   onBack?: () => void;
 }
 
-const TradeDocument = ({ trade, onBack }: TradeDocumentProps) => {
+const TradeDocument = ({ trade }: TradeDocumentProps) => {
   const isWin = trade.outcome === 'WIN';
   const isLoss = trade.outcome === 'LOSS';
 
@@ -19,11 +19,6 @@ const TradeDocument = ({ trade, onBack }: TradeDocumentProps) => {
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
       {/* Header */}
       <div className="space-y-3">
-        {onBack && (
-          <button onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            ← ফিরে যাও
-          </button>
-        )}
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm text-muted-foreground">
