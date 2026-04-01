@@ -147,6 +147,7 @@ const TradeJournal = () => {
             <Plus className="w-4 h-4 mr-1" /> New Trade
           </Button>
         </div>
+      </div>
 
       <div className="flex-1 overflow-hidden rounded-lg border border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
         <ResizablePanelGroup direction="horizontal">
