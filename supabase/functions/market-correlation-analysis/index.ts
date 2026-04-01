@@ -11,15 +11,17 @@ const ALL_PAIRS = [
   'CHF/JPY'
 ];
 
-// Split into 3 batches to stay within edge function timeout (~100s each)
-const BATCHES: Record<number, string[]> = {
-  1: ALL_PAIRS.slice(0, 10),   // 10 pairs
-  2: ALL_PAIRS.slice(10, 20),  // 10 pairs
-  3: ALL_PAIRS.slice(20),      // 8 pairs
-};
-
 const CURRENCIES = ['EUR','USD','GBP','JPY','AUD','NZD','CAD','CHF'];
-const DELAY_MS = 10000; // 10s between calls = 6 calls/min (under 8/min limit)
+
+// Split 28 pairs into groups of 4 (each group = 4 API credits, 7 groups total)
+// With 15s between groups = ~105s total, well within 150s limit
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -54,105 +56,87 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const batch: number = body.batch || 1;
     const session: string = body.session || 'New York';
-    const scanId: string = body.scan_id || crypto.randomUUID();
-    const isLastBatch = batch === 3;
 
-    const pairs = BATCHES[batch] || BATCHES[1];
+    console.log(`Starting market analysis for ${session} session...`);
 
-    console.log(`Starting batch ${batch}/3, scan_id: ${scanId}, pairs: ${pairs.length}`);
+    // Fetch all 28 pairs using batch requests (4 pairs per call, 15s between)
+    // TwelveData batch: comma-separated symbols in one URL
+    const pairChunks = chunkArray(ALL_PAIRS, 4);
+    const allPairData: Array<{ pair: string; current_price: number; previous_close: number; change_percent: number }> = [];
 
-    // Phase A: Fetch real-time data from TwelveData sequentially
-    const pairData: Array<{ pair: string; current_price: number; previous_close: number; change_percent: number }> = [];
+    for (let g = 0; g < pairChunks.length; g++) {
+      const chunk = pairChunks[g];
+      const symbols = chunk.map(p => encodeURIComponent(p)).join(',');
 
-    for (let i = 0; i < pairs.length; i++) {
-      const pair = pairs[i];
+      console.log(`[Group ${g + 1}/${pairChunks.length}] Fetching: ${chunk.join(', ')}`);
 
       try {
-        const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(pair)}&interval=1h&outputsize=2&apikey=${TWELVEDATA_API_KEY}`;
+        const url = `https://api.twelvedata.com/time_series?symbol=${symbols}&interval=1h&outputsize=2&apikey=${TWELVEDATA_API_KEY}`;
         const resp = await fetch(url);
         const data = await resp.json();
 
-        if (data.values && data.values.length >= 2) {
-          const current = parseFloat(data.values[0].close);
-          const previous = parseFloat(data.values[1].close);
-          const changePct = previous !== 0 ? ((current - previous) / previous) * 100 : 0;
-
-          pairData.push({
-            pair,
-            current_price: current,
-            previous_close: previous,
-            change_percent: changePct
-          });
-          console.log(`[${i + 1}/${pairs.length}] ${pair}: ${current} (${changePct.toFixed(4)}%)`);
+        // When multiple symbols: data is keyed by symbol name
+        // When single symbol: data has .values directly
+        if (chunk.length === 1) {
+          // Single symbol response
+          const pair = chunk[0];
+          if (data.values && data.values.length >= 2) {
+            const current = parseFloat(data.values[0].close);
+            const previous = parseFloat(data.values[1].close);
+            const changePct = previous !== 0 ? ((current - previous) / previous) * 100 : 0;
+            allPairData.push({ pair, current_price: current, previous_close: previous, change_percent: changePct });
+            console.log(`  ✓ ${pair}: ${current} (${changePct.toFixed(4)}%)`);
+          } else {
+            console.warn(`  ✗ ${pair}: ${data.status || data.message || 'no data'}`);
+          }
         } else {
-          console.warn(`[${i + 1}/${pairs.length}] ${pair}: No data - ${JSON.stringify(data.status || data.message || 'unknown')}`);
+          // Multi-symbol response - keyed by symbol
+          for (const pair of chunk) {
+            const pairData = data[pair];
+            if (pairData?.values && pairData.values.length >= 2) {
+              const current = parseFloat(pairData.values[0].close);
+              const previous = parseFloat(pairData.values[1].close);
+              const changePct = previous !== 0 ? ((current - previous) / previous) * 100 : 0;
+              allPairData.push({ pair, current_price: current, previous_close: previous, change_percent: changePct });
+              console.log(`  ✓ ${pair}: ${current} (${changePct.toFixed(4)}%)`);
+            } else {
+              console.warn(`  ✗ ${pair}: ${pairData?.status || pairData?.message || 'no data'}`);
+            }
+          }
         }
       } catch (err) {
-        console.error(`[${i + 1}/${pairs.length}] ${pair}: Fetch error - ${err}`);
+        console.error(`  Group ${g + 1} fetch error: ${err}`);
       }
 
-      // Rate limit: wait between calls (except after last)
-      if (i < pairs.length - 1) {
-        await sleep(DELAY_MS);
-      }
-    }
-
-    // Store batch data in temp table
-    if (pairData.length > 0) {
-      const rows = pairData.map(p => ({
-        scan_id: scanId,
-        pair: p.pair,
-        current_price: p.current_price,
-        previous_close: p.previous_close,
-        change_percent: p.change_percent,
-      }));
-
-      const { error: insertErr } = await supabase.from('market_scan_temp').insert(rows);
-      if (insertErr) {
-        console.error('Temp insert error:', insertErr);
+      // Wait 15s between groups to respect rate limit (except after last)
+      if (g < pairChunks.length - 1) {
+        console.log(`  Waiting 15s for rate limit...`);
+        await sleep(15000);
       }
     }
 
-    // If not last batch, return scan_id for next batch
-    if (!isLastBatch) {
+    console.log(`Total pairs fetched: ${allPairData.length}/${ALL_PAIRS.length}`);
+
+    if (allPairData.length < 5) {
       return new Response(JSON.stringify({
-        ok: true,
-        batch,
-        scan_id: scanId,
-        pairs_fetched: pairData.length,
-        message: `Batch ${batch} complete. Call batch ${batch + 1} now.`
+        error: 'Not enough data fetched',
+        pairs_fetched: allPairData.length,
+        message: 'TwelveData rate limit may be blocking. Try again in a few minutes.'
       }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Phase B (Last batch): Merge all data and run AI analysis
-    console.log('Last batch: Fetching all temp data...');
-
-    const { data: allTempData, error: tempErr } = await supabase
-      .from('market_scan_temp')
-      .select('*')
-      .eq('scan_id', scanId);
-
-    if (tempErr || !allTempData?.length) {
-      return new Response(JSON.stringify({ error: 'No temp data found', details: tempErr }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    console.log(`Total pairs collected: ${allTempData.length}`);
-
-    // Calculate per-currency performance from cross-pair data
+    // Calculate per-currency performance
     const currencyPerf: Record<string, { wins: number; losses: number; totalChange: number; pairCount: number }> = {};
     for (const c of CURRENCIES) {
       currencyPerf[c] = { wins: 0, losses: 0, totalChange: 0, pairCount: 0 };
     }
 
-    for (const row of allTempData) {
+    for (const row of allPairData) {
       const [base, quote] = row.pair.split('/');
-      const change = Number(row.change_percent);
+      const change = row.change_percent;
 
       if (currencyPerf[base]) {
         currencyPerf[base].pairCount++;
@@ -174,8 +158,8 @@ Deno.serve(async (req) => {
       return `${c}: wins=${p.wins}, losses=${p.losses}, avgChange=${(p.totalChange / (p.pairCount || 1)).toFixed(4)}%`;
     }).join('\n');
 
-    const pairDetails = allTempData.map(r =>
-      `${r.pair}: price=${r.current_price}, change=${Number(r.change_percent).toFixed(4)}%`
+    const pairDetails = allPairData.map(r =>
+      `${r.pair}: price=${r.current_price}, change=${r.change_percent.toFixed(4)}%`
     ).join('\n');
 
     const prompt = `You are a forex analyst. Based on this REAL-TIME cross-pair performance data, assign each currency a strength score from -10 to +10.
@@ -221,7 +205,7 @@ No explanation, just the JSON array.`;
 
     console.log('AI raw response:', aiContent.substring(0, 500));
 
-    // Parse AI response - extract JSON array
+    // Parse AI response
     let strengthResults: Array<{ currency: string; strength: number; category: string }> = [];
 
     try {
@@ -268,9 +252,6 @@ No explanation, just the JSON array.`;
       console.error('Strength insert error:', strengthErr);
     }
 
-    // Clean up temp data
-    await supabase.from('market_scan_temp').delete().eq('scan_id', scanId);
-
     // Send Telegram Alert
     if (BOT_TOKEN) {
       try {
@@ -315,10 +296,9 @@ No explanation, just the JSON array.`;
 
     return new Response(JSON.stringify({
       ok: true,
-      batch: 3,
       session,
       results: strengthResults,
-      pairs_total: allTempData.length,
+      pairs_total: allPairData.length,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
