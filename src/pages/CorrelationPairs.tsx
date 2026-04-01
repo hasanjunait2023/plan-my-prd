@@ -129,14 +129,24 @@ export default function CorrelationPairs() {
 
       {/* Chart Grid */}
       <div className={`grid grid-cols-1 gap-4 ${cols === 2 ? 'lg:grid-cols-2 gap-6' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
-        {pairs.map(pair => (
-          <MiniChart
-            key={`${pair}-${interval}`}
-            symbol={`OANDA:${pair}`}
-            pair={pair}
-            interval={interval}
-          />
-        ))}
+        {(() => {
+          const baseCount = pairs.filter(p => p.startsWith(selected)).length;
+          const quoteCount = pairs.length - baseCount;
+          const majorityIsBase = baseCount >= quoteCount;
+          return pairs.map(pair => {
+            const isBase = pair.startsWith(selected);
+            const isDimmed = isBase !== majorityIsBase;
+            return (
+              <MiniChart
+                key={`${pair}-${interval}`}
+                symbol={`OANDA:${pair}`}
+                pair={pair}
+                interval={interval}
+                dimmed={isDimmed}
+              />
+            );
+          });
+        })()}
       </div>
     </div>
   );
