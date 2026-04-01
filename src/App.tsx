@@ -17,6 +17,7 @@ import Commodities from "./pages/Commodities.tsx";
 import Crypto from "./pages/Crypto.tsx";
 import CorrelationPairs from "./pages/CorrelationPairs.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Install from "./pages/Install.tsx";
 
 const queryClient = new QueryClient();
 
