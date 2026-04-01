@@ -19,6 +19,7 @@ import CorrelationPairs from "./pages/CorrelationPairs.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Install from "./pages/Install.tsx";
 import MT5Connection from "./pages/MT5Connection.tsx";
+import ChartAnalysis from "./pages/ChartAnalysis.tsx";
 
 const queryClient = new QueryClient();
 
