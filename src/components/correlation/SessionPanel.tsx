@@ -53,7 +53,7 @@ function getProgress(s: Session, h: number, m: number): number {
 }
 
 export function SessionPanel() {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30000);
