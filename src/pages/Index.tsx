@@ -18,9 +18,32 @@ type DateRange = '7d' | '30d' | 'all';
 
 const Dashboard = () => {
   const [dateRange, setDateRange] = useState<DateRange>('all');
+  const referenceDate = parseISO('2026-03-31');
+
+  const filteredTrades = useMemo(() => {
+    if (dateRange === 'all') return mockTrades;
+    const days = dateRange === '7d' ? 7 : 30;
+    const cutoff = subDays(referenceDate, days);
+    return mockTrades.filter(t => isAfter(parseISO(t.date), cutoff) || parseISO(t.date).getTime() === cutoff.getTime());
+  }, [dateRange]);
+
+  const filteredDailyPnL = useMemo(() => {
+    if (dateRange === 'all') return mockDailyPnL;
+    const days = dateRange === '7d' ? 7 : 30;
+    const cutoff = subDays(referenceDate, days);
+    return mockDailyPnL.filter(d => isAfter(parseISO(d.date), cutoff) || parseISO(d.date).getTime() === cutoff.getTime());
+  }, [dateRange]);
+
+  const filteredPsychLogs = useMemo(() => {
+    if (dateRange === 'all') return mockPsychologyLogs;
+    const days = dateRange === '7d' ? 7 : 30;
+    const cutoff = subDays(referenceDate, days);
+    return mockPsychologyLogs.filter(p => isAfter(parseISO(p.date), cutoff) || parseISO(p.date).getTime() === cutoff.getTime());
+  }, [dateRange]);
+
   const todayPnL = useMemo(() => {
-    return mockTrades.filter(t => t.date === '2026-03-31').reduce((sum, t) => sum + t.pnl, 0);
-  }, []);
+    return filteredTrades.filter(t => t.date === '2026-03-31').reduce((sum, t) => sum + t.pnl, 0);
+  }, [filteredTrades]);
 
   const weeklyPnL = useMemo(() => mockDailyPnL.reduce((sum, d) => sum + d.pnl, 0), []);
   const weeklyTarget = 1500;
