@@ -8,7 +8,7 @@ export interface CurrencyStrengthRecord {
   created_at: string;
 }
 
-export type StrengthCategory = 'STRONG' | 'NEUTRAL' | 'MID WEAK' | 'WEAK';
+export type StrengthCategory = 'STRONG' | 'MID STRONG' | 'NEUTRAL' | 'MID WEAK' | 'WEAK';
 
 export interface PairSuggestion {
   pair: string;
