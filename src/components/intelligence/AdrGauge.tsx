@@ -1,4 +1,5 @@
 import { Activity } from 'lucide-react';
+import { PairWithFlags } from '@/lib/pairFlags';
 
 interface AdrItem {
   pair: string;
