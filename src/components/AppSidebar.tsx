@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, TrendingUp
+  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, TrendingUp, Gauge
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
