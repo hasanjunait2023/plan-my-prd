@@ -27,7 +27,7 @@ const staticNotifications: NotificationItem[] = [
 ];
 
 const mainNavItems = [
-  { title: 'Dashboard', short: 'Home', url: '/', icon: LayoutDashboard },
+  { title: 'Dashboard', short: 'Home', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Journal', short: 'Jrnl', url: '/journal', icon: BookOpen },
   { title: 'New Trade', short: 'New', url: '/new-trade', icon: PlusCircle },
   { title: 'Analytics', short: 'Ana', url: '/analytics', icon: BarChart3 },
