@@ -8,7 +8,7 @@ export interface CurrencyStrengthRecord {
   created_at: string;
 }
 
-export type StrengthCategory = 'STRONG' | 'MID STRONG' | 'NEUTRAL' | 'MID WEAK' | 'WEAK';
+export type StrengthCategory = 'STRONG' | 'NEUTRAL' | 'MID WEAK' | 'WEAK';
 
 export interface PairSuggestion {
   pair: string;
@@ -31,7 +31,6 @@ export const CURRENCY_FLAGS: Record<string, string> = {
 
 export const CATEGORY_COLORS: Record<string, string> = {
   'STRONG': 'hsl(142, 71%, 45%)',
-  'MID STRONG': 'hsl(100, 60%, 45%)',
   'NEUTRAL': 'hsl(48, 96%, 53%)',
   'MID WEAK': 'hsl(25, 95%, 53%)',
   'WEAK': 'hsl(0, 84%, 60%)',

@@ -278,36 +278,6 @@ export type Database = {
         }
         Relationships: []
       }
-      market_scan_temp: {
-        Row: {
-          change_percent: number
-          current_price: number
-          fetched_at: string
-          id: string
-          pair: string
-          previous_close: number
-          scan_id: string
-        }
-        Insert: {
-          change_percent?: number
-          current_price?: number
-          fetched_at?: string
-          id?: string
-          pair: string
-          previous_close?: number
-          scan_id: string
-        }
-        Update: {
-          change_percent?: number
-          current_price?: number
-          fetched_at?: string
-          id?: string
-          pair?: string
-          previous_close?: number
-          scan_id?: string
-        }
-        Relationships: []
-      }
       mt5_account_info: {
         Row: {
           account_id: string
