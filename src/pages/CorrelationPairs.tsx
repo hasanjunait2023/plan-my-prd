@@ -41,6 +41,7 @@ const TIMEFRAMES = [
 export default function CorrelationPairs() {
   const [selected, setSelected] = useState('EUR');
   const [interval, setInterval] = useState('60');
+  const [cols, setCols] = useState<2 | 3>(2);
 
   const pairs = PAIR_MAP[selected] || [];
 
