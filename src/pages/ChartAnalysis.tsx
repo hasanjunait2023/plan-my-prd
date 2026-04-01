@@ -177,6 +177,15 @@ export default function ChartAnalysis() {
               className="h-7 w-32 pl-7 text-xs bg-card/50 border-border/30"
             />
           </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2.5 text-xs border-primary/30 text-primary hover:bg-primary/10 gap-1"
+            onClick={() => window.open('https://www.tradingview.com/chart/', '_blank')}
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Open TradingView
+          </Button>
           <Button size="sm" variant="ghost" className="h-7 px-2" onClick={toggleFullscreen}>
             {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
           </Button>
