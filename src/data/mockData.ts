@@ -126,7 +126,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'SL hit। আরো loss। দিনটা বন্ধ করা উচিত ছিল আগের loss এর পরেই।',
     whatWentWell: 'কিছুই না।',
     improvementNotes: 'Loss এর পর trading বন্ধ করা উচিত। Revenge trade কখনো করা যাবে না। Rule follow করতে হবে।',
-    screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-27T09:00:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-27T09:00:00Z',
   },
   {
     id: '7', date: '2026-03-26', pair: 'EUR/USD', direction: 'LONG', session: 'New York',
