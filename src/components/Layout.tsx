@@ -56,6 +56,19 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function ThemeToggleButton() {
+  const { theme, toggleTheme } = useTheme();
+  return (
+    <button
+      onClick={toggleTheme}
+      className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-card/50 transition-all duration-200"
+      aria-label="Toggle theme"
+    >
+      {theme === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
+    </button>
+  );
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationItem[]>(staticNotifications);
