@@ -1,7 +1,7 @@
 import { Trade, TradeOutcome } from '@/types/trade';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, HeadingLevel, AlignmentType, WidthType, ShadingType, BorderStyle, PageBreak } from 'docx';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, HeadingLevel, AlignmentType, WidthType, ShadingType, BorderStyle, PageBreak, ImageRun } from 'docx';
 import { saveAs } from 'file-saver';
 
 interface ExportOptions {
@@ -9,6 +9,7 @@ interface ExportOptions {
   trades: Trade[];
   dateLabel: string;
   outcomeFilters: TradeOutcome[];
+  includeScreenshots?: boolean;
 }
 
 function calcStats(trades: Trade[]) {
