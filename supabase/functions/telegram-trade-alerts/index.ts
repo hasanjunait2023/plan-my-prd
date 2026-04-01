@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     
     if (body.test === true) {
-      return await sendTestMessage(body.chat_id, LOVABLE_API_KEY, TELEGRAM_API_KEY);
+      return await sendTestMessage(body.chat_id, BOT_TOKEN);
     }
 
     // Get alert settings
