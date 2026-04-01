@@ -125,31 +125,35 @@ serve(async (req) => {
         }
 
         const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
         const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
 
-        if (!toolCall) {
-          // Try parsing content as JSON fallback
-          const content = data.choices?.[0]?.message?.content;
-          if (content) {
-            try {
-              const parsed = JSON.parse(content);
-              return new Response(JSON.stringify({ data: parsed }), {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              });
-            } catch {
-              console.warn(`No tool call and content not JSON from ${model}`);
-              lastError = `No structured response from ${model}`;
-              continue;
-            }
-          }
-          lastError = `No response from ${model}`;
-          continue;
+        // Try tool call first
+        if (toolCall) {
+          const extractedData = JSON.parse(toolCall.function.arguments);
+          return new Response(JSON.stringify({ data: extractedData }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
 
-        const extractedData = JSON.parse(toolCall.function.arguments);
-        return new Response(JSON.stringify({ data: extractedData }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        // Try parsing content as JSON
+        if (content) {
+          // Strip markdown code fences if present
+          const cleaned = content.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+          try {
+            const parsed = JSON.parse(cleaned);
+            return new Response(JSON.stringify({ data: parsed }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          } catch {
+            console.warn(`Content not valid JSON from ${model}:`, cleaned.substring(0, 200));
+            lastError = `No structured response from ${model}`;
+            continue;
+          }
+        }
+
+        lastError = `No response from ${model}`;
+        continue;
       } catch (e) {
         console.error(`Exception with ${model}:`, e);
         lastError = e instanceof Error ? e.message : "Unknown error";
