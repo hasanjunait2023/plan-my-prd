@@ -36,6 +36,8 @@ const App = () => (
             <Route path="/currency-strength" element={<CurrencyStrength />} />
             <Route path="/ema-scanner" element={<EmaScanner />} />
             <Route path="/trade-intelligence" element={<TradeIntelligence />} />
+            <Route path="/commodities" element={<Commodities />} />
+            <Route path="/crypto" element={<Crypto />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

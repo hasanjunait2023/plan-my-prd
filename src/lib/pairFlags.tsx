@@ -16,6 +16,8 @@ const CURRENCY_FLAGS: Record<string, string> = {
   NOK: '🇳🇴',
   MXN: '🇲🇽',
   ZAR: '🇿🇦',
+  OIL: '🛢️',
+  USO: '🛢️',
 };
 
 export function getPairFlags(pair: string): { base: string; quote: string } {
