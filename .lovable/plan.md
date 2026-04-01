@@ -1,102 +1,78 @@
 
 
-# Trade Journal Redesign — Document-Style Journal
+# Screenshot-Based Trade Data Extraction Plan
 
-## Current State
-বর্তমানে Trade Journal একটি basic table view — শুধু row-based list আর একটি dialog popup দিয়ে trade details দেখা যায়। তোমার যেটা দরকার সেটা হলো একটা **document/diary-style journal** যেখানে screenshots, Bengali notes, structured analysis সব একসাথে readable format এ থাকবে।
+## তোমার যা চাই
+তুমি trading chart এর screenshot paste/upload করবে, এবং AI সেটা analyze করে automatically trade এর data extract করবে — pair, entry price, SL, TP, lot size, timeframe, session, risk amount, RRR ইত্যাদি। আর প্রতিটা trade এ 2টা situation screenshot থাকবে: **Entry situation** আর **Exit situation**।
 
-## What We'll Build
+## How It Works
 
-### 1. Trade Journal Layout (3 views)
-- **Date-wise timeline** (default): তারিখ অনুযায়ী grouped — প্রতিটা date এর নিচে সেই দিনের সব trades collapsed card হিসেবে
-- **Individual trade view**: একটা trade click করলে full document-style page opens (like your uploaded example)
-- **All trades view**: সব trades একসাথে scrollable document format
+### AI-Powered Screenshot Analysis
+- তুমি screenshot paste/drag-drop করবে New Trade form এ
+- একটা **"AI দিয়ে Analyze করো"** button থাকবে
+- Click করলে screenshot Supabase Edge Function এ যাবে → সেখান থেকে AI model (Gemini) কে পাঠাবে
+- AI chart image থেকে extract করবে:
+  - **Pair** (e.g. USD/JPY — chart title থেকে)
+  - **Timeframe** (e.g. 15M — chart title থেকে)
+  - **Entry Price, Exit Price** (visible trade markers থেকে)
+  - **Stop Loss, Take Profit** (visible lines/levels থেকে)
+  - **Lot Size** (if visible in trade overlay, e.g. "0.06")
+  - **Risk Amount** (e.g. "-11.77 USD" from P&L overlay)
+  - **Session** (time axis থেকে estimate — London/NY/Asian)
+  - **Direction** (LONG/SHORT — trade marker position থেকে)
+- Extracted data auto-fill হবে form এর fields এ
+- তুমি verify/edit করতে পারবে before saving
 
-### 2. Individual Trade Journal Page (Document Format)
-Each trade journal will have these structured sections, like a doc:
+### 2-Situation Screenshots (Entry & Exit)
+বর্তমানে একটাই `screenshots: string[]` আছে। এটা restructure হবে:
 
 ```text
-┌──────────────────────────────────────────────┐
-│  📅 March 31, 2026 — Trade #1               │
-│  EUR/USD  |  LONG  |  London Session  |  15M │
-│  Outcome: WIN  |  P&L: +$225  |  RRR: 1.8   │
-├──────────────────────────────────────────────┤
-│                                              │
-│  📊 Trade Data                               │
-│  Entry: 1.0825  Exit: 1.0870  SL: 1.0800    │
-│  TP: 1.0875  Lots: 0.5  Risk: 1.5% ($187)   │
-│  Pips: +45  SMC: [OB] [FVG] [BOS]           │
-│                                              │
-│  🖼️ Screenshots                              │
-│  [Chart Image 1]  [Chart Image 2]            │
-│                                              │
-│  📝 Trade নেওয়ার কারণ (Pre-Trade Analysis)   │
-│  Free-text Bengali/English area              │
-│                                              │
-│  🎯 Confidence Level: 8/10                   │
-│                                              │
-│  📍 Entry এর আগে Situation                   │
-│  Free-text area                              │
-│                                              │
-│  ⏳ Trade চলাকালীন Situation                  │
-│  Free-text area                              │
-│                                              │
-│  📍 Trade এর পরে Situation                   │
-│  Free-text area                              │
-│                                              │
-│  ✅ কি কি ভালো হয়েছে                         │
-│  Free-text area                              │
-│                                              │
-│  ❌ কি কি ভুল হয়েছে (Mistakes)               │
-│  Tags + free-text explanation                │
-│                                              │
-│  🔧 Improvement Notes                        │
-│  Free-text area                              │
-│                                              │
-│  🧠 Psychology                               │
-│  Mental State: 8/10  Emotion: Confident      │
-│  Plan Followed: ✓                            │
-│                                              │
-│  ⭐ Starred / Bookmarked                     │
-└──────────────────────────────────────────────┘
+Trade
+├── entryScreenshots: string[]    ← Entry এর সময়ের situation
+├── exitScreenshots: string[]     ← Exit এর পরের situation
+└── screenshots: string[]         ← অন্যান্য (optional)
 ```
 
-### 3. Extended Trade Type
-Add new fields to `Trade` interface:
-- `preSituation` — Entry এর আগে কি situation ছিল
-- `duringSituation` — Trade চলাকালীন কি হলো
-- `postSituation` — Trade close এর পরে কি হলো
-- `whatWentWell` — কি ভালো হয়েছে
-- `improvementNotes` — কোথায় আরো ভালো করা যেত
-- `confidenceLevel` — 1-10 (separate from psychologyState)
-- `reasonForEntry` — কেন trade নিলাম (separate detailed field)
+Journal document view তেও 2টা আলাদা section থাকবে:
+- **📸 Entry Situation** — entry এর সময়ের chart screenshots
+- **📸 Exit Situation** — exit এর পরের chart screenshots
 
-### 4. Screenshot Support
-- Image upload via file input (stored locally as base64 or object URLs for now)
-- Multiple screenshots per trade
-- Full-width display in journal view (like your doc example)
-- Click to expand/zoom
+### Paste Support
+- Clipboard paste (`Ctrl+V`) support — screenshot copy করে directly paste করা যাবে upload area তে
+- Drag & drop ও support করবে
 
-### 5. Bengali Text Support
-- All text areas accept Bengali input (no special config needed — standard HTML textarea supports it)
-- Labels will be bilingual: Bengali label + English technical term
-- Large comfortable textareas for voice typing input
+## Technical Implementation
 
-### 6. Date Timeline View
-- Left sidebar or top tabs: date list
-- Click a date → see all trades from that day in document format
-- Daily summary header showing total P&L, win/loss count
+| Change | Details |
+|--------|---------|
+| **Supabase Edge Function** `analyze-trade-screenshot` | Screenshot receive করে → AI model কে পাঠায় → structured JSON return করে (pair, prices, lot, timeframe, session, direction) |
+| **`src/types/trade.ts`** | `entryScreenshots` ও `exitScreenshots` fields add |
+| **`src/components/journal/ImageUpload.tsx`** | Clipboard paste support (`onPaste` event) + drag-drop |
+| **`src/components/journal/ScreenshotAnalyzer.tsx`** (new) | Upload → AI analyze → preview extracted data → confirm → auto-fill form |
+| **`src/pages/NewTrade.tsx`** | Entry/Exit screenshot sections আলাদা + AI analyze button + auto-fill logic |
+| **`src/components/journal/TradeDocument.tsx`** | Entry ও Exit situation screenshots আলাদা sections |
+| **`src/data/mockData.ts`** | Update with new screenshot fields |
 
-## Technical Changes
+### AI Extraction Schema
+Edge function AI কে এই structure এ data চাইবে:
+```json
+{
+  "pair": "USD/JPY",
+  "timeframe": "15M",
+  "direction": "SHORT",
+  "entryPrice": 159.317,
+  "exitPrice": 158.515,
+  "stopLoss": 159.709,
+  "takeProfit": 158.211,
+  "lotSize": 0.06,
+  "riskAmount": 11.77,
+  "profitAmount": 30.09,
+  "session": "London"
+}
+```
 
-| File | Change |
-|------|--------|
-| `src/types/trade.ts` | Add 5 new fields to `Trade` interface |
-| `src/data/mockData.ts` | Update mock trades with new fields + Bengali sample text |
-| `src/pages/TradeJournal.tsx` | Complete rewrite — date timeline + document view |
-| `src/components/journal/TradeCard.tsx` | Collapsed card for timeline view |
-| `src/components/journal/TradeDocument.tsx` | Full document-style trade view |
-| `src/components/journal/DateGroup.tsx` | Date group wrapper with daily summary |
-| `src/components/journal/ImageUpload.tsx` | Screenshot upload + gallery component |
-| `src/pages/NewTrade.tsx` | Add new structured note fields + image upload |
+### Limitations / Notes
+- AI extraction 100% accurate নাও হতে পারে — সবসময় user verify করবে
+- যেসব data chart এ visible না (like strategy, SMC tags), সেগুলো manually দিতে হবে
+- Edge function deploy করতে হবে Supabase তে
 
