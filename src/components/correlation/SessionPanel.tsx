@@ -46,8 +46,13 @@ function timeUntil(s: Session, h: number, m: number): string {
   const mins = diff % 60;
   return hrs > 0 ? `starts in ${hrs}h ${mins}m` : `starts in ${mins}m`;
 }
+function getProgress(s: Session, h: number, m: number): number {
+  const total = ((s.endUtc - s.startUtc + 24) % 24 || 24) * 60;
+  const elapsed = ((h - s.startUtc + 24) % 24) * 60 + m;
+  return Math.min(Math.max(elapsed / total, 0), 1) * 100;
+}
 
-export function SessionPanel() {
+
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
