@@ -44,7 +44,7 @@ export default function CorrelationPairs() {
   const pairs = PAIR_MAP[selected] || [];
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-5">
+    <div className="max-w-[1600px] mx-auto space-y-5">
       {/* Header */}
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-foreground">
