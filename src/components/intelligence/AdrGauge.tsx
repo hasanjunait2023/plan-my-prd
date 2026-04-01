@@ -1,4 +1,5 @@
 import { Activity } from 'lucide-react';
+import { PairWithFlags } from '@/lib/pairFlags';
 
 interface AdrItem {
   pair: string;
@@ -25,7 +26,7 @@ export function AdrGauge({ data }: { data: AdrItem }) {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Activity className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs font-bold text-foreground">{data.pair}</span>
+          <PairWithFlags pair={data.pair} className="text-xs font-bold text-foreground" />
         </div>
         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${cfg.color} ${cfg.bg}/15`}>
           {cfg.label}

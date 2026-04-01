@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { mockTrades, mockDailyPnL, mockRules, mockPsychologyLogs, mockAccountSettings } from '@/data/mockData';
 import { TrendingUp, TrendingDown, Target, Activity, Flame, Brain, ShieldCheck, Star, BookOpen, LayoutDashboard } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { PairWithFlags } from '@/lib/pairFlags';
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 const tooltipStyle = { backgroundColor: 'hsl(0, 0%, 8%)', border: '1px solid hsla(0,0%,100%,0.1)', borderRadius: '8px', color: 'hsl(0, 0%, 95%)' };
@@ -243,7 +244,7 @@ const Dashboard = () => {
               <Badge variant={lastTrade.direction === 'LONG' ? 'default' : 'destructive'}>
                 {lastTrade.direction}
               </Badge>
-              <span className="font-semibold">{lastTrade.pair}</span>
+              <PairWithFlags pair={lastTrade.pair} className="font-semibold" />
             </div>
             <span className="text-sm text-muted-foreground">{lastTrade.strategy}</span>
             <span className="text-sm text-muted-foreground">{lastTrade.session} / {lastTrade.timeframe}</span>

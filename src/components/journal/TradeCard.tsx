@@ -1,6 +1,7 @@
 import { Trade } from '@/types/trade';
 import { Badge } from '@/components/ui/badge';
 import { Star, ArrowUp, ArrowDown, ChevronRight } from 'lucide-react';
+import { PairWithFlags } from '@/lib/pairFlags';
 
 interface TradeCardProps {
   trade: Trade;
@@ -29,7 +30,7 @@ const TradeCard = ({ trade, onClick }: TradeCardProps) => {
           )}
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold">{trade.pair}</span>
+              <PairWithFlags pair={trade.pair} className="font-semibold" />
               <Badge variant={isWin ? 'default' : isLoss ? 'destructive' : 'secondary'}
                 className={`text-[10px] px-1.5 py-0 ${isWin ? 'bg-profit text-primary-foreground' : ''}`}>
                 {trade.outcome}

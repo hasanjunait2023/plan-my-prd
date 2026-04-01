@@ -1,5 +1,6 @@
 import { TrendingUp, TrendingDown, CheckCircle2, XCircle } from 'lucide-react';
 import type { PairAlignmentSummary } from '@/types/ema';
+import { PairWithFlags } from '@/lib/pairFlags';
 
 interface AlignmentCardProps {
   data: PairAlignmentSummary;
@@ -30,7 +31,7 @@ export function AlignmentCard({ data, onClick }: AlignmentCardProps) {
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-foreground">{data.pair}</span>
+          <PairWithFlags pair={data.pair} className="text-sm font-bold text-foreground" />
           <span
             className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
               isBuy

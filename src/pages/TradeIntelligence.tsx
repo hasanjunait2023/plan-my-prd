@@ -9,6 +9,7 @@ import { ConfluenceCard } from '@/components/intelligence/ConfluenceCard';
 import { SessionTracker } from '@/components/intelligence/SessionTracker';
 import { AdrGauge } from '@/components/intelligence/AdrGauge';
 import { RiskCalculator } from '@/components/intelligence/RiskCalculator';
+import { formatPairWithFlags } from '@/lib/pairFlags';
 
 export default function TradeIntelligence() {
   const [calculatingConfluence, setCalculatingConfluence] = useState(false);
@@ -121,7 +122,7 @@ export default function TradeIntelligence() {
           <div className="flex flex-wrap gap-2">
             {topSetups.map(s => (
               <span key={s.pair} className="text-xs font-bold px-2 py-1 rounded-lg bg-green-500/15 text-green-400">
-                {s.pair} {s.direction} ({s.grade})
+                {formatPairWithFlags(s.pair)} {s.direction} ({s.grade})
               </span>
             ))}
           </div>

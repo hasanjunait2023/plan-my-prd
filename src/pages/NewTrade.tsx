@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Plus, Trash2, PlusCircle } from 'lucide-react';
 import ImageUpload from '@/components/journal/ImageUpload';
 import ScreenshotAnalyzer, { ExtractedTradeData } from '@/components/journal/ScreenshotAnalyzer';
+import { formatPairWithFlags } from '@/lib/pairFlags';
 
 const sessions: Session[] = ['Asian', 'London', 'New York', 'London Close'];
 const timeframes: Timeframe[] = ['1M', '5M', '15M', '1H', '4H', 'D', 'W'];
@@ -151,7 +152,7 @@ const NewTrade = () => {
               <Label>Pair *</Label>
               <Select value={pair} onValueChange={setPair}>
                 <SelectTrigger><SelectValue placeholder="Select pair" /></SelectTrigger>
-                <SelectContent>{pairOptions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                <SelectContent>{pairOptions.map(p => <SelectItem key={p} value={p}>{formatPairWithFlags(p)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
