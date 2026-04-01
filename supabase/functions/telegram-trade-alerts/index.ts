@@ -1,23 +1,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from 'https://esm.sh/@supabase/supabase-js@2/cors';
 
-const GATEWAY_URL = 'https://connector-gateway.lovable.dev/telegram';
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) {
-    return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY not configured' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
-
-  const TELEGRAM_API_KEY = Deno.env.get('TELEGRAM_API_KEY');
-  if (!TELEGRAM_API_KEY) {
-    return new Response(JSON.stringify({ error: 'TELEGRAM_API_KEY not configured' }), {
+  const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
+  if (!BOT_TOKEN) {
+    return new Response(JSON.stringify({ error: 'TELEGRAM_BOT_TOKEN not configured' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
