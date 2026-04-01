@@ -9,6 +9,10 @@ interface Session {
   emoji: string;
 }
 
+function formatUtc(h: number) {
+  return `${String(h).padStart(2, '0')}:00`;
+}
+
 const SESSIONS: Session[] = [
   { name: 'New York', startUtc: 13, endUtc: 22, color: '#ff5d00', emoji: '🟠' },
   { name: 'London', startUtc: 7, endUtc: 16, color: '#2157f3', emoji: '🔵' },
