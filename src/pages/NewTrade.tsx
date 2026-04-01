@@ -421,8 +421,8 @@ const NewTrade = () => {
         )}
       </Card>
 
-      <Button onClick={handleSubmit} className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-[0_0_20px_hsla(145,63%,49%,0.2)]" size="lg">
-        Trade Log করো
+      <Button onClick={handleSubmit} disabled={insertTrade.isPending} className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-[0_0_20px_hsla(145,63%,49%,0.2)]" size="lg">
+        {insertTrade.isPending ? 'Saving...' : 'Trade Log করো'}
       </Button>
     </div>
   );
