@@ -8,7 +8,8 @@ const corsHeaders = {
 
 const MODELS = [
   "google/gemma-3-27b-it:free",
-  "meta-llama/llama-3.2-11b-vision-instruct:free",
+  "nvidia/nemotron-nano-12b-v2-vl:free",
+  "google/gemma-3-12b-it:free",
 ];
 
 const systemPrompt = `You are an expert forex/trading chart analyzer. Given a trading chart screenshot, extract as much trade data as possible.
