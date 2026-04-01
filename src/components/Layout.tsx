@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
-const mockNotifications = [
+const initialNotifications = [
   { id: 1, icon: TrendingUp, color: 'text-green-400', title: 'EUR/USD +2.3%', desc: 'Take profit hit — $124 profit', time: '5m ago', unread: true },
   { id: 2, icon: AlertTriangle, color: 'text-yellow-400', title: 'GBP weakening', desc: 'Strength dropped below 3.0', time: '12m ago', unread: true },
   { id: 3, icon: TrendingDown, color: 'text-red-400', title: 'USD/JPY -1.1%', desc: 'Stop loss triggered — $45 loss', time: '1h ago', unread: false },
