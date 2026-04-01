@@ -52,6 +52,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationItem[]>(staticNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
