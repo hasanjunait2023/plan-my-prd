@@ -30,6 +30,7 @@ const App = () => (
         <Layout>
           <Routes>
             <Route path="/" element={<CurrencyStrength />} />
+            <Route path="/dashboard" element={<Index />} />
             <Route path="/journal" element={<TradeJournal />} />
             <Route path="/new-trade" element={<NewTrade />} />
             <Route path="/analytics" element={<Analytics />} />
