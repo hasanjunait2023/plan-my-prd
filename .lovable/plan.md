@@ -1,68 +1,40 @@
 
 
-# Trade Journal — Notebook/Diary Style Redesign
+# Typography ও Color Scheme পরিবর্তন — Noto Serif Bengali + Red/Green/Black/White
 
-## ধারণা
-তোমার uploaded OneNote screenshot এর মতো — বাম পাশে **sections/dates** এর navigation, আর ডান পাশে **pages/trades** এর content। একটা notebook/diary এর feel — date wise sections, trade wise pages, structured ও revision-friendly।
+## কী করবো
 
-## Layout Design
+### 1. Font — Noto Serif Bengali
+- `index.html` এ Google Fonts থেকে **Noto Serif Bengali** (weights: 400, 500, 600, 700) import করবো
+- `src/index.css` এ `body` এর `font-family` পরিবর্তন: `'Noto Serif Bengali', serif`
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│  📒 Trade Journal                          [Search] [+] │
-├──────────────┬──────────────────────────────────────────┤
-│              │                                          │
-│  SECTIONS    │  PAGES (trades)     CONTENT AREA         │
-│  (dates)     │                                          │
-│              │  ┌─────────┐  ┌──────────────────────┐   │
-│  ▸ Apr 2026  │  │ Trade 1 │  │                      │   │
-│    31 Mar    │  │ Trade 2 │  │  Full Trade Document  │   │
-│  ► 30 Mar ◄ │  │ Trade 3 │  │  (diary page view)    │   │
-│    29 Mar    │  │         │  │                      │   │
-│    28 Mar    │  │         │  │  screenshots, notes,  │   │
-│              │  │         │  │  analysis, mistakes   │   │
-│  ▸ Mar 2026  │  │         │  │                      │   │
-│              │  │         │  │                      │   │
-│              │  └─────────┘  └──────────────────────┘   │
-│              │                                          │
-│  Daily P&L   │  Pair | Outcome                          │
-│  Win/Loss    │  P&L summary                             │
-└──────────────┴──────────────────────────────────────────┘
-```
+### 2. Color Palette — Red, Green, Black, White
+পুরো color scheme বদলে এই 4টা color এর combination এ নিয়ে আসবো:
 
-## 3-Panel Notebook Layout
+| Role | Current | New |
+|------|---------|-----|
+| Background | Deep Navy `#0D1B2A` | **Black** `#0A0A0A` |
+| Card | `#1A2B3C` | **Dark Gray** `#1A1A1A` |
+| Foreground/Text | `#ECF0F1` | **White** `#F5F5F5` |
+| Muted text | `#6B7E94` | **Gray** `#737373` |
+| Primary accent | Teal `#00C9A7` | **Green** `#22C55E` |
+| Destructive/Loss | `#E63946` | **Red** `#EF4444` |
+| Profit | `#2ECC71` | **Green** `#22C55E` |
+| Border | Navy tints | **Dark gray** `#262626` |
+| Sidebar bg | Deep navy | **Near-black** `#0F0F0F` |
+| Ring/focus | Teal | **Green** `#22C55E` |
 
-### Panel 1 — Date Sections (বাম sidebar)
-- মাস অনুযায়ী grouped dates (collapsible months)
-- প্রতিটা date এ ছোট summary: trade count, total P&L, win/loss color indicator
-- Active date highlighted (accent border left)
-- Search/filter bar at top
-
-### Panel 2 — Trade Pages (মাঝের narrow column)
-- Selected date এর trades list — compact cards
-- Pair name, direction icon, outcome badge, P&L
-- Active trade highlighted
-- Click করলে Panel 3 তে full document load হয়
-
-### Panel 3 — Content Area (ডান পাশের বড় area)
-- Existing `TradeDocument` component — full diary page view
-- Scrollable, all sections visible (screenshots, notes, analysis, psychology)
-- Revision-friendly reading experience
-
-## Technical Changes
+### 3. Files to Change
 
 | File | Change |
 |------|--------|
-| `src/pages/TradeJournal.tsx` | Complete rewrite — 3-panel notebook layout with date sidebar, trade list, and document content area |
-| `src/components/journal/NotebookSidebar.tsx` (new) | Date sections panel — month groups, date items with P&L summaries |
-| `src/components/journal/TradePageList.tsx` (new) | Trade list panel for selected date — compact trade items |
-| `src/components/journal/TradeDocument.tsx` | Minor tweaks — remove back button (navigation is via sidebar now), adjust max-width for panel fit |
-| `src/index.css` | Notebook-specific styles — section dividers, active states, notebook paper texture/lines (subtle) |
+| `index.html` | Google Fonts link add — Noto Serif Bengali |
+| `src/index.css` | CSS variables update (all HSL values) + font-family change |
+| `tailwind.config.ts` | কিছু change নেই — সব CSS variables based, তাই auto update হবে |
 
-## Key Details
-- **Resizable panels** using existing `resizable` UI component
-- **Keyboard navigation**: Arrow keys দিয়ে dates আর trades navigate করা যাবে
-- **Mobile**: Panels collapse — date list → trade list → document (step-by-step drill-down)
-- **Empty state**: যদি কোনো date select না থাকে, content area তে "একটি তারিখ বেছে নাও" message
-- **Notebook feel**: Subtle left border accent on active items, clean dividers between sections, paper-like content background (`#1A2B3C` slightly lighter for content area)
+### মূল নীতি
+- **Black background** + **white text** = high contrast base
+- **Green** = profit, primary actions, active states
+- **Red** = loss, destructive, warnings
+- Teal/navy সব সরে যাবে — pure monochrome + red/green accent
 
