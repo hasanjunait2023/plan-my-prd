@@ -44,6 +44,87 @@ export type Database = {
         }
         Relationships: []
       }
+      ema_alignments: {
+        Row: {
+          alignment_type: string
+          created_at: string
+          current_price: number
+          direction: string
+          ema_15: number
+          ema_200: number
+          ema_9: number
+          id: string
+          is_aligned: boolean
+          pair: string
+          scan_batch_id: string
+          scanned_at: string
+          timeframe: string
+        }
+        Insert: {
+          alignment_type?: string
+          created_at?: string
+          current_price: number
+          direction: string
+          ema_15: number
+          ema_200: number
+          ema_9: number
+          id?: string
+          is_aligned?: boolean
+          pair: string
+          scan_batch_id: string
+          scanned_at?: string
+          timeframe: string
+        }
+        Update: {
+          alignment_type?: string
+          created_at?: string
+          current_price?: number
+          direction?: string
+          ema_15?: number
+          ema_200?: number
+          ema_9?: number
+          id?: string
+          is_aligned?: boolean
+          pair?: string
+          scan_batch_id?: string
+          scanned_at?: string
+          timeframe?: string
+        }
+        Relationships: []
+      }
+      ema_scan_notifications: {
+        Row: {
+          alignment_score: number
+          created_at: string
+          direction: string
+          id: string
+          is_read: boolean
+          message: string
+          pair: string
+          scan_batch_id: string
+        }
+        Insert: {
+          alignment_score?: number
+          created_at?: string
+          direction: string
+          id?: string
+          is_read?: boolean
+          message: string
+          pair: string
+          scan_batch_id: string
+        }
+        Update: {
+          alignment_score?: number
+          created_at?: string
+          direction?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          pair?: string
+          scan_batch_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
