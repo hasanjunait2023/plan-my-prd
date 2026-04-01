@@ -26,9 +26,47 @@ function outcomeLabel(filters: TradeOutcome[]): string {
   return filters.map(f => f === 'WIN' ? 'Winning' : f === 'LOSS' ? 'Losing' : 'Breakeven').join(' & ') + ' trades';
 }
 
+function getAllScreenshots(trade: Trade): { label: string; url: string }[] {
+  const shots: { label: string; url: string }[] = [];
+  trade.entryScreenshots.forEach((url, i) => shots.push({ label: `Entry Screenshot ${i + 1}`, url }));
+  trade.exitScreenshots.forEach((url, i) => shots.push({ label: `Exit Screenshot ${i + 1}`, url }));
+  trade.screenshots.forEach((url, i) => shots.push({ label: `Screenshot ${i + 1}`, url }));
+  return shots;
+}
+
+async function fetchImageAsBase64(url: string): Promise<{ base64: string; format: string } | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const format = blob.type.includes('png') ? 'PNG' : 'JPEG';
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve({ base64: reader.result as string, format });
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function fetchImageAsArrayBuffer(url: string): Promise<{ buffer: ArrayBuffer; type: 'png' | 'jpg' } | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const type = blob.type.includes('png') ? 'png' as const : 'jpg' as const;
+    const buffer = await blob.arrayBuffer();
+    return { buffer, type };
+  } catch {
+    return null;
+  }
+}
+
 // ─── PDF Export ───
 
-export async function exportToPdf({ trades, dateLabel, outcomeFilters }: ExportOptions) {
+export async function exportToPdf({ trades, dateLabel, outcomeFilters, includeScreenshots }: ExportOptions) {
   const doc = new jsPDF();
   const stats = calcStats(trades);
   const pageWidth = doc.internal.pageSize.getWidth();
