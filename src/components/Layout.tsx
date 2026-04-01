@@ -19,7 +19,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col w-full">
       {/* Top Header */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/30 px-4 md:px-6">
-        <div className="flex items-center h-14 gap-6 max-w-[1400px] mx-auto w-full">
+        <div className="flex items-center h-14 gap-6 max-w-[1400px] mx-auto w-full justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-[0_0_12px_hsla(145,63%,49%,0.3)]">
