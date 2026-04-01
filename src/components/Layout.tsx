@@ -1,16 +1,25 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { supabase } from '@/integrations/supabase/client';
 
-const initialNotifications = [
-  { id: 1, icon: TrendingUp, color: 'text-green-400', title: 'EUR/USD +2.3%', desc: 'Take profit hit — $124 profit', time: '5m ago', unread: true },
-  { id: 2, icon: AlertTriangle, color: 'text-yellow-400', title: 'GBP weakening', desc: 'Strength dropped below 3.0', time: '12m ago', unread: true },
-  { id: 3, icon: TrendingDown, color: 'text-red-400', title: 'USD/JPY -1.1%', desc: 'Stop loss triggered — $45 loss', time: '1h ago', unread: false },
-  { id: 4, icon: CheckCircle2, color: 'text-primary', title: 'Journal saved', desc: 'Trade #47 entry added', time: '2h ago', unread: false },
-  { id: 5, icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false },
+interface NotificationItem {
+  id: string;
+  icon: typeof TrendingUp;
+  color: string;
+  title: string;
+  desc: string;
+  time: string;
+  unread: boolean;
+  source: 'local' | 'db';
+}
+
+const staticNotifications: NotificationItem[] = [
+  { id: 'local-1', icon: CheckCircle2, color: 'text-primary', title: 'Journal saved', desc: 'Trade #47 entry added', time: '2h ago', unread: false, source: 'local' },
+  { id: 'local-2', icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false, source: 'local' },
 ];
 
 const navItems = [
@@ -24,19 +33,92 @@ const navItems = [
   { title: 'Settings', short: 'Set', url: '/settings', icon: Settings },
 ];
 
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(staticNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  const markAsRead = (id: number) => {
+  // Fetch EMA scan notifications from DB
+  const fetchDbNotifications = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('ema_scan_notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!data) return;
+
+      const dbNotifs: NotificationItem[] = data.map((n: any) => ({
+        id: n.id,
+        icon: n.direction === 'BUY' ? TrendingUp : n.direction === 'SELL' ? TrendingDown : AlertTriangle,
+        color: n.direction === 'BUY' ? 'text-green-400' : n.direction === 'SELL' ? 'text-red-400' : 'text-yellow-400',
+        title: `${n.pair} ${n.direction}`,
+        desc: n.message,
+        time: timeAgo(n.created_at),
+        unread: !n.is_read,
+        source: 'db' as const,
+      }));
+
+      setNotifications([...dbNotifs, ...staticNotifications]);
+    } catch (e) {
+      console.error('Fetch notifications error:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDbNotifications();
+    // Poll every 60s for new notifications
+    const interval = setInterval(fetchDbNotifications, 60000);
+    return () => clearInterval(interval);
+  }, [fetchDbNotifications]);
+
+  // Subscribe to realtime inserts
+  useEffect(() => {
+    const channel = supabase
+      .channel('ema-notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'ema_scan_notifications',
+      }, () => {
+        fetchDbNotifications();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchDbNotifications]);
+
+  const markAsRead = async (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
+    // Update DB if it's a DB notification
+    const notif = notifications.find(n => n.id === id);
+    if (notif?.source === 'db') {
+      await supabase
+        .from('ema_scan_notifications')
+        .update({ is_read: true })
+        .eq('id', id);
+    }
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+    await supabase
+      .from('ema_scan_notifications')
+      .update({ is_read: true })
+      .eq('is_read', false);
   };
 
   useEffect(() => {
@@ -51,6 +133,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
   return (
     <div className="min-h-screen flex flex-col w-full">
       {/* Top Header */}
@@ -129,27 +212,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     )}
                   </div>
                   <div className="py-1">
-                    {notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        onClick={() => n.unread && markAsRead(n.id)}
-                        className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer ${
-                          n.unread ? 'bg-primary/[0.03]' : ''
-                        }`}
-                      >
-                        <div className={`mt-0.5 p-1.5 rounded-lg bg-muted/50 ${n.color}`}>
-                          <n.icon className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-foreground truncate">{n.title}</span>
-                            {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-xs text-muted-foreground">No notifications yet</div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => n.unread && markAsRead(n.id)}
+                          className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer ${
+                            n.unread ? 'bg-primary/[0.03]' : ''
+                          }`}
+                        >
+                          <div className={`mt-0.5 p-1.5 rounded-lg bg-muted/50 ${n.color}`}>
+                            <n.icon className="w-3.5 h-3.5" />
                           </div>
-                          <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{n.desc}</p>
-                          <span className="text-[10px] text-muted-foreground/60 mt-1 block">{n.time}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-foreground truncate">{n.title}</span>
+                              {n.source === 'db' && (
+                                <span className="text-[9px] font-medium px-1 py-0.5 rounded bg-primary/10 text-primary shrink-0">EMA</span>
+                              )}
+                              {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{n.desc}</p>
+                            <span className="text-[10px] text-muted-foreground/60 mt-1 block">{n.time}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                   <div className="border-t border-border/30 px-4 py-2.5">
                     <button className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors w-full text-center">
@@ -192,7 +282,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               {({ isActive }) => (
                 <>
-                  {/* Top glow indicator */}
                   {isActive && (
                     <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-5 h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60 rounded-full shadow-[0_0_8px_hsla(145,63%,49%,0.4)]" />
                   )}
