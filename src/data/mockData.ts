@@ -36,7 +36,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'Price TP এর কাছে পৌঁছেছে। সুন্দর execution ছিল।',
     whatWentWell: 'ধৈর্য ধরে trade hold করেছিলাম। Setup সঠিকভাবে identify করতে পেরেছি।',
     improvementNotes: 'Partial close 1:1 এ নেওয়া উচিত ছিল risk management এর জন্য।',
-    screenshots: [], partialCloses: [], starred: true, createdAt: '2026-03-31T10:30:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: true, createdAt: '2026-03-31T10:30:00Z',
   },
   {
     id: '2', date: '2026-03-31', pair: 'GBP/USD', direction: 'SHORT', session: 'New York',
