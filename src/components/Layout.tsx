@@ -119,15 +119,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
                     <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
                     {unreadCount > 0 && (
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary">
-                        {unreadCount} new
-                      </span>
+                      <button
+                        onClick={markAllAsRead}
+                        className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
+                      >
+                        Mark all read
+                      </button>
                     )}
                   </div>
                   <div className="py-1">
-                    {mockNotifications.map((n) => (
+                    {notifications.map((n) => (
                       <div
                         key={n.id}
+                        onClick={() => n.unread && markAsRead(n.id)}
                         className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer ${
                           n.unread ? 'bg-primary/[0.03]' : ''
                         }`}
