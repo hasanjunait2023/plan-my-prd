@@ -4,18 +4,19 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
-  { title: 'Journal', url: '/journal', icon: BookOpen },
-  { title: 'New Trade', url: '/new-trade', icon: PlusCircle },
-  { title: 'Analytics', url: '/analytics', icon: BarChart3 },
-  { title: 'Psychology', url: '/psychology', icon: Brain },
-  { title: 'Strength', url: '/currency-strength', icon: Gauge },
-  { title: 'Settings', url: '/settings', icon: Settings },
+  { title: 'Dashboard', short: 'Home', url: '/', icon: LayoutDashboard },
+  { title: 'Journal', short: 'Jrnl', url: '/journal', icon: BookOpen },
+  { title: 'New Trade', short: 'New', url: '/new-trade', icon: PlusCircle },
+  { title: 'Analytics', short: 'Ana', url: '/analytics', icon: BarChart3 },
+  { title: 'Psychology', short: 'Psy', url: '/psychology', icon: Brain },
+  { title: 'Strength', short: 'Str', url: '/currency-strength', icon: Gauge },
+  { title: 'Settings', short: 'Set', url: '/settings', icon: Settings },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col w-full">
+      {/* Top Header */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/30 px-4 md:px-6">
         <div className="flex items-center h-14 gap-6 max-w-[1400px] mx-auto w-full">
           {/* Logo */}
@@ -23,14 +24,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-[0_0_12px_hsla(145,63%,49%,0.3)]">
               <TrendingUp className="w-5 h-5 text-primary-foreground" />
             </div>
-            <div className="hidden sm:block">
+            <div>
               <h1 className="text-sm font-bold tracking-tight text-foreground leading-none">TradeVault</h1>
               <p className="text-[10px] text-muted-foreground font-medium tracking-widest uppercase leading-none">Pro</p>
             </div>
           </div>
 
-          {/* Nav Tabs */}
-          <nav className="flex-1 overflow-x-auto scrollbar-hide">
+          {/* Desktop Nav Tabs — hidden on mobile */}
+          <nav className="flex-1 overflow-x-auto scrollbar-hide hidden md:block">
             <div className="flex items-center gap-1">
               {navItems.map((item) => (
                 <NavLink
@@ -48,7 +49,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   {({ isActive }) => (
                     <>
                       <item.icon className="w-4 h-4 shrink-0" />
-                      <span className="hidden md:inline">{item.title}</span>
+                      <span>{item.title}</span>
                       {isActive && (
                         <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-gradient-to-r from-primary to-primary/50 rounded-full" />
                       )}
@@ -61,9 +62,50 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto p-4 md:p-6">
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto p-4 md:p-6 pb-24 md:pb-6">
         {children}
       </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden backdrop-blur-md bg-background/90 border-t border-border/30"
+           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="flex items-center justify-around px-1 h-16">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.title}
+              to={item.url}
+              end={item.url === '/'}
+              className={({ isActive }) =>
+                `flex flex-col items-center justify-center gap-0.5 px-1.5 py-1 rounded-xl min-w-[44px] transition-all duration-200 relative ${
+                  isActive
+                    ? 'text-primary'
+                    : 'text-muted-foreground active:scale-95'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  {/* Top glow indicator */}
+                  {isActive && (
+                    <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-5 h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60 rounded-full shadow-[0_0_8px_hsla(145,63%,49%,0.4)]" />
+                  )}
+                  <item.icon
+                    className={`w-5 h-5 transition-all duration-200 ${
+                      isActive ? 'drop-shadow-[0_0_6px_hsla(145,63%,49%,0.5)]' : ''
+                    }`}
+                  />
+                  <span className={`text-[10px] font-medium leading-none ${
+                    isActive ? 'text-primary' : 'text-muted-foreground'
+                  }`}>
+                    {item.short}
+                  </span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }
