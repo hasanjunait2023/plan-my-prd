@@ -152,7 +152,7 @@ const NewTrade = () => {
               <Label>Pair *</Label>
               <Select value={pair} onValueChange={setPair}>
                 <SelectTrigger><SelectValue placeholder="Select pair" /></SelectTrigger>
-                <SelectContent>{pairOptions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                <SelectContent>{pairOptions.map(p => <SelectItem key={p} value={p}>{formatPairWithFlags(p)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>

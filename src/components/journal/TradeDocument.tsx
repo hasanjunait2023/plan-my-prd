@@ -32,7 +32,7 @@ const TradeDocument = ({ trade }: TradeDocumentProps) => {
                 ) : (
                   <ArrowDown className="w-5 h-5 text-loss" />
                 )}
-                {trade.pair}
+                <PairWithFlags pair={trade.pair} />
               </span>
               <Badge variant={isWin ? 'default' : isLoss ? 'destructive' : 'secondary'}
                 className={isWin ? 'bg-profit text-primary-foreground' : ''}>

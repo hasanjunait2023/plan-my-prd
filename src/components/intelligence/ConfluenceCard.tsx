@@ -33,7 +33,7 @@ export function ConfluenceCard({ data }: { data: ConfluenceScore }) {
           ) : (
             <TrendingDown className="w-4 h-4 text-red-400" />
           )}
-          <span className="text-sm font-bold text-foreground">{data.pair}</span>
+          <PairWithFlags pair={data.pair} className="text-sm font-bold text-foreground" />
           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isBuy ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
             {data.direction}
           </span>

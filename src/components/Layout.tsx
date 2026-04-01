@@ -75,7 +75,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         id: n.id,
         icon: n.direction === 'BUY' ? TrendingUp : n.direction === 'SELL' ? TrendingDown : AlertTriangle,
         color: n.direction === 'BUY' ? 'text-green-400' : n.direction === 'SELL' ? 'text-red-400' : 'text-yellow-400',
-        title: `${n.pair} ${n.direction}`,
+        title: `${formatPairWithFlags(n.pair)} ${n.direction}`,
         desc: n.message,
         time: timeAgo(n.created_at),
         unread: !n.is_read,

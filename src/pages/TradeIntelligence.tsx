@@ -122,7 +122,7 @@ export default function TradeIntelligence() {
           <div className="flex flex-wrap gap-2">
             {topSetups.map(s => (
               <span key={s.pair} className="text-xs font-bold px-2 py-1 rounded-lg bg-green-500/15 text-green-400">
-                {s.pair} {s.direction} ({s.grade})
+                {formatPairWithFlags(s.pair)} {s.direction} ({s.grade})
               </span>
             ))}
           </div>

@@ -244,7 +244,7 @@ const Dashboard = () => {
               <Badge variant={lastTrade.direction === 'LONG' ? 'default' : 'destructive'}>
                 {lastTrade.direction}
               </Badge>
-              <span className="font-semibold">{lastTrade.pair}</span>
+              <PairWithFlags pair={lastTrade.pair} className="font-semibold" />
             </div>
             <span className="text-sm text-muted-foreground">{lastTrade.strategy}</span>
             <span className="text-sm text-muted-foreground">{lastTrade.session} / {lastTrade.timeframe}</span>
