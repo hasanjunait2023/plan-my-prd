@@ -1,34 +1,129 @@
 
 
-# Chart Analysis Page — Redesign Plan (Updated)
+# Telegram Trading Alerts — Deep Analysis ও Plan
 
-## কি হবে
+## তোমার System এ কি কি আছে এখন
 
-### 1. Layout System (1-4 charts, no scroll)
-- **1 chart**: full screen — timeframe 1H
-- **2 charts**: 2 columns, 50/50 — 15m, 1H
-- **3 charts**: 3 columns equal — 15m, 1H, 4H
-- **4 charts**: 2x2 grid — 15m, 1H, 4H, D
-- সব chart **viewport height এ fit** হবে, scroll লাগবে না — `h-[calc(100vh-<header>)]` ব্যবহার হবে
-- Panel এর মধ্যে gap কমিয়ে `gap-0.5` বা `gap-1` রাখবো
+তোমার TradeVault Pro তে এখন এই data sources live আছে:
 
-### 2. Single Symbol, Independent Timeframe
-- **Top bar এ symbol selector** — সব panel এ একই symbol
-- প্রতিটা panel এ **নিজের timeframe selector** থাকবে — তুমি যেকোনো panel এর timeframe আলাদাভাবে change করতে পারবে
-- Default timeframe auto-assign হবে (15m, 1H, 4H, D) কিন্তু তুমি change করলে **তোমার সেটাই থাকবে** — state persist হবে
+1. **Confluence Scores** — প্রতিটা pair এর grade (A+, A, B, C, D), direction (BUY/SELL), strength difference, EMA score, active session
+2. **EMA Scanner** — 9/15/200 EMA alignment scan, bullish/bearish/mixed status per pair per timeframe
+3. **Currency Strength** — প্রতিটা currency এর real-time strength score ও trend
+4. **ADR Data** — Average Daily Range ও কতটুকু used হয়েছে
+5. **MT5 Trades** — তোমার real MT5 account এর open/closed trades
+6. **Risk Settings** — max risk %, daily loss limit, max trades per day, personal rules
 
-### 3. Chart বড় করা
-- Panel toolbar শুধু timeframe buttons (একটা thin row) — বাকি সব top bar এ
-- TradingView widget `flex-1 min-h-0` দিয়ে maximum space নেবে
-- Panel border/padding কমিয়ে chart area maximize
+## কিভাবে Telegram Alerts তোমাকে সাহায্য করবে
 
-### 4. forwardRef Warning Fix
+### 🔥 Alert Type 1: **High-Grade Confluence Alert**
+যখন কোনো pair **A+ বা A grade** পায় — মানে EMA aligned, currency strength strong, session active — তখন সাথে সাথে Telegram এ message আসবে:
+
+```
+🟢 A+ SETUP: EUR/USD — BUY
+Strength Diff: 4.2 | EMA: 3/3 ✓ | Session: London
+ADR Used: 35% (room to move)
+```
+
+**কেন দরকার:** তুমি হয়তো chart এর সামনে নেই, কিন্তু A+ setup miss হবে না।
+
+### 📊 Alert Type 2: **EMA Alignment Shift**
+যখন কোনো pair এর EMA alignment change হয় (mixed → bullish, বা bullish → bearish):
+
+```
+⚡ EMA SHIFT: GBP/USD
+15M: Bullish ✓ | 1H: Bullish ✓ | 4H: Turning Bullish ↑
+Multi-TF alignment detected!
+```
+
+**কেন দরকার:** Multi-timeframe alignment rare এবং high-probability — এটা জানলে তুমি সঠিক সময়ে chart দেখতে পারবে।
+
+### ⚠️ Alert Type 3: **Risk Breach Warning**
+যখন তোমার daily loss limit এর কাছে আসছো, বা max trades per day cross করছো:
+
+```
+🔴 RISK ALERT: Daily loss -$420 / $500 limit (84%)
+Trades today: 4/5
+⛔ Consider stopping for the day.
+```
+
+**কেন দরকার:** Revenge trading আটকাবে। Emotional state এ থাকলেও phone এ warning আসলে সচেতন হবে।
+
+### 🕐 Alert Type 4: **Session Open Reminder**
+London Open (14:00 BDT), NY Open (19:30 BDT) এর 5 মিনিট আগে:
+
+```
+🕐 London Session opens in 5 min
+Top setups: EUR/USD (A+), GBP/USD (A)
+Check your charts!
+```
+
+**কেন দরকার:** Session timing miss হবে না, আর সাথে best setups ও জানাবে।
+
+### 📈 Alert Type 5: **MT5 Trade Update**
+তোমার MT5 তে trade open/close হলে:
+
+```
+✅ Trade Closed: EUR/USD LONG
+P/L: +$225 (+45 pips)
+Daily P/L: +$395
+```
+
+---
+
+## Technical Implementation
+
+### Architecture
+
+```text
+┌─────────────────┐     pg_cron (every 1-5 min)     ┌──────────────────────┐
+│  Supabase DB    │ ──────────────────────────────►  │ Edge Function:       │
+│  confluence_scores│                                 │ telegram-trade-alerts│
+│  ema_alignments  │                                  │                      │
+│  adr_data        │  ◄── checks data, compares ──►  │ Sends Telegram msg   │
+│  mt5_trades      │      with last_alert_state       │ via connector gateway│
+│  settings        │                                  └──────────────────────┘
+└─────────────────┘
+```
+
+### Step 1: Telegram Bot Setup
+- Telegram connector ব্যবহার করবো (already available)
+- তোমাকে BotFather এ গিয়ে একটা bot create করতে হবে
+- তারপর bot কে message পাঠালে chat_id পাবো
+
+### Step 2: Database — `alert_settings` ও `alert_log` tables
+- **alert_settings**: কোন alerts চালু, Telegram chat_id, thresholds (min grade, risk % warning level)
+- **alert_log**: কোন alert কখন পাঠানো হয়েছে (duplicate prevention)
+
+### Step 3: Edge Function — `telegram-trade-alerts`
+- Confluence scores চেক করবে → A+/A হলে alert
+- EMA alignment change detect করবে
+- MT5 trade changes detect করবে
+- Risk limits চেক করবে
+- Session timing চেক করবে
+- সব condition match হলে Telegram connector gateway দিয়ে message পাঠাবে
+
+### Step 4: pg_cron Schedule
+- Confluence/EMA alerts: প্রতি 2 মিনিটে
+- Risk alerts: প্রতি 1 মিনিটে
+- Session reminders: প্রতি 1 মিনিটে (session time এর কাছে)
+
+### Step 5: Settings UI
+- Settings page এ "Notifications" section যোগ হবে
+- Toggle: কোন কোন alert চালু/বন্ধ
+- Telegram chat ID input
+- Min confluence grade selector (A+ only / A and above / B and above)
+- "Send Test Message" button
 
 ## Files
 
 | Action | File |
 |--------|------|
-| **Modify** | `src/pages/ChartAnalysis.tsx` — Layout 1-4, single symbol top bar, full viewport height |
-| **Modify** | `src/components/charts/ChartPanel.tsx` — Symbol prop receive, নিজের timeframe selector রাখবে |
-| **Modify** | `src/components/charts/TradingViewWidget.tsx` — forwardRef fix if needed |
+| **Migration** | `alert_settings` ও `alert_log` tables create |
+| **Create** | `supabase/functions/telegram-trade-alerts/index.ts` |
+| **Modify** | `src/pages/Settings.tsx` — Notification settings section যোগ |
+| **pg_cron** | Schedule the edge function every 1-2 min |
+
+## Prerequisites
+1. Telegram connector connect করতে হবে
+2. BotFather এ bot create করে, bot কে একটা message পাঠাতে হবে chat_id পেতে
 
