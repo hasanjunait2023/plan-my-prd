@@ -26,13 +26,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Delete old records for this timeframe
-    await supabase
-      .from("currency_strength")
-      .delete()
-      .eq("timeframe", timeframe);
-
-    // Insert new records
+    // Insert new records (no delete — keep historical data)
     const records = currencies.map((c: { currency: string; strength: number; category: string }) => ({
       currency: c.currency,
       strength: c.strength,
