@@ -9,6 +9,7 @@ import { ConfluenceCard } from '@/components/intelligence/ConfluenceCard';
 import { SessionTracker } from '@/components/intelligence/SessionTracker';
 import { AdrGauge } from '@/components/intelligence/AdrGauge';
 import { RiskCalculator } from '@/components/intelligence/RiskCalculator';
+import { formatPairWithFlags } from '@/lib/pairFlags';
 
 export default function TradeIntelligence() {
   const [calculatingConfluence, setCalculatingConfluence] = useState(false);
