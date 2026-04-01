@@ -1,51 +1,33 @@
 
 
-# Correlation Pairs Page — Multi-Chart Grid (Modified)
+# Correlation Page — Chart Visibility Improvement
 
-## কি করতে হবে
-নতুন `/correlation-pairs` page — user একটা currency select করবে, তারপর সেই currency র **6টা** major pairs 2x3 grid এ TradingView charts এ দেখাবে।
+## সমস্যা
+বর্তমানে chart height মাত্র 250px — EMA + RSI সহ analysis করা কঠিন। 3-column grid এ chart গুলো খুব ছোট হয়ে যায়।
 
-## Pair Generation Logic
+## সমাধান
 
-প্রতিটা currency র জন্য সবচেয়ে traded 6টা pair select করবো (7টার মধ্যে least liquid টা বাদ):
+### 1. Grid Layout পরিবর্তন — 2 column
+- `lg:grid-cols-3` → `lg:grid-cols-2` করবো
+- এতে প্রতিটা chart wider হবে, candlestick ও indicators ভালো দেখা যাবে
+- 2x3 layout (2 columns, 3 rows)
 
-```text
-Selected: CAD → USDCAD, GBPCAD, EURCAD, NZDCAD, AUDCAD, CADJPY
-Selected: EUR → EURUSD, EURGBP, EURJPY, EURAUD, EURNZD, EURCAD
-Selected: USD → EURUSD, GBPUSD, USDJPY, AUDUSD, NZDUSD, USDCAD
-```
+### 2. Chart Height বাড়ানো
+- `h-[250px]` → `h-[400px]` করবো
+- RSI নিচে separate pane এ থাকে, তাই বেশি height দরকার proper analysis এর জন্য
 
-## UI Layout
+### 3. Full-screen Expand Button
+- প্রতিটা MiniChart এ একটা expand icon button যোগ করবো (header এ)
+- Click করলে chart টা full-screen modal/dialog এ open হবে `h-[80vh]` height সহ
+- Dialog এ same TradingView widget বড় করে render হবে — detailed analysis করা যাবে
 
-```text
-┌──────────────────────────────────────────┐
-│  📊 Correlation Pairs                     │
-│  [🇪🇺EUR] [🇺🇸USD] [🇬🇧GBP] [🇯🇵JPY]...  │
-│  Timeframe: [3M] [15M] [1H]             │
-├──────────┬──────────┬──────────┐         │
-│ Pair 1   │ Pair 2   │ Pair 3   │         │
-│ (chart)  │ (chart)  │ (chart)  │         │
-├──────────┼──────────┼──────────┤         │
-│ Pair 4   │ Pair 5   │ Pair 6   │         │
-│ (chart)  │ (chart)  │ (chart)  │         │
-└──────────────────────────────────────────┘
-```
-
-Clean 2x3 grid — কোনো orphan chart নেই।
+### 4. Page Max Width বাড়ানো
+- `max-w-[1400px]` → `max-w-[1600px]` করবো — wider screen এ আরো জায়গা পাবে
 
 ## Files
 
-| Action | File | Description |
-|--------|------|-------------|
-| **Create** | `src/pages/CorrelationPairs.tsx` | Main page — currency selector, timeframe, 2x3 pair grid |
-| **Create** | `src/components/correlation/MiniChart.tsx` | Compact TradingView chart (~250px height) with EMA+RSI |
-| **Modify** | `src/App.tsx` | Route `/correlation-pairs` যোগ |
-| **Modify** | `src/components/Layout.tsx` | Navigation link যোগ |
-
-## Technical Details
-
-- **MiniChart**: `TradingViewChart` এর compact version — height ~250px, `hide_top_toolbar: true`, `hide_side_toolbar: true`, flag emoji header
-- **Pair ordering**: Standard forex convention (EUR > GBP > AUD > NZD > USD > CAD > CHF > JPY), প্রতিটা currency থেকে top 6 pairs
-- **TradingView symbols**: `OANDA:` prefix
-- **Grid**: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3` — responsive 2x3
+| File | Change |
+|------|--------|
+| `src/components/correlation/MiniChart.tsx` | Height 250→400px, expand button যোগ, fullscreen dialog |
+| `src/pages/CorrelationPairs.tsx` | Grid 3→2 cols, max-width বাড়ানো |
 
