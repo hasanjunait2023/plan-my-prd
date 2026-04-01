@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { mockTrades } from '@/data/mockData';
 import { Trade } from '@/types/trade';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import NotebookSidebar from '@/components/journal/NotebookSidebar';
@@ -11,10 +10,13 @@ import { Plus, BookOpen, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ExportDialog from '@/components/journal/ExportDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTrades } from '@/hooks/useTrades';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const TradeJournal = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { data: allTrades = [], isLoading } = useTrades();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
@@ -22,16 +24,16 @@ const TradeJournal = () => {
   const [exportOpen, setExportOpen] = useState(false);
 
   const filteredTrades = useMemo(() => {
-    if (!searchQuery) return mockTrades;
+    if (!searchQuery) return allTrades;
     const q = searchQuery.toLowerCase();
-    return mockTrades.filter(t =>
+    return allTrades.filter(t =>
       t.pair.toLowerCase().includes(q) ||
       t.strategy.toLowerCase().includes(q) ||
       t.reasonForEntry?.toLowerCase().includes(q) ||
       t.preTradeNotes.toLowerCase().includes(q) ||
       t.postTradeNotes.toLowerCase().includes(q)
     );
-  }, [searchQuery]);
+  }, [searchQuery, allTrades]);
 
   const dateTrades = useMemo(() => {
     if (!selectedDate) return [];
@@ -40,7 +42,7 @@ const TradeJournal = () => {
 
   useEffect(() => {
     if (!selectedDate && filteredTrades.length > 0) {
-      const dates = [...new Set(filteredTrades.map(t => t.date))].sort((a, b) => b.localeCompare(a));
+      const dates = [...new Set(filteredTrades.map(t => t.date))].sort((a: string, b: string) => b.localeCompare(a));
       setSelectedDate(dates[0]);
     }
   }, [filteredTrades, selectedDate]);
@@ -66,7 +68,7 @@ const TradeJournal = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
-      const dates = [...new Set(filteredTrades.map(t => t.date))].sort((a, b) => b.localeCompare(a));
+      const dates = [...new Set(filteredTrades.map(t => t.date))].sort((a: string, b: string) => b.localeCompare(a));
       const currentDateIdx = selectedDate ? dates.indexOf(selectedDate) : -1;
       const currentTradeIdx = selectedTrade ? dateTrades.findIndex(t => t.id === selectedTrade.id) : -1;
       if (e.key === 'ArrowUp' && e.altKey && currentDateIdx > 0) { e.preventDefault(); setSelectedDate(dates[currentDateIdx - 1]); }
@@ -77,6 +79,31 @@ const TradeJournal = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [filteredTrades, selectedDate, selectedTrade, dateTrades]);
+
+  if (isLoading) {
+    return (
+      <div className="h-[calc(100vh-7rem)] flex flex-col gap-4">
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="flex-1" />
+      </div>
+    );
+  }
+
+  // Empty state
+  if (allTrades.length === 0) {
+    return (
+      <div className="h-[calc(100vh-7rem)] flex flex-col items-center justify-center gap-4">
+        <BookOpen className="w-16 h-16 text-muted-foreground/30" />
+        <h2 className="text-xl font-semibold">কোনো trade নেই!</h2>
+        <p className="text-muted-foreground text-sm text-center max-w-md">
+          তোমার প্রথম trade entry করো — Journal এ সব details দেখতে পাবে।
+        </p>
+        <Button onClick={() => navigate('/new-trade')}>
+          <Plus className="w-4 h-4 mr-1" /> প্রথম Trade Entry করো
+        </Button>
+      </div>
+    );
+  }
 
   if (isMobile) {
     return (

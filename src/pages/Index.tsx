@@ -3,13 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { mockTrades, mockDailyPnL, mockRules, mockPsychologyLogs, mockAccountSettings } from '@/data/mockData';
+import { defaultAccountSettings } from '@/data/mockData';
 import { TrendingUp, TrendingDown, Target, Activity, Flame, Brain, ShieldCheck, Star, BookOpen, LayoutDashboard, BarChart3, AlertTriangle, Crosshair, Gauge, Calendar } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { PairWithFlags } from '@/lib/pairFlags';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { subDays, parseISO, isAfter } from 'date-fns';
+import { subDays, parseISO, isAfter, format } from 'date-fns';
+import { useTrades } from '@/hooks/useTrades';
+import { useAccountSettings } from '@/hooks/useAccountSettings';
+import { usePsychologyLogs } from '@/hooks/usePsychologyLogs';
+import { useTradingRules } from '@/hooks/useTradingRules';
+import { Skeleton } from '@/components/ui/skeleton';
+import { DailyPnL } from '@/types/trade';
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 const tooltipStyle = { backgroundColor: 'hsl(0, 0%, 8%)', border: '1px solid hsla(0,0%,100%,0.1)', borderRadius: '8px', color: 'hsl(0, 0%, 95%)' };
@@ -18,32 +24,51 @@ type DateRange = '7d' | '30d' | 'all';
 
 const Dashboard = () => {
   const [dateRange, setDateRange] = useState<DateRange>('all');
-  const referenceDate = parseISO('2026-03-31');
+  const { data: allTrades = [], isLoading: tradesLoading } = useTrades();
+  const { data: accountSettings = defaultAccountSettings } = useAccountSettings();
+  const { data: psychologyLogs = [], isLoading: psychLoading } = usePsychologyLogs();
+  const { data: rules = [] } = useTradingRules();
+
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const referenceDate = new Date();
+
+  // Build dailyPnL from trades
+  const allDailyPnL: DailyPnL[] = useMemo(() => {
+    const map: Record<string, { pnl: number; trades: number }> = {};
+    allTrades.forEach(t => {
+      if (!map[t.date]) map[t.date] = { pnl: 0, trades: 0 };
+      map[t.date].pnl += t.pnl;
+      map[t.date].trades++;
+    });
+    return Object.entries(map)
+      .map(([date, d]) => ({ date, pnl: d.pnl, trades: d.trades }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [allTrades]);
 
   const filteredTrades = useMemo(() => {
-    if (dateRange === 'all') return mockTrades;
+    if (dateRange === 'all') return allTrades;
     const days = dateRange === '7d' ? 7 : 30;
     const cutoff = subDays(referenceDate, days);
-    return mockTrades.filter(t => isAfter(parseISO(t.date), cutoff) || parseISO(t.date).getTime() === cutoff.getTime());
-  }, [dateRange]);
+    return allTrades.filter(t => isAfter(parseISO(t.date), cutoff) || parseISO(t.date).getTime() === cutoff.getTime());
+  }, [dateRange, allTrades]);
 
   const filteredDailyPnL = useMemo(() => {
-    if (dateRange === 'all') return mockDailyPnL;
+    if (dateRange === 'all') return allDailyPnL;
     const days = dateRange === '7d' ? 7 : 30;
     const cutoff = subDays(referenceDate, days);
-    return mockDailyPnL.filter(d => isAfter(parseISO(d.date), cutoff) || parseISO(d.date).getTime() === cutoff.getTime());
-  }, [dateRange]);
+    return allDailyPnL.filter(d => isAfter(parseISO(d.date), cutoff) || parseISO(d.date).getTime() === cutoff.getTime());
+  }, [dateRange, allDailyPnL]);
 
   const filteredPsychLogs = useMemo(() => {
-    if (dateRange === 'all') return mockPsychologyLogs;
+    if (dateRange === 'all') return psychologyLogs;
     const days = dateRange === '7d' ? 7 : 30;
     const cutoff = subDays(referenceDate, days);
-    return mockPsychologyLogs.filter(p => isAfter(parseISO(p.date), cutoff) || parseISO(p.date).getTime() === cutoff.getTime());
-  }, [dateRange]);
+    return psychologyLogs.filter(p => isAfter(parseISO(p.date), cutoff) || parseISO(p.date).getTime() === cutoff.getTime());
+  }, [dateRange, psychologyLogs]);
 
   const todayPnL = useMemo(() => {
-    return filteredTrades.filter(t => t.date === '2026-03-31').reduce((sum, t) => sum + t.pnl, 0);
-  }, [filteredTrades]);
+    return filteredTrades.filter(t => t.date === today).reduce((sum, t) => sum + t.pnl, 0);
+  }, [filteredTrades, today]);
 
   const weeklyPnL = useMemo(() => filteredDailyPnL.reduce((sum, d) => sum + d.pnl, 0), [filteredDailyPnL]);
   const weeklyTarget = 1500;
@@ -67,15 +92,15 @@ const Dashboard = () => {
   }, [filteredTrades, filteredDailyPnL]);
 
   const equityCurve = useMemo(() => {
-    let balance = mockAccountSettings.startingBalance;
+    let balance = accountSettings.startingBalance;
     return filteredDailyPnL.map(d => {
       balance += d.pnl;
       return { date: d.date.slice(5), balance };
     });
-  }, [filteredDailyPnL]);
+  }, [filteredDailyPnL, accountSettings.startingBalance]);
 
   const lastTrade = filteredTrades[0];
-  const ruleOfDay = mockRules[Math.floor(Date.now() / 86400000) % mockRules.length];
+  const ruleOfDay = rules.length > 0 ? rules[Math.floor(Date.now() / 86400000) % rules.length] : null;
   const latestPsych = filteredPsychLogs[0];
 
   const winStreak = (() => {
@@ -89,7 +114,6 @@ const Dashboard = () => {
 
   const journalStreak = filteredPsychLogs.length;
 
-  // === New metrics ===
   const avgRRR = useMemo(() => {
     if (filteredTrades.length === 0) return 0;
     return filteredTrades.reduce((sum, t) => sum + t.rrr, 0) / filteredTrades.length;
@@ -159,6 +183,48 @@ const Dashboard = () => {
 
   const sessionBarColors = ['hsl(200, 70%, 50%)', 'hsl(145, 63%, 49%)', 'hsl(35, 90%, 55%)', 'hsl(280, 60%, 55%)'];
 
+  if (tradesLoading) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-28" />)}
+        </div>
+        <Skeleton className="h-48" />
+      </div>
+    );
+  }
+
+  // Empty state
+  if (allTrades.length === 0) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+            <LayoutDashboard className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground text-sm">Welcome back, Trader.</p>
+          </div>
+        </div>
+        <SessionPanel />
+        <Card className={glassCard}>
+          <CardContent className="pt-12 pb-12 flex flex-col items-center gap-4">
+            <LayoutDashboard className="w-16 h-16 text-muted-foreground/30" />
+            <h2 className="text-xl font-semibold">কোনো trade নেই!</h2>
+            <p className="text-muted-foreground text-sm text-center max-w-md">
+              তোমার প্রথম trade entry করো — Dashboard এ সব statistics, equity curve, psychology correlation দেখা যাবে।
+            </p>
+            <a href="/new-trade" className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+              <Star className="w-4 h-4" /> প্রথম Trade Entry করো
+            </a>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Premium Header */}
@@ -174,16 +240,13 @@ const Dashboard = () => {
         </div>
         <ToggleGroup type="single" value={dateRange} onValueChange={(v) => v && setDateRange(v as DateRange)} className="bg-muted/30 rounded-lg p-1 border border-border/30">
           <ToggleGroupItem value="7d" className="text-xs px-3 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md">
-            <Calendar className="w-3 h-3 mr-1" />
-            7 Days
+            <Calendar className="w-3 h-3 mr-1" />7 Days
           </ToggleGroupItem>
           <ToggleGroupItem value="30d" className="text-xs px-3 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md">
-            <Calendar className="w-3 h-3 mr-1" />
-            30 Days
+            <Calendar className="w-3 h-3 mr-1" />30 Days
           </ToggleGroupItem>
           <ToggleGroupItem value="all" className="text-xs px-3 py-1.5 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-md">
-            <Calendar className="w-3 h-3 mr-1" />
-            All Time
+            <Calendar className="w-3 h-3 mr-1" />All Time
           </ToggleGroupItem>
         </ToggleGroup>
       </div>
@@ -202,7 +265,7 @@ const Dashboard = () => {
               {todayPnL >= 0 ? '+' : ''}${todayPnL.toFixed(2)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {filteredTrades.filter(t => t.date === '2026-03-31').length} trades today
+              {filteredTrades.filter(t => t.date === today).length} trades today
             </p>
           </CardContent>
         </Card>
@@ -241,7 +304,7 @@ const Dashboard = () => {
             </div>
             <p className="text-3xl font-bold text-warning mt-1">${stats.maxDrawdown.toFixed(0)}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {((stats.maxDrawdown / mockAccountSettings.startingBalance) * 100).toFixed(1)}% of starting balance
+              {((stats.maxDrawdown / accountSettings.startingBalance) * 100).toFixed(1)}% of starting balance
             </p>
           </CardContent>
         </Card>
@@ -322,7 +385,7 @@ const Dashboard = () => {
               <ShieldCheck className="w-4 h-4 text-primary" />
               <p className="text-sm text-muted-foreground">Rule of the Day</p>
             </div>
-            <p className="text-sm font-medium">{ruleOfDay.text}</p>
+            <p className="text-sm font-medium">{ruleOfDay?.text ?? 'কোনো rule যোগ করোনি এখনো'}</p>
           </CardContent>
         </Card>
 
@@ -382,9 +445,7 @@ const Dashboard = () => {
         </Card>
       )}
 
-      {/* ===== NEW SECTIONS ===== */}
-
-      {/* Section 1: Performance Breakdown Cards */}
+      {/* Performance Breakdown Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className={`${glassCard} bg-gradient-to-br from-cyan-500/10 to-transparent`}>
           <CardContent className="pt-6">
@@ -445,49 +506,51 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Section 2: Strategy Performance Table */}
-      <Card className={glassCard}>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
-              <BarChart3 className="w-3 h-3 text-primary" />
-            </div>
-            Strategy Performance
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Strategy</TableHead>
-                <TableHead className="text-center">Trades</TableHead>
-                <TableHead className="text-center">Win Rate</TableHead>
-                <TableHead className="text-center">Avg RRR</TableHead>
-                <TableHead className="text-right">Total P&L</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {strategyPerformance.map(s => (
-                <TableRow key={s.strategy}>
-                  <TableCell className="font-medium">{s.strategy}</TableCell>
-                  <TableCell className="text-center">{s.trades}</TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant={s.winRate >= 60 ? 'default' : s.winRate >= 40 ? 'secondary' : 'destructive'}>
-                      {s.winRate.toFixed(0)}%
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">{s.avgRRR.toFixed(2)}</TableCell>
-                  <TableCell className={`text-right font-bold ${s.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>
-                    {s.pnl >= 0 ? '+' : ''}${s.pnl.toFixed(0)}
-                  </TableCell>
+      {/* Strategy Performance Table */}
+      {strategyPerformance.length > 0 && (
+        <Card className={glassCard}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                <BarChart3 className="w-3 h-3 text-primary" />
+              </div>
+              Strategy Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Strategy</TableHead>
+                  <TableHead className="text-center">Trades</TableHead>
+                  <TableHead className="text-center">Win Rate</TableHead>
+                  <TableHead className="text-center">Avg RRR</TableHead>
+                  <TableHead className="text-right">Total P&L</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {strategyPerformance.map(s => (
+                  <TableRow key={s.strategy}>
+                    <TableCell className="font-medium">{s.strategy}</TableCell>
+                    <TableCell className="text-center">{s.trades}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={s.winRate >= 60 ? 'default' : s.winRate >= 40 ? 'secondary' : 'destructive'}>
+                        {s.winRate.toFixed(0)}%
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">{s.avgRRR.toFixed(2)}</TableCell>
+                    <TableCell className={`text-right font-bold ${s.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+                      {s.pnl >= 0 ? '+' : ''}${s.pnl.toFixed(0)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Section 3 & 4: Session Performance + Mistake Frequency */}
+      {/* Session Performance + Mistake Frequency */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className={glassCard}>
           <CardHeader className="pb-3">
@@ -545,7 +608,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Section 5: Psychology Correlation */}
+      {/* Psychology Correlation */}
       <Card className={`${glassCard} bg-gradient-to-br from-violet-500/5 to-transparent`}>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
