@@ -15,6 +15,7 @@ import EmaScanner from "./pages/EmaScanner.tsx";
 import TradeIntelligence from "./pages/TradeIntelligence.tsx";
 import Commodities from "./pages/Commodities.tsx";
 import Crypto from "./pages/Crypto.tsx";
+import CorrelationPairs from "./pages/CorrelationPairs.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/trade-intelligence" element={<TradeIntelligence />} />
             <Route path="/commodities" element={<Commodities />} />
             <Route path="/crypto" element={<Crypto />} />
+            <Route path="/correlation-pairs" element={<CorrelationPairs />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
