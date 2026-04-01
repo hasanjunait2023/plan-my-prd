@@ -162,7 +162,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {/* Desktop Nav Tabs — hidden on mobile */}
           <nav className="flex-1 overflow-x-auto hidden md:block" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--muted)) transparent' }}>
             <div className="flex items-center gap-0.5">
-              {navItems.map((item) => (
+              {allNavItems.map((item) => (
                 <NavLink
                   key={item.title}
                   to={item.url}
