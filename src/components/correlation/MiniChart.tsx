@@ -7,6 +7,7 @@ interface MiniChartProps {
   symbol: string;
   pair: string;
   interval: string;
+  dimmed?: boolean;
 }
 
 function TradingViewWidget({ symbol, interval, height }: { symbol: string; interval: string; height: string }) {
