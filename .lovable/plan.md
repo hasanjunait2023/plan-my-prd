@@ -1,27 +1,19 @@
 
 
-# "Fx Junait Vault" Icon তৈরি ও সেট করা
+# Mobile Status Bar Color Fix
 
-## কি করবো
-Nano banana image generation API ব্যবহার করে "Fx Junait Vault" text সহ একটা professional trading app icon generate করবো, তারপর সেটা favicon + PWA icon হিসেবে সেট করবো।
+## সমস্যা
+এখন `theme-color` সেট আছে `#00C9A7` (accent green), তাই Android এ status bar সবুজ দেখায় — চোখে লাগে।
 
-## Steps
+## সমাধান
+`theme-color` কে app এর dark background color (`#0D1B2A`) এ change করলেই status bar app এর সাথে blend হয়ে যাবে।
 
-### 1. Icon Generate করা
-- Nano banana pro API দিয়ে 512x512 icon generate করবো
-- Design: Dark background (#0D1B2A), "Fx" bold accent (#00C9A7), "Junait Vault" text, trading/finance aesthetic
-- 192x192 version ও তৈরি করবো
+## Changes
 
-### 2. Files Update করা
+| File | Change |
+|------|--------|
+| `index.html` | `<meta name="theme-color">` value `#00C9A7` → `#0D1B2A` |
+| `public/manifest.json` | `theme_color` value `#00C9A7` → `#0D1B2A` |
 
-| Action | File |
-|--------|------|
-| **Replace** | `public/icon-192.png` — নতুন generated icon |
-| **Replace** | `public/icon-512.png` — নতুন generated icon |
-| **Modify** | `index.html` — favicon reference যোগ |
-| **Modify** | `public/manifest.json` — name update "Fx Junait Vault" |
-
-### 3. App Name Update
-- `manifest.json`: name → "Fx Junait Vault", short_name → "FxJunait"
-- `index.html`: title → "Fx Junait Vault"
+মাত্র 2 লাইন change — status bar dark হয়ে regular মনে হবে।
 
