@@ -91,12 +91,61 @@ const NewTrade = () => {
     if (data.lotSize) setLotSize(String(data.lotSize));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!pair || !entryPrice || !exitPrice || !stopLoss) {
       toast.error('Required fields পূরণ করো: Pair, Entry, Exit, Stop Loss');
       return;
     }
-    toast.success('Trade সফলভাবে log হয়েছে! (Mock — backend পরে যোগ হবে)');
+    const outcome = pnl > 0 ? 'WIN' : pnl < 0 ? 'LOSS' : 'BREAKEVEN';
+    try {
+      await insertTrade.mutateAsync({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        pair,
+        direction,
+        session: (session || 'London') as any,
+        timeframe: (timeframe || '15M') as any,
+        strategy: strategy || '',
+        entryPrice: entry,
+        exitPrice: exit,
+        stopLoss: sl,
+        takeProfit: tp,
+        lotSize: lots,
+        riskPercent: 0,
+        riskDollars: riskDollars,
+        rrr,
+        pnl,
+        pips,
+        outcome,
+        smcTags: selectedSmcTags,
+        mistakes: selectedMistakes,
+        psychologyState: parseInt(psychState) || 5,
+        psychologyEmotion: (psychEmotion || 'Calm') as any,
+        planAdherence,
+        preTradeNotes: '',
+        postTradeNotes: '',
+        reasonForEntry,
+        confidenceLevel: confidenceLevel[0],
+        preSituation,
+        duringSituation,
+        postSituation,
+        whatWentWell,
+        improvementNotes,
+        entryScreenshots,
+        exitScreenshots,
+        screenshots: [],
+        partialCloses: partialCloses.map((pc, i) => ({
+          id: `p${i}`,
+          lots: parseFloat(pc.lots) || 0,
+          exitPrice: parseFloat(pc.price) || 0,
+          pnl: 0,
+        })),
+        starred: false,
+      });
+      toast.success('Trade সফলভাবে log হয়েছে!');
+      navigate('/journal');
+    } catch {
+      toast.error('Trade save করতে সমস্যা হয়েছে');
+    }
   };
 
   return (
