@@ -138,10 +138,14 @@ const TradeJournal = () => {
             <span className="text-xs text-muted-foreground">{filteredTrades.length} trades</span>
           </div>
         </div>
-        <Button size="sm" onClick={() => navigate('/new-trade')}>
-          <Plus className="w-4 h-4 mr-1" /> New Trade
-        </Button>
-      </div>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setExportOpen(true)}>
+            <Download className="w-4 h-4 mr-1" /> Export
+          </Button>
+          <Button size="sm" onClick={() => navigate('/new-trade')}>
+            <Plus className="w-4 h-4 mr-1" /> New Trade
+          </Button>
+        </div>
 
       <div className="flex-1 overflow-hidden rounded-lg border border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
         <ResizablePanelGroup direction="horizontal">
