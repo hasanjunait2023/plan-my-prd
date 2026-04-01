@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const TWELVEDATA_BASE = "https://api.twelvedata.com";
 const CURRENCIES = ["EUR", "GBP", "USD", "JPY", "AUD", "NZD", "CAD", "CHF"];
-const TIMEFRAMES = ["3min", "15min", "1h"];
+const TIMEFRAMES = ["5min", "15min", "1h"];
 const EMA_PERIODS = [9, 15, 200];
 
 // Rate limiter: max 7 calls per minute to stay under 8/min limit
