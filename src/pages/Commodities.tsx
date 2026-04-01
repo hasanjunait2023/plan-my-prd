@@ -26,6 +26,9 @@ export default function Commodities() {
         <p className="text-xs text-muted-foreground mt-1">Gold, Silver & Oil — live prices, charts ও trading insights</p>
       </div>
 
+      {/* Session Panel */}
+      <SessionPanel />
+
       {/* Asset Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-muted/30 border border-border/30">

@@ -15,6 +15,9 @@ export default function Crypto() {
         <p className="text-xs text-muted-foreground mt-1">Bitcoin — live price, chart ও trading insights</p>
       </div>
 
+      {/* Session Panel */}
+      <SessionPanel />
+
       {/* Price Card */}
       <AssetPriceCard symbol="BTCUSD" name="Bitcoin" icon="₿" />
 
