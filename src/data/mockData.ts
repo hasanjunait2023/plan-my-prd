@@ -54,7 +54,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'SL hit হয়েছে। HTF trend সঠিক ছিল — bullish continuation হয়েছে।',
     whatWentWell: 'SL সরাইনি, সেটা ভালো ছিল।',
     improvementNotes: 'HTF trend এর বিপরীতে trade নেওয়া বন্ধ করতে হবে। Confirmation এর জন্য অপেক্ষা করা দরকার।',
-    screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-31T15:00:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-31T15:00:00Z',
   },
   {
     id: '3', date: '2026-03-30', pair: 'USD/JPY', direction: 'LONG', session: 'Asian',
