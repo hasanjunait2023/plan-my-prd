@@ -1,12 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 
 interface TradingViewWidgetProps {
   symbol: string;
   interval: string;
-  compact?: boolean;
 }
 
-export default function TradingViewWidget({ symbol, interval, compact = false }: TradingViewWidgetProps) {
+function TradingViewWidgetInner({ symbol, interval }: TradingViewWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,17 +40,17 @@ export default function TradingViewWidget({ symbol, interval, compact = false }:
         { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
         { id: 'RSI@tv-basicstudies' },
       ],
-      hide_top_toolbar: compact,
+      hide_top_toolbar: true,
       hide_legend: false,
       enable_publishing: false,
-      withdateranges: !compact,
-      hide_side_toolbar: compact,
-      details: !compact,
+      withdateranges: false,
+      hide_side_toolbar: true,
+      details: false,
       calendar: false,
       show_popup_button: true,
       popup_width: '1200',
       popup_height: '800',
-      allow_symbol_change: true,
+      allow_symbol_change: false,
       save_image: true,
       width: '100%',
       height: '100%',
@@ -60,7 +59,9 @@ export default function TradingViewWidget({ symbol, interval, compact = false }:
 
     widgetContainer.appendChild(script);
     containerRef.current.appendChild(widgetContainer);
-  }, [symbol, interval, compact]);
+  }, [symbol, interval]);
 
-  return <div ref={containerRef} className="w-full h-full rounded-lg overflow-hidden" />;
+  return <div ref={containerRef} className="w-full h-full overflow-hidden" />;
 }
+
+export default memo(TradingViewWidgetInner);
