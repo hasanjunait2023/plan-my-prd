@@ -44,7 +44,7 @@ export default function CorrelationPairs() {
   const pairs = PAIR_MAP[selected] || [];
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-5">
+    <div className="max-w-[1600px] mx-auto space-y-5">
       {/* Header */}
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-foreground">
@@ -98,7 +98,7 @@ export default function CorrelationPairs() {
       </div>
 
       {/* 2x3 Chart Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {pairs.map(pair => (
           <MiniChart
             key={`${pair}-${interval}`}
