@@ -106,6 +106,8 @@ export default function CurrencyStrength() {
         </div>
       </div>
 
+      <SessionPanel />
+
       {/* Summary Cards */}
       {!isLoading && data && data.length > 0 && <SummaryCards data={data} />}
 

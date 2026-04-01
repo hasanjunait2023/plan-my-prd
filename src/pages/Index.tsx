@@ -71,6 +71,8 @@ const Dashboard = () => {
         </div>
       </div>
 
+      <SessionPanel />
+
       {/* Top row: P&L + Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className={`${glassCard} bg-gradient-to-br from-emerald-500/10 to-transparent`}>

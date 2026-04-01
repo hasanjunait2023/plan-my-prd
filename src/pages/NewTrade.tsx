@@ -107,6 +107,8 @@ const NewTrade = () => {
         </div>
       </div>
 
+      <SessionPanel />
+
       {/* Direction Toggle */}
       <div className="flex gap-2">
         <Button
