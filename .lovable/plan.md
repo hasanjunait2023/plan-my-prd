@@ -1,50 +1,53 @@
 
 
-# Sidebar → Top Navigation Tab Bar
+# Mobile Bottom Navigation Bar — Premium Concept
 
 ## কী করবো
-Left sidebar সরিয়ে একটা premium top navigation bar বানাবো — Logo বামে, nav tabs মাঝে, সব একই header এ।
+Mobile viewport এ (md breakpoint এর নিচে) top nav tabs লুকিয়ে একটা **fixed bottom bar** দেখাবো — iOS/Android app এর মতো premium feel।
 
 ## Layout Structure
 ```text
-┌──────────────────────────────────────────────────────┐
-│ [Logo] TradeVault PRO   │  Tab Tab Tab Tab Tab Tab  │
-│                         │      (icon + text)        │
-├──────────────────────────────────────────────────────┤
-│                                                      │
-│                    Page Content                       │
-│                                                      │
-└──────────────────────────────────────────────────────┘
+Desktop (md+):
+┌─ [Logo] TradeVault PRO  │  Tab Tab Tab Tab ─┐
+├──────────────────────────────────────────────┤
+│                 Page Content                 │
+└──────────────────────────────────────────────┘
+
+Mobile (<md):
+┌─ [Logo] TradeVault PRO ─────────────────────┐
+├──────────────────────────────────────────────┤
+│                 Page Content                 │
+│              (pb-20 for spacing)             │
+├──────────────────────────────────────────────┤
+│  🏠  📖  ➕  📊  🧠  📈  ⚙️               │
+│  Home Jrnl New  Ana  Psy  Str  Set          │
+└──────────────────────────────────────────────┘
 ```
 
-## Changes
+## Changes — শুধু `src/components/Layout.tsx`
 
-### 1. `src/components/Layout.tsx` — পুরো restructure
-- `SidebarProvider`, `AppSidebar`, `SidebarTrigger` সব সরাবো
-- নতুন top header bar:
-  - বামে: Logo badge + "TradeVault PRO" text
-  - মাঝে/ডানে: Nav tabs — icon + text, horizontal scroll (mobile এ)
-  - Glass style: `backdrop-blur-md bg-background/80 border-b border-border/30`
-- Active tab: `bg-primary/15 text-primary border-b-2 border-primary` effect
-- Mobile: horizontally scrollable tab strip, compact spacing
+### Top Header
+- Nav tabs section: `hidden md:flex` — mobile এ লুকাবে
+- Logo সবসময় দেখাবে
 
-### 2. `src/components/AppSidebar.tsx` — Delete
-- আর দরকার নেই, সব navigation Layout এর মধ্যে চলে যাবে
+### Bottom Bar (mobile only)
+- `fixed bottom-0 z-50 md:hidden`
+- Glass style: `backdrop-blur-md bg-background/90 border-t border-border/30`
+- 7টা nav item — icon (20px) + tiny label (10px) নিচে
+- Active: primary color icon + label, top glow dot
+- Inactive: muted color
+- Safe area padding: `pb-[env(safe-area-inset-bottom)]` for notched phones
 
-### 3. `src/App.tsx` — Minor cleanup
-- `SidebarProvider` wrapper আর দরকার নেই (Layout থেকে সরানো হবে)
+### Main Content
+- Mobile: `pb-20` যাতে bottom bar content ঢেকে না দেয়
 
-### Premium Styling
-- Tab items: glass hover effect (`hover:bg-card/50`), smooth transitions
-- Active tab: subtle gradient underline + primary color glow
-- Logo: gradient badge with glow (existing style preserve)
-- Mobile: hamburger menu বা horizontal scroll — compact icon-only tabs
+### Premium Touches
+- Active item এ উপরে ছোট gradient dot/line indicator
+- Active icon এ subtle glow: `drop-shadow(0 0 6px primary)`
+- Smooth transition on tap
+- "New Trade" center item optionally slightly raised/highlighted
 
-### Files
-
-| File | Action |
+| File | Change |
 |------|--------|
-| `src/components/Layout.tsx` | Rewrite — top nav bar with tabs + content area |
-| `src/components/AppSidebar.tsx` | Delete — no longer needed |
-| `src/App.tsx` | Remove SidebarProvider dependency |
+| `src/components/Layout.tsx` | Top nav hidden on mobile, add fixed bottom bar, main padding adjustment |
 
