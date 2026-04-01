@@ -29,6 +29,7 @@ const App = () => (
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/psychology" element={<Psychology />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/currency-strength" element={<CurrencyStrength />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
