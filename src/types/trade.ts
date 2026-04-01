@@ -37,6 +37,13 @@ export interface Trade {
   planAdherence: boolean;
   preTradeNotes: string;
   postTradeNotes: string;
+  reasonForEntry: string;
+  confidenceLevel: number; // 1-10
+  preSituation: string;
+  duringSituation: string;
+  postSituation: string;
+  whatWentWell: string;
+  improvementNotes: string;
   screenshots: string[];
   partialCloses: PartialClose[];
   starred: boolean;
