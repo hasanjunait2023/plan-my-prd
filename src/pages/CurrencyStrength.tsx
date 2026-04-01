@@ -11,26 +11,38 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { RefreshCw, TrendingUp, CalendarIcon, Activity } from 'lucide-react';
+import { RefreshCw, TrendingUp, CalendarIcon, Activity, Zap, Globe } from 'lucide-react';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
+import { toast } from 'sonner';
 
-function useCurrencyStrength(timeframe: string, selectedDate: Date) {
+function useCurrencyStrength(timeframe: string, selectedDate: Date, session: string) {
   return useQuery({
-    queryKey: ['currency-strength', timeframe, selectedDate.toISOString()],
+    queryKey: ['currency-strength', timeframe, selectedDate.toISOString(), session],
     queryFn: async () => {
       const dayStart = startOfDay(selectedDate).toISOString();
       const dayEnd = endOfDay(selectedDate).toISOString();
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('currency_strength')
         .select('*')
-        .eq('timeframe', timeframe)
         .gte('recorded_at', dayStart)
         .lte('recorded_at', dayEnd)
         .order('recorded_at', { ascending: false });
+
+      // For session tabs: London/New York filter by timeframe name, Latest = any
+      if (session === 'Latest') {
+        // Get most recent regardless of timeframe
+      } else if (session === 'London' || session === 'New York') {
+        query = query.eq('timeframe', session);
+      } else {
+        // Default timeframe tabs (1H, 15M, 3M)
+        query = query.eq('timeframe', timeframe);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -44,10 +56,54 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
 
 export default function CurrencyStrength() {
   const [activeTab, setActiveTab] = useState('1H');
+  const [sessionTab, setSessionTab] = useState('Latest');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab, selectedDate);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState('');
+
+  const effectiveTimeframe = sessionTab === 'London' || sessionTab === 'New York' || sessionTab === 'Latest' ? sessionTab : activeTab;
+  const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab, selectedDate, sessionTab);
 
   const lastUpdated = data?.[0]?.recorded_at;
+
+  const runLiveAnalysis = async () => {
+    setIsScanning(true);
+    try {
+      // Determine session based on UTC time
+      const utcHour = new Date().getUTCHours();
+      const session = utcHour >= 13 ? 'New York' : 'London';
+
+      // Batch 1
+      setScanProgress(`Batch 1/2 — Scanning pairs 1-14... (~2 min)`);
+      const resp1 = await supabase.functions.invoke('market-correlation-analysis', {
+        body: { batch: 1, session }
+      });
+
+      if (resp1.error) throw new Error(resp1.error.message || 'Batch 1 failed');
+      const scanId = resp1.data?.scan_id;
+      if (!scanId) throw new Error('No scan_id returned');
+
+      toast.success(`Batch 1 complete: ${resp1.data?.pairs_fetched || 0} pairs fetched`);
+
+      // Batch 2
+      setScanProgress(`Batch 2/2 — Scanning pairs 15-28 + AI analysis... (~2 min)`);
+      const resp2 = await supabase.functions.invoke('market-correlation-analysis', {
+        body: { batch: 2, session, scan_id: scanId }
+      });
+
+      if (resp2.error) throw new Error(resp2.error.message || 'Batch 2 failed');
+
+      toast.success(`${session} Session analysis complete! ${resp2.data?.pairs_total || 0} pairs analyzed`);
+      setSessionTab(session);
+      refetch();
+    } catch (err) {
+      console.error('Analysis error:', err);
+      toast.error(`Analysis failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsScanning(false);
+      setScanProgress('');
+    }
+  };
 
   return (
     <div className="space-y-5 max-w-6xl mx-auto">
@@ -105,6 +161,34 @@ export default function CurrencyStrength() {
           </Button>
         </div>
       </div>
+
+      {/* Session Tabs + Run Analysis */}
+      <Card className="border-border/30 bg-card/50 backdrop-blur-sm">
+        <CardContent className="pt-4 pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <Globe className="w-4 h-4 text-primary" />
+              <Tabs value={sessionTab} onValueChange={setSessionTab}>
+                <TabsList className="bg-muted/20 border border-border/30">
+                  <TabsTrigger value="Latest" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Latest</TabsTrigger>
+                  <TabsTrigger value="London" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">London</TabsTrigger>
+                  <TabsTrigger value="New York" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">New York</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={runLiveAnalysis}
+              disabled={isScanning}
+              className="gap-2 bg-gradient-to-r from-primary to-emerald-600 hover:from-primary/90 hover:to-emerald-600/90 text-primary-foreground font-bold text-xs shadow-[0_0_15px_hsla(142,71%,45%,0.2)]"
+            >
+              <Zap className={`w-3.5 h-3.5 ${isScanning ? 'animate-pulse' : ''}`} />
+              {isScanning ? scanProgress || 'Scanning...' : 'Run Live Analysis'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <SessionPanel />
 
@@ -172,10 +256,11 @@ export default function CurrencyStrength() {
       {/* Legend */}
       <Card className="border-border/30 bg-card/30 backdrop-blur-sm">
         <CardContent className="pt-5 pb-4">
-          <div className="grid grid-cols-4 gap-4 text-center">
+          <div className="grid grid-cols-5 gap-3 text-center">
             {[
-              { color: 'hsl(142, 71%, 45%)', label: 'STRONG', range: '+5 to +10' },
-              { color: 'hsl(48, 96%, 53%)', label: 'NEUTRAL', range: '-3 to +4' },
+              { color: 'hsl(142, 71%, 45%)', label: 'STRONG', range: '+7 to +10' },
+              { color: 'hsl(100, 60%, 45%)', label: 'MID STRONG', range: '+4 to +6' },
+              { color: 'hsl(48, 96%, 53%)', label: 'NEUTRAL', range: '-3 to +3' },
               { color: 'hsl(25, 95%, 53%)', label: 'MID WEAK', range: '-6 to -4' },
               { color: 'hsl(0, 84%, 60%)', label: 'WEAK', range: '-10 to -7' },
             ].map((item) => (
@@ -184,8 +269,8 @@ export default function CurrencyStrength() {
                   className="w-3 h-3 rounded-full mx-auto"
                   style={{ backgroundColor: item.color, boxShadow: `0 0 8px ${item.color}40` }}
                 />
-                <p className="font-bold text-foreground text-[11px] tracking-wider">{item.label}</p>
-                <p className="text-muted-foreground text-[10px] font-medium">{item.range}</p>
+                <p className="font-bold text-foreground text-[10px] tracking-wider">{item.label}</p>
+                <p className="text-muted-foreground text-[9px] font-medium">{item.range}</p>
               </div>
             ))}
           </div>
