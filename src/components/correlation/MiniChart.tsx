@@ -1,5 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PairWithFlags } from '@/lib/pairFlags';
+import { Maximize2 } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface MiniChartProps {
   symbol: string;
@@ -7,7 +9,7 @@ interface MiniChartProps {
   interval: string;
 }
 
-export function MiniChart({ symbol, pair, interval }: MiniChartProps) {
+function TradingViewWidget({ symbol, interval, height }: { symbol: string; interval: string; height: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,12 +65,37 @@ export function MiniChart({ symbol, pair, interval }: MiniChartProps) {
     containerRef.current.appendChild(widgetContainer);
   }, [symbol, interval]);
 
+  return <div ref={containerRef} className="w-full" style={{ height }} />;
+}
+
+export function MiniChart({ symbol, pair, interval }: MiniChartProps) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
-    <div className="rounded-xl border border-border/30 bg-card/50 backdrop-blur-sm overflow-hidden">
-      <div className="px-3 py-2 border-b border-border/20">
-        <PairWithFlags pair={pair} className="text-sm font-semibold text-foreground" />
+    <>
+      <div className="rounded-xl border border-border/30 bg-card/50 backdrop-blur-sm overflow-hidden">
+        <div className="px-3 py-2 border-b border-border/20 flex items-center justify-between">
+          <PairWithFlags pair={pair} className="text-sm font-semibold text-foreground" />
+          <button
+            onClick={() => setExpanded(true)}
+            className="p-1 rounded hover:bg-accent/50 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <TradingViewWidget symbol={symbol} interval={interval} height="400px" />
       </div>
-      <div ref={containerRef} className="w-full h-[250px]" />
-    </div>
+
+      <Dialog open={expanded} onOpenChange={setExpanded}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 gap-0 border-border/30 bg-card">
+          <div className="px-4 py-3 border-b border-border/20">
+            <PairWithFlags pair={pair} className="text-base font-semibold text-foreground" />
+          </div>
+          <div className="flex-1 min-h-0" style={{ height: 'calc(90vh - 52px)' }}>
+            <TradingViewWidget symbol={symbol} interval={interval} height="100%" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
