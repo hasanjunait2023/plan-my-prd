@@ -1,18 +1,23 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { mockTrades, mockDailyPnL, mockRules, mockPsychologyLogs, mockAccountSettings } from '@/data/mockData';
-import { TrendingUp, TrendingDown, Target, Activity, Flame, Brain, ShieldCheck, Star, BookOpen, LayoutDashboard, BarChart3, AlertTriangle, Crosshair, Gauge } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Activity, Flame, Brain, ShieldCheck, Star, BookOpen, LayoutDashboard, BarChart3, AlertTriangle, Crosshair, Gauge, Calendar } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { PairWithFlags } from '@/lib/pairFlags';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { subDays, parseISO, isAfter } from 'date-fns';
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 const tooltipStyle = { backgroundColor: 'hsl(0, 0%, 8%)', border: '1px solid hsla(0,0%,100%,0.1)', borderRadius: '8px', color: 'hsl(0, 0%, 95%)' };
 
+type DateRange = '7d' | '30d' | 'all';
+
 const Dashboard = () => {
+  const [dateRange, setDateRange] = useState<DateRange>('all');
   const todayPnL = useMemo(() => {
     return mockTrades.filter(t => t.date === '2026-03-31').reduce((sum, t) => sum + t.pnl, 0);
   }, []);
