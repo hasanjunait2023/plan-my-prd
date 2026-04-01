@@ -29,7 +29,7 @@ export interface PairAlignmentSummary {
   pair: string;
   direction: string;
   alignments: {
-    '3min': { ema_9: boolean; ema_15: boolean; ema_200: boolean; aligned: boolean };
+    '5min': { ema_9: boolean; ema_15: boolean; ema_200: boolean; aligned: boolean };
     '15min': { ema_9: boolean; ema_15: boolean; ema_200: boolean; aligned: boolean };
     '1h': { ema_9: boolean; ema_15: boolean; ema_200: boolean; aligned: boolean };
   };

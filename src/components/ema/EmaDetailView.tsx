@@ -9,7 +9,7 @@ interface EmaDetailViewProps {
 
 export function EmaDetailView({ pair, alignments, onClose }: EmaDetailViewProps) {
   const grouped = {
-    '3min': alignments.find((a) => a.timeframe === '3min'),
+    '5min': alignments.find((a) => a.timeframe === '5min'),
     '15min': alignments.find((a) => a.timeframe === '15min'),
     '1h': alignments.find((a) => a.timeframe === '1h'),
   };
@@ -39,7 +39,7 @@ export function EmaDetailView({ pair, alignments, onClose }: EmaDetailViewProps)
             </tr>
           </thead>
           <tbody>
-            {(['3min', '15min', '1h'] as const).map((tf) => {
+            {(['5min', '15min', '1h'] as const).map((tf) => {
               const row = grouped[tf];
               if (!row) return (
                 <tr key={tf} className="border-b border-border/20">
