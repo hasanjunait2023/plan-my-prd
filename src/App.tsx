@@ -17,6 +17,7 @@ import Commodities from "./pages/Commodities.tsx";
 import Crypto from "./pages/Crypto.tsx";
 import CorrelationPairs from "./pages/CorrelationPairs.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Install from "./pages/Install.tsx";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/commodities" element={<Commodities />} />
             <Route path="/crypto" element={<Crypto />} />
             <Route path="/correlation-pairs" element={<CorrelationPairs />} />
+            <Route path="/install" element={<Install />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
