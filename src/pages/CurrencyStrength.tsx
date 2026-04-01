@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { RefreshCw, TrendingUp, CalendarIcon } from 'lucide-react';
+import { RefreshCw, TrendingUp, CalendarIcon, Activity } from 'lucide-react';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -33,7 +33,6 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
 
       if (error) throw error;
 
-      // Get only the latest batch for this timeframe+date
       if (!data || data.length === 0) return [];
       const latestTime = data[0].recorded_at;
       return data.filter(d => d.recorded_at === latestTime) as CurrencyStrengthRecord[];
@@ -50,16 +49,18 @@ export default function CurrencyStrength() {
   const lastUpdated = data?.[0]?.recorded_at;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-primary" />
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shadow-[0_0_20px_hsla(142,71%,45%,0.1)]">
+            <TrendingUp className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">💱 Currency Strength</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-2xl font-extrabold text-foreground tracking-tight">
+              Currency Strength
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
               {lastUpdated
                 ? `আপডেট: ${format(new Date(lastUpdated), 'dd MMM yyyy, hh:mm a')}`
                 : 'ডেটা লোড হচ্ছে...'}
@@ -71,8 +72,12 @@ export default function CurrencyStrength() {
           {/* Date Picker */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <CalendarIcon className="w-4 h-4" />
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/80 text-xs font-medium"
+              >
+                <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />
                 {format(selectedDate, 'dd MMM yyyy')}
               </Button>
             </PopoverTrigger>
@@ -92,9 +97,9 @@ export default function CurrencyStrength() {
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="gap-2"
+            className="gap-2 border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/80 text-xs font-medium"
           >
-            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
             রিফ্রেশ
           </Button>
         </div>
@@ -104,15 +109,20 @@ export default function CurrencyStrength() {
       {!isLoading && data && data.length > 0 && <SummaryCards data={data} />}
 
       {/* Strength Meter */}
-      <Card className="border-border/50">
+      <Card className="border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Strength Ranking</CardTitle>
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center">
+                <Activity className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <CardTitle className="text-base font-bold tracking-tight">Strength Ranking</CardTitle>
+            </div>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList>
-                <TabsTrigger value="1H">1H</TabsTrigger>
-                <TabsTrigger value="15M">15M</TabsTrigger>
-                <TabsTrigger value="3M">3M</TabsTrigger>
+              <TabsList className="bg-muted/20 border border-border/30">
+                <TabsTrigger value="1H" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">1H</TabsTrigger>
+                <TabsTrigger value="15M" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">15M</TabsTrigger>
+                <TabsTrigger value="3M" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">3M</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -121,15 +131,18 @@ export default function CurrencyStrength() {
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-7 w-full" />
+                <Skeleton key={i} className="h-8 w-full rounded-lg" />
               ))}
             </div>
           ) : data && data.length > 0 ? (
             <StrengthMeter data={data} />
           ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <p className="text-lg mb-2">কোনো ডেটা নেই</p>
-              <p className="text-sm">এই তারিখে কোনো currency strength data পাওয়া যায়নি।</p>
+            <div className="text-center py-16 text-muted-foreground">
+              <div className="w-16 h-16 rounded-2xl bg-muted/10 flex items-center justify-center mx-auto mb-4">
+                <Activity className="w-8 h-8 text-muted-foreground/50" />
+              </div>
+              <p className="text-base font-semibold mb-1">কোনো ডেটা নেই</p>
+              <p className="text-xs">এই তারিখে কোনো currency strength data পাওয়া যায়নি।</p>
             </div>
           )}
         </CardContent>
@@ -139,9 +152,14 @@ export default function CurrencyStrength() {
       {!isLoading && data && data.length > 0 && <PairSuggestions data={data} />}
 
       {/* Trend Chart */}
-      <Card className="border-border/50">
+      <Card className="border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">📈 Strength Trend</CardTitle>
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center">
+              <TrendingUp className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <CardTitle className="text-base font-bold tracking-tight">Strength Trend</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           <StrengthTrendChart timeframe={activeTab} />
@@ -149,29 +167,24 @@ export default function CurrencyStrength() {
       </Card>
 
       {/* Legend */}
-      <Card className="border-border/50">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-4 gap-4 text-center text-xs">
-            <div className="space-y-1">
-              <div className="w-3 h-3 rounded-full mx-auto" style={{ backgroundColor: 'hsl(142, 71%, 45%)' }} />
-              <p className="font-semibold text-foreground">STRONG</p>
-              <p className="text-muted-foreground">+5 to +10</p>
-            </div>
-            <div className="space-y-1">
-              <div className="w-3 h-3 rounded-full mx-auto" style={{ backgroundColor: 'hsl(48, 96%, 53%)' }} />
-              <p className="font-semibold text-foreground">NEUTRAL</p>
-              <p className="text-muted-foreground">-3 to +4</p>
-            </div>
-            <div className="space-y-1">
-              <div className="w-3 h-3 rounded-full mx-auto" style={{ backgroundColor: 'hsl(25, 95%, 53%)' }} />
-              <p className="font-semibold text-foreground">MID WEAK</p>
-              <p className="text-muted-foreground">-6 to -4</p>
-            </div>
-            <div className="space-y-1">
-              <div className="w-3 h-3 rounded-full mx-auto" style={{ backgroundColor: 'hsl(0, 84%, 60%)' }} />
-              <p className="font-semibold text-foreground">WEAK</p>
-              <p className="text-muted-foreground">-10 to -7</p>
-            </div>
+      <Card className="border-border/30 bg-card/30 backdrop-blur-sm">
+        <CardContent className="pt-5 pb-4">
+          <div className="grid grid-cols-4 gap-4 text-center">
+            {[
+              { color: 'hsl(142, 71%, 45%)', label: 'STRONG', range: '+5 to +10' },
+              { color: 'hsl(48, 96%, 53%)', label: 'NEUTRAL', range: '-3 to +4' },
+              { color: 'hsl(25, 95%, 53%)', label: 'MID WEAK', range: '-6 to -4' },
+              { color: 'hsl(0, 84%, 60%)', label: 'WEAK', range: '-10 to -7' },
+            ].map((item) => (
+              <div key={item.label} className="space-y-1.5">
+                <div
+                  className="w-3 h-3 rounded-full mx-auto"
+                  style={{ backgroundColor: item.color, boxShadow: `0 0 8px ${item.color}40` }}
+                />
+                <p className="font-bold text-foreground text-[11px] tracking-wider">{item.label}</p>
+                <p className="text-muted-foreground text-[10px] font-medium">{item.range}</p>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
