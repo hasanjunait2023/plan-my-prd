@@ -48,14 +48,14 @@ export function TradingViewChart({ symbol, title }: TradingViewChartProps) {
     script.innerHTML = JSON.stringify({
       symbol: tvSymbol,
       interval: interval,
-      theme: 'dark',
+      theme: 'light',
       style: '1',
       locale: 'en',
       timezone: 'Etc/UTC',
       studies: [
-        { id: "MAExp@tv-basicstudies", inputs: { length: 9 } },
-        { id: "MAExp@tv-basicstudies", inputs: { length: 15 } },
-        { id: "MAExp@tv-basicstudies", inputs: { length: 200 } },
+        { id: "MAExp@tv-basicstudies", inputs: { length: 9 }, styles: { plot: { color: "#22c55e", linewidth: 1 } } },
+        { id: "MAExp@tv-basicstudies", inputs: { length: 15 }, styles: { plot: { color: "#ef4444", linewidth: 1 } } },
+        { id: "MAExp@tv-basicstudies", inputs: { length: 200 }, styles: { plot: { linewidth: 3 } } },
         { id: "RSI@tv-basicstudies" },
       ],
       hide_top_toolbar: true,
