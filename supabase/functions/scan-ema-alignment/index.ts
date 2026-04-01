@@ -131,7 +131,6 @@ serve(async (req) => {
 
         const result = await fetchTimeSeriesAndEmas(pair, tf, apiKey);
         callCount++;
-        await sleep(8500); // ~7 calls/min
 
         if (!result) {
           alignmentRows.push({
