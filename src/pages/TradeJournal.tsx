@@ -7,8 +7,9 @@ import TradePageList from '@/components/journal/TradePageList';
 import TradeDocument from '@/components/journal/TradeDocument';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Plus, BookOpen } from 'lucide-react';
+import { Plus, BookOpen, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import ExportDialog from '@/components/journal/ExportDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const TradeJournal = () => {
@@ -18,6 +19,7 @@ const TradeJournal = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [mobileView, setMobileView] = useState<'dates' | 'trades' | 'document'>('dates');
+  const [exportOpen, setExportOpen] = useState(false);
 
   const filteredTrades = useMemo(() => {
     if (!searchQuery) return mockTrades;
@@ -86,9 +88,14 @@ const TradeJournal = () => {
             </div>
             <h1 className="text-lg font-bold">Trade Journal</h1>
           </div>
-          <Button size="sm" onClick={() => navigate('/new-trade')}>
-            <Plus className="w-4 h-4 mr-1" /> New
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setExportOpen(true)}>
+              <Download className="w-4 h-4" />
+            </Button>
+            <Button size="sm" onClick={() => navigate('/new-trade')}>
+              <Plus className="w-4 h-4 mr-1" /> New
+            </Button>
+          </div>
         </div>
 
         {mobileView === 'dates' && (
@@ -116,6 +123,7 @@ const TradeJournal = () => {
             </div>
           </div>
         )}
+        <ExportDialog open={exportOpen} onOpenChange={setExportOpen} trades={filteredTrades} />
       </div>
     );
   }
@@ -132,9 +140,14 @@ const TradeJournal = () => {
             <span className="text-xs text-muted-foreground">{filteredTrades.length} trades</span>
           </div>
         </div>
-        <Button size="sm" onClick={() => navigate('/new-trade')}>
-          <Plus className="w-4 h-4 mr-1" /> New Trade
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setExportOpen(true)}>
+            <Download className="w-4 h-4 mr-1" /> Export
+          </Button>
+          <Button size="sm" onClick={() => navigate('/new-trade')}>
+            <Plus className="w-4 h-4 mr-1" /> New Trade
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-hidden rounded-lg border border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
@@ -165,6 +178,7 @@ const TradeJournal = () => {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} trades={filteredTrades} />
     </div>
   );
 };
