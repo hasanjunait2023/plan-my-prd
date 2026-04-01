@@ -68,7 +68,7 @@ const ExportDialog = ({ open, onOpenChange, trades }: ExportDialogProps) => {
     if (filteredTrades.length === 0) return;
     setExporting(true);
     try {
-      const opts = { format: fileFormat, trades: filteredTrades, dateLabel, outcomeFilters: outcomes };
+      const opts = { format: fileFormat, trades: filteredTrades, dateLabel, outcomeFilters: outcomes, includeScreenshots };
       if (fileFormat === 'pdf') await exportToPdf(opts);
       else await exportToDocx(opts);
       onOpenChange(false);
