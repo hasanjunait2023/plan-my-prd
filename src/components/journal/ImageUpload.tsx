@@ -1,42 +1,88 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { ImagePlus, X, ZoomIn } from 'lucide-react';
+import { ImagePlus, X, ZoomIn, Clipboard } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface ImageUploadProps {
   images: string[];
   onImagesChange: (images: string[]) => void;
   readOnly?: boolean;
+  label?: string;
+  onImageAdded?: (base64: string) => void;
 }
 
-const ImageUpload = ({ images, onImagesChange, readOnly = false }: ImageUploadProps) => {
+const ImageUpload = ({ images, onImagesChange, readOnly = false, label, onImageAdded }: ImageUploadProps) => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  const addImage = useCallback((base64: string) => {
+    onImagesChange([...images, base64]);
+    onImageAdded?.(base64);
+  }, [images, onImagesChange, onImageAdded]);
+
+  const processFile = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (ev.target?.result) {
+        addImage(ev.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  }, [addImage]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        if (ev.target?.result) {
-          onImagesChange([...images, ev.target.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    Array.from(files).forEach(processFile);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) processFile(file);
+      }
+    }
+  }, [processFile]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => setIsDragging(false), []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    Array.from(files).forEach(file => {
+      if (file.type.startsWith('image/')) processFile(file);
+    });
+  }, [processFile]);
 
   const removeImage = (index: number) => {
     onImagesChange(images.filter((_, i) => i !== index));
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" onPaste={!readOnly ? handlePaste : undefined}>
       {!readOnly && (
-        <div>
+        <div
+          ref={dropRef}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+            isDragging ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
+          }`}
+          onClick={() => fileInputRef.current?.click()}
+        >
           <input
             ref={fileInputRef}
             type="file"
@@ -45,16 +91,14 @@ const ImageUpload = ({ images, onImagesChange, readOnly = false }: ImageUploadPr
             className="hidden"
             onChange={handleFileChange}
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            className="gap-2"
-          >
-            <ImagePlus className="w-4 h-4" />
-            Screenshot যোগ করো
-          </Button>
+          <ImagePlus className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            {label || 'Screenshot যোগ করো'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+            <Clipboard className="w-3 h-3" />
+            Drag & drop, click, অথবা Ctrl+V দিয়ে paste করো
+          </p>
         </div>
       )}
 
