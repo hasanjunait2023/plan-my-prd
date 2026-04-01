@@ -1,5 +1,4 @@
 import { Trade } from '@/types/trade';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowUp, ArrowDown, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -18,15 +17,15 @@ const TradePageList = ({ trades, selectedDate, selectedTradeId, onSelectTrade }:
   const losses = trades.filter(t => t.outcome === 'LOSS').length;
 
   return (
-    <div className="h-full flex flex-col border-r border-border bg-card/50">
+    <div className="h-full flex flex-col border-r border-border/50">
       {/* Date header */}
-      <div className="p-3 border-b border-border">
-        <h3 className="text-sm font-semibold">{format(parseISO(selectedDate), 'MMMM d, yyyy')}</h3>
+      <div className="px-4 py-3 border-b border-border/40">
+        <h3 className="text-sm font-semibold tracking-tight">{format(parseISO(selectedDate), 'MMMM d, yyyy')}</h3>
         <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-muted-foreground">{trades.length} trades</span>
-          {wins > 0 && <span className="text-[10px] text-profit">{wins}W</span>}
-          {losses > 0 && <span className="text-[10px] text-loss">{losses}L</span>}
-          <span className={cn('text-xs font-bold ml-auto', dailyPnl >= 0 ? 'text-profit' : 'text-loss')}>
+          <span className="text-[11px] text-muted-foreground">{trades.length} trades</span>
+          {wins > 0 && <span className="text-[10px] font-medium text-profit">{wins}W</span>}
+          {losses > 0 && <span className="text-[10px] font-medium text-loss">{losses}L</span>}
+          <span className={cn('text-xs font-semibold ml-auto tabular-nums', dailyPnl >= 0 ? 'text-profit' : 'text-loss')}>
             {dailyPnl >= 0 ? '+' : ''}${dailyPnl.toFixed(2)}
           </span>
         </div>
@@ -34,15 +33,17 @@ const TradePageList = ({ trades, selectedDate, selectedTradeId, onSelectTrade }:
 
       {/* Trade items */}
       <ScrollArea className="flex-1">
-        <div className="py-1">
+        <div className="p-1.5 space-y-0.5">
           {trades.map(trade => (
             <button
               key={trade.id}
               onClick={() => onSelectTrade(trade)}
               className={cn(
-                'w-full text-left px-3 py-3 transition-colors border-b border-border/50',
-                'hover:bg-accent/50',
-                selectedTradeId === trade.id && 'bg-accent border-l-2 border-l-primary'
+                'w-full text-left px-3 py-2.5 rounded-md transition-all duration-150',
+                'hover:bg-secondary/60',
+                selectedTradeId === trade.id
+                  ? 'bg-primary/10 border-l-2 border-l-primary'
+                  : 'border-l-2 border-l-transparent'
               )}
             >
               <div className="flex items-center justify-between">
@@ -55,23 +56,20 @@ const TradePageList = ({ trades, selectedDate, selectedTradeId, onSelectTrade }:
                   <span className="text-sm font-medium">{trade.pair}</span>
                   {trade.starred && <Star className="w-3 h-3 text-warning fill-current" />}
                 </div>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    'text-[10px] px-1.5 py-0',
-                    trade.outcome === 'WIN' && 'border-profit text-profit',
-                    trade.outcome === 'LOSS' && 'border-loss text-loss',
-                    trade.outcome === 'BREAKEVEN' && 'border-muted-foreground text-muted-foreground'
-                  )}
-                >
+                <span className={cn(
+                  'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded',
+                  trade.outcome === 'WIN' && 'text-profit bg-profit/10',
+                  trade.outcome === 'LOSS' && 'text-loss bg-loss/10',
+                  trade.outcome === 'BREAKEVEN' && 'text-muted-foreground bg-muted/50'
+                )}>
                   {trade.outcome}
-                </Badge>
+                </span>
               </div>
               <div className="flex items-center justify-between mt-1.5">
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground/60">
                   {trade.session} · {trade.timeframe} · {trade.strategy}
                 </span>
-                <span className={cn('text-xs font-semibold', trade.pnl >= 0 ? 'text-profit' : 'text-loss')}>
+                <span className={cn('text-xs font-semibold tabular-nums', trade.pnl >= 0 ? 'text-profit' : 'text-loss')}>
                   {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(0)}
                 </span>
               </div>
