@@ -8,6 +8,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
+import { formatPairWithFlags } from '@/lib/pairFlags';
 interface NotificationItem {
   id: string;
   icon: typeof TrendingUp;
