@@ -4,6 +4,7 @@ import { CurrencyStrengthRecord } from '@/types/correlation';
 import { StrengthMeter } from '@/components/correlation/StrengthMeter';
 import { SummaryCards } from '@/components/correlation/SummaryCards';
 import { PairSuggestions } from '@/components/correlation/PairSuggestions';
+import { StrengthTrendChart } from '@/components/correlation/StrengthTrendChart';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
