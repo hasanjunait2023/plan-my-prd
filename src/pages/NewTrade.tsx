@@ -16,6 +16,9 @@ import ImageUpload from '@/components/journal/ImageUpload';
 import ScreenshotAnalyzer, { ExtractedTradeData } from '@/components/journal/ScreenshotAnalyzer';
 import { formatPairWithFlags } from '@/lib/pairFlags';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
+import { useInsertTrade } from '@/hooks/useTrades';
+import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 
 const sessions: Session[] = ['Asian', 'London', 'New York', 'London Close'];
 const timeframes: Timeframe[] = ['1M', '5M', '15M', '1H', '4H', 'D', 'W'];
