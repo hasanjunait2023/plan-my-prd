@@ -108,7 +108,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'Price TP এর কাছে গেছে। Excellent trade।',
     whatWentWell: 'Pullback এ ভয় পাইনি। Conviction ছিল analysis এ।',
     improvementNotes: '',
-    screenshots: [], partialCloses: [], starred: true, createdAt: '2026-03-28T14:30:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: true, createdAt: '2026-03-28T14:30:00Z',
   },
   {
     id: '6', date: '2026-03-27', pair: 'GBP/JPY', direction: 'SHORT', session: 'London',
