@@ -17,10 +17,8 @@ const TradeJournal = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
-  // Mobile drill-down: 'dates' → 'trades' → 'document'
   const [mobileView, setMobileView] = useState<'dates' | 'trades' | 'document'>('dates');
 
-  // Filter trades by search
   const filteredTrades = useMemo(() => {
     if (!searchQuery) return mockTrades;
     const q = searchQuery.toLowerCase();
@@ -33,13 +31,11 @@ const TradeJournal = () => {
     );
   }, [searchQuery]);
 
-  // Trades for selected date
   const dateTrades = useMemo(() => {
     if (!selectedDate) return [];
     return filteredTrades.filter(t => t.date === selectedDate);
   }, [filteredTrades, selectedDate]);
 
-  // Auto-select first date
   useEffect(() => {
     if (!selectedDate && filteredTrades.length > 0) {
       const dates = [...new Set(filteredTrades.map(t => t.date))].sort((a, b) => b.localeCompare(a));
@@ -47,7 +43,6 @@ const TradeJournal = () => {
     }
   }, [filteredTrades, selectedDate]);
 
-  // Auto-select first trade when date changes
   useEffect(() => {
     if (dateTrades.length > 0) {
       setSelectedTrade(dateTrades[0]);
@@ -66,41 +61,29 @@ const TradeJournal = () => {
     if (isMobile) setMobileView('document');
   }, [isMobile]);
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
-      
       const dates = [...new Set(filteredTrades.map(t => t.date))].sort((a, b) => b.localeCompare(a));
       const currentDateIdx = selectedDate ? dates.indexOf(selectedDate) : -1;
       const currentTradeIdx = selectedTrade ? dateTrades.findIndex(t => t.id === selectedTrade.id) : -1;
-
-      if (e.key === 'ArrowUp' && e.altKey && currentDateIdx > 0) {
-        e.preventDefault();
-        setSelectedDate(dates[currentDateIdx - 1]);
-      } else if (e.key === 'ArrowDown' && e.altKey && currentDateIdx < dates.length - 1) {
-        e.preventDefault();
-        setSelectedDate(dates[currentDateIdx + 1]);
-      } else if (e.key === 'ArrowUp' && !e.altKey && currentTradeIdx > 0) {
-        e.preventDefault();
-        setSelectedTrade(dateTrades[currentTradeIdx - 1]);
-      } else if (e.key === 'ArrowDown' && !e.altKey && currentTradeIdx < dateTrades.length - 1) {
-        e.preventDefault();
-        setSelectedTrade(dateTrades[currentTradeIdx + 1]);
-      }
+      if (e.key === 'ArrowUp' && e.altKey && currentDateIdx > 0) { e.preventDefault(); setSelectedDate(dates[currentDateIdx - 1]); }
+      else if (e.key === 'ArrowDown' && e.altKey && currentDateIdx < dates.length - 1) { e.preventDefault(); setSelectedDate(dates[currentDateIdx + 1]); }
+      else if (e.key === 'ArrowUp' && !e.altKey && currentTradeIdx > 0) { e.preventDefault(); setSelectedTrade(dateTrades[currentTradeIdx - 1]); }
+      else if (e.key === 'ArrowDown' && !e.altKey && currentTradeIdx < dateTrades.length - 1) { e.preventDefault(); setSelectedTrade(dateTrades[currentTradeIdx + 1]); }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [filteredTrades, selectedDate, selectedTrade, dateTrades]);
 
-  // Mobile layout
   if (isMobile) {
     return (
       <div className="h-[calc(100vh-7rem)] flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-1 pb-3">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-primary" />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+              <BookOpen className="w-4 h-4 text-primary" />
+            </div>
             <h1 className="text-lg font-bold">Trade Journal</h1>
           </div>
           <Button size="sm" onClick={() => navigate('/new-trade')}>
@@ -109,34 +92,23 @@ const TradeJournal = () => {
         </div>
 
         {mobileView === 'dates' && (
-          <div className="flex-1 overflow-hidden rounded-lg border border-border">
-            <NotebookSidebar
-              trades={filteredTrades}
-              selectedDate={selectedDate}
-              onSelectDate={handleSelectDate}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-            />
+          <div className="flex-1 overflow-hidden rounded-lg border border-border/30 bg-card/50 backdrop-blur-sm">
+            <NotebookSidebar trades={filteredTrades} selectedDate={selectedDate} onSelectDate={handleSelectDate} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
           </div>
         )}
 
         {mobileView === 'trades' && selectedDate && (
-          <div className="flex-1 overflow-hidden rounded-lg border border-border">
-            <div className="p-2 border-b border-border">
+          <div className="flex-1 overflow-hidden rounded-lg border border-border/30 bg-card/50 backdrop-blur-sm">
+            <div className="p-2 border-b border-border/30">
               <button onClick={() => setMobileView('dates')} className="text-xs text-primary">← Dates</button>
             </div>
-            <TradePageList
-              trades={dateTrades}
-              selectedDate={selectedDate}
-              selectedTradeId={selectedTrade?.id ?? null}
-              onSelectTrade={handleSelectTrade}
-            />
+            <TradePageList trades={dateTrades} selectedDate={selectedDate} selectedTradeId={selectedTrade?.id ?? null} onSelectTrade={handleSelectTrade} />
           </div>
         )}
 
         {mobileView === 'document' && selectedTrade && (
           <div className="flex-1 overflow-auto">
-            <div className="p-2 border-b border-border">
+            <div className="p-2 border-b border-border/30">
               <button onClick={() => setMobileView('trades')} className="text-xs text-primary">← Trades</button>
             </div>
             <div className="p-4">
@@ -148,62 +120,41 @@ const TradeJournal = () => {
     );
   }
 
-  // Desktop 3-panel layout
   return (
     <div className="h-[calc(100vh-7rem)] flex flex-col">
-      {/* Header */}
       <div className="flex items-center justify-between px-1 pb-3">
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-bold">Trade Journal</h1>
-          <span className="text-xs text-muted-foreground">{filteredTrades.length} trades</span>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shadow-[0_0_12px_hsla(145,63%,49%,0.15)]">
+            <BookOpen className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold">Trade Journal</h1>
+            <span className="text-xs text-muted-foreground">{filteredTrades.length} trades</span>
+          </div>
         </div>
         <Button size="sm" onClick={() => navigate('/new-trade')}>
           <Plus className="w-4 h-4 mr-1" /> New Trade
         </Button>
       </div>
 
-      {/* 3-Panel Notebook */}
-      <div className="flex-1 overflow-hidden rounded-lg border border-border">
+      <div className="flex-1 overflow-hidden rounded-lg border border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
         <ResizablePanelGroup direction="horizontal">
-          {/* Panel 1: Date Sections */}
           <ResizablePanel defaultSize={18} minSize={14} maxSize={28}>
-            <NotebookSidebar
-              trades={filteredTrades}
-              selectedDate={selectedDate}
-              onSelectDate={handleSelectDate}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-            />
+            <NotebookSidebar trades={filteredTrades} selectedDate={selectedDate} onSelectDate={handleSelectDate} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
           </ResizablePanel>
-
-          <ResizableHandle />
-
-          {/* Panel 2: Trade Pages */}
+          <ResizableHandle className="bg-border/30" />
           <ResizablePanel defaultSize={22} minSize={16} maxSize={32}>
             {selectedDate ? (
-              <TradePageList
-                trades={dateTrades}
-                selectedDate={selectedDate}
-                selectedTradeId={selectedTrade?.id ?? null}
-                onSelectTrade={handleSelectTrade}
-              />
+              <TradePageList trades={dateTrades} selectedDate={selectedDate} selectedTradeId={selectedTrade?.id ?? null} onSelectTrade={handleSelectTrade} />
             ) : (
-              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                একটি তারিখ বেছে নাও
-              </div>
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">একটি তারিখ বেছে নাও</div>
             )}
           </ResizablePanel>
-
-          <ResizableHandle />
-
-          {/* Panel 3: Document Content */}
+          <ResizableHandle className="bg-border/30" />
           <ResizablePanel defaultSize={60}>
             {selectedTrade ? (
               <ScrollArea className="h-full">
-                <div className="p-6">
-                  <TradeDocument trade={selectedTrade} />
-                </div>
+                <div className="p-6"><TradeDocument trade={selectedTrade} /></div>
               </ScrollArea>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3">

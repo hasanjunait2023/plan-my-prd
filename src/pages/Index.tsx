@@ -3,8 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { mockTrades, mockDailyPnL, mockRules, mockPsychologyLogs, mockAccountSettings } from '@/data/mockData';
-import { TrendingUp, TrendingDown, Target, Activity, Flame, Brain, ShieldCheck, Star, BookOpen } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Activity, Flame, Brain, ShieldCheck, Star, BookOpen, LayoutDashboard } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
+const tooltipStyle = { backgroundColor: 'hsl(0, 0%, 8%)', border: '1px solid hsla(0,0%,100%,0.1)', borderRadius: '8px', color: 'hsl(0, 0%, 95%)' };
 
 const Dashboard = () => {
   const todayPnL = useMemo(() => {
@@ -43,7 +46,6 @@ const Dashboard = () => {
   const ruleOfDay = mockRules[Math.floor(Date.now() / 86400000) % mockRules.length];
   const latestPsych = mockPsychologyLogs[0];
 
-  // Streak calculation
   const winStreak = (() => {
     let streak = 0;
     for (const t of mockTrades) {
@@ -56,16 +58,21 @@ const Dashboard = () => {
   const journalStreak = mockPsychologyLogs.length;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground text-sm">Welcome back, Trader. Here's your overview.</p>
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Premium Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+          <LayoutDashboard className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground text-sm">Welcome back, Trader. Here's your overview.</p>
+        </div>
       </div>
 
       {/* Top row: P&L + Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Today's P&L */}
-        <Card>
+        <Card className={`${glassCard} bg-gradient-to-br from-emerald-500/10 to-transparent`}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">Today's P&L</p>
@@ -80,12 +87,11 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Win Rate */}
-        <Card>
+        <Card className={`${glassCard} bg-gradient-to-br from-blue-500/10 to-transparent`}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">Win Rate</p>
-              <Target className="w-4 h-4 text-primary" />
+              <Target className="w-4 h-4 text-blue-400" />
             </div>
             <p className="text-3xl font-bold mt-1">{stats.winRate.toFixed(1)}%</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -94,12 +100,11 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Profit Factor */}
-        <Card>
+        <Card className={`${glassCard} bg-gradient-to-br from-violet-500/10 to-transparent`}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">Profit Factor</p>
-              <Activity className="w-4 h-4 text-primary" />
+              <Activity className="w-4 h-4 text-violet-400" />
             </div>
             <p className="text-3xl font-bold mt-1">{stats.profitFactor.toFixed(2)}</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -108,8 +113,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Max Drawdown */}
-        <Card>
+        <Card className={`${glassCard} bg-gradient-to-br from-red-500/10 to-transparent`}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">Max Drawdown</p>
@@ -125,10 +129,14 @@ const Dashboard = () => {
 
       {/* Second row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Weekly P&L Progress */}
-        <Card>
+        <Card className={glassCard}>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Weekly P&L Progress</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="w-3 h-3 text-primary" />
+              </div>
+              Weekly P&L Progress
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className={`text-2xl font-bold ${weeklyPnL >= 0 ? 'text-profit' : 'text-loss'}`}>
@@ -142,22 +150,23 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Mini Equity Curve */}
-        <Card className="lg:col-span-2">
+        <Card className={`${glassCard} lg:col-span-2`}>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Equity Curve</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                <Activity className="w-3 h-3 text-primary" />
+              </div>
+              Equity Curve
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-32">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={equityCurve}>
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(213, 16%, 50%)' }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(0, 0%, 45%)' }} axisLine={false} tickLine={false} />
                   <YAxis hide domain={['dataMin - 100', 'dataMax + 100']} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: 'hsl(210, 38%, 17%)', border: 'none', borderRadius: '8px', color: 'hsl(192, 15%, 94%)' }}
-                    formatter={(value: number) => [`$${value.toFixed(0)}`, 'Balance']}
-                  />
-                  <Line type="monotone" dataKey="balance" stroke="hsl(170, 100%, 39%)" strokeWidth={2} dot={false} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`$${value.toFixed(0)}`, 'Balance']} />
+                  <Line type="monotone" dataKey="balance" stroke="hsl(145, 63%, 49%)" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -165,10 +174,9 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Third row: Streaks + Last Trade + Rule + Psych */}
+      {/* Third row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Win Streak */}
-        <Card>
+        <Card className={`${glassCard} bg-gradient-to-br from-orange-500/10 to-transparent`}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
               <Flame className="w-4 h-4 text-warning" />
@@ -178,19 +186,17 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Journal Streak */}
-        <Card>
+        <Card className={`${glassCard} bg-gradient-to-br from-blue-500/10 to-transparent`}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
-              <BookOpen className="w-4 h-4 text-primary" />
+              <BookOpen className="w-4 h-4 text-blue-400" />
               <p className="text-sm text-muted-foreground">Journal Streak</p>
             </div>
             <p className="text-2xl font-bold">{journalStreak} days</p>
           </CardContent>
         </Card>
 
-        {/* Rule of the Day */}
-        <Card>
+        <Card className={`${glassCard} bg-gradient-to-br from-emerald-500/10 to-transparent`}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
               <ShieldCheck className="w-4 h-4 text-primary" />
@@ -200,11 +206,10 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Psychology State */}
-        <Card>
+        <Card className={`${glassCard} bg-gradient-to-br from-violet-500/10 to-transparent`}>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
-              <Brain className="w-4 h-4 text-primary" />
+              <Brain className="w-4 h-4 text-violet-400" />
               <p className="text-sm text-muted-foreground">Today's Mental State</p>
             </div>
             <div className="flex items-center gap-2">
@@ -220,10 +225,15 @@ const Dashboard = () => {
       </div>
 
       {/* Last Trade */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium">Last Trade</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                <Star className="w-3 h-3 text-primary" />
+              </div>
+              Last Trade
+            </CardTitle>
             {lastTrade.starred && <Star className="w-4 h-4 text-warning fill-warning" />}
           </div>
         </CardHeader>
