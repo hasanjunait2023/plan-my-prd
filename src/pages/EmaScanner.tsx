@@ -89,7 +89,7 @@ export default function EmaScanner() {
       const isBuy = mainDir === 'BUY';
 
       const aligns = {
-        '3min': checkEma(get('3min'), isBuy),
+        '5min': checkEma(get('5min'), isBuy),
         '15min': checkEma(get('15min'), isBuy),
         '1h': checkEma(get('1h'), isBuy),
       };

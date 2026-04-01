@@ -47,7 +47,7 @@ export function AlignmentCard({ data, onClick }: AlignmentCardProps) {
 
       {/* Timeframe Grid */}
       <div className="space-y-1.5">
-        {(['3min', '15min', '1h'] as const).map((tf) => {
+        {(['5min', '15min', '1h'] as const).map((tf) => {
           const a = data.alignments[tf];
           return (
             <div key={tf} className="flex items-center gap-2">

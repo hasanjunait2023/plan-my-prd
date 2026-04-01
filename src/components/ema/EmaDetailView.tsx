@@ -39,7 +39,7 @@ export function EmaDetailView({ pair, alignments, onClose }: EmaDetailViewProps)
             </tr>
           </thead>
           <tbody>
-            {(['3min', '15min', '1h'] as const).map((tf) => {
+            {(['5min', '15min', '1h'] as const).map((tf) => {
               const row = grouped[tf];
               if (!row) return (
                 <tr key={tf} className="border-b border-border/20">
