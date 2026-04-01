@@ -33,6 +33,7 @@ const mainNavItems = [
   { title: 'Analytics', short: 'Ana', url: '/analytics', icon: BarChart3 },
   { title: 'Strength', short: 'Str', url: '/currency-strength', icon: Gauge },
   { title: 'EMA Scan', short: 'EMA', url: '/ema-scanner', icon: Crosshair },
+  { title: 'Charts', short: 'Chart', url: '/charts', icon: LineChart },
 ];
 
 const profileMenuItems = [
