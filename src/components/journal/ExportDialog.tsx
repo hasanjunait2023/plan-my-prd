@@ -29,6 +29,7 @@ const ExportDialog = ({ open, onOpenChange, trades }: ExportDialogProps) => {
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [outcomes, setOutcomes] = useState<TradeOutcome[]>(['WIN', 'LOSS', 'BREAKEVEN']);
+  const [includeScreenshots, setIncludeScreenshots] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   const years = useMemo(() => {
