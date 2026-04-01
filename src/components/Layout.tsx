@@ -36,6 +36,7 @@ const mainNavItems = [
 ];
 
 const profileMenuItems = [
+  { title: 'MT5', url: '/mt5', icon: Cable },
   { title: 'Commodities', url: '/commodities', icon: Gem },
   { title: 'Crypto', url: '/crypto', icon: Bitcoin },
   { title: 'Correlation', url: '/correlation-pairs', icon: GitCompareArrows },
