@@ -1,4 +1,5 @@
 import { TrendingUp, TrendingDown, Zap, Clock, BarChart3, Crosshair } from 'lucide-react';
+import { PairWithFlags } from '@/lib/pairFlags';
 
 interface ConfluenceScore {
   pair: string;
