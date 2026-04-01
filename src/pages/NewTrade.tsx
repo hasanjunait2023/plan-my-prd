@@ -27,6 +27,8 @@ const emotions: PsychEmotion[] = ['Confident', 'Fearful', 'Greedy', 'Calm', 'Anx
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 
 const NewTrade = () => {
+  const insertTrade = useInsertTrade();
+  const navigate = useNavigate();
   const [direction, setDirection] = useState<Direction>('LONG');
   const [pair, setPair] = useState('');
   const [session, setSession] = useState<string>('');
