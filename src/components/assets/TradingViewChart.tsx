@@ -20,13 +20,6 @@ const TIMEFRAMES = [
   { label: '1H', value: '60' },
 ];
 
-const STUDIES = encodeURIComponent(JSON.stringify([
-  "MAExp@tv-basicstudies|{\"length\":9}",
-  "MAExp@tv-basicstudies|{\"length\":15}",
-  "MAExp@tv-basicstudies|{\"length\":200}",
-  "RSI@tv-basicstudies",
-]));
-
 export function TradingViewChart({ symbol, title }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [interval, setInterval] = useState('60');
@@ -36,18 +29,46 @@ export function TradingViewChart({ symbol, title }: TradingViewChartProps) {
     containerRef.current.innerHTML = '';
 
     const tvSymbol = TV_SYMBOLS[symbol] || symbol;
-    const widgetHtml = `
-      <div class="tradingview-widget-container" style="height:100%;width:100%">
-        <iframe
-          scrolling="no"
-          allowtransparency="true"
-          frameborder="0"
-          src="https://s.tradingview.com/widgetembed/?hideideas=1&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=en&utm_source=localhost&utm_medium=widget_new&utm_campaign=chart&utm_term=${encodeURIComponent(tvSymbol)}#%7B%22symbol%22%3A%22${encodeURIComponent(tvSymbol)}%22%2C%22frameElementId%22%3A%22tv_${symbol}%22%2C%22interval%22%3A%22${interval}%22%2C%22hide_top_toolbar%22%3A%221%22%2C%22hide_legend%22%3A%220%22%2C%22save_image%22%3A%220%22%2C%22studies%22%3A${STUDIES}%2C%22theme%22%3A%22dark%22%2C%22style%22%3A%221%22%2C%22timezone%22%3A%22Etc%2FUTC%22%2C%22withdateranges%22%3A%221%22%2C%22studies_overrides%22%3A%7B%7D%2C%22width%22%3A%22100%25%22%2C%22height%22%3A%22100%25%22%7D"
-          style="width:100%;height:100%;"
-        ></iframe>
-      </div>
-    `;
-    containerRef.current.innerHTML = widgetHtml;
+
+    const widgetContainer = document.createElement('div');
+    widgetContainer.className = 'tradingview-widget-container';
+    widgetContainer.style.height = '100%';
+    widgetContainer.style.width = '100%';
+
+    const widgetInner = document.createElement('div');
+    widgetInner.className = 'tradingview-widget-container__widget';
+    widgetInner.style.height = '100%';
+    widgetInner.style.width = '100%';
+    widgetContainer.appendChild(widgetInner);
+
+    const script = document.createElement('script');
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+    script.async = true;
+    script.type = 'text/javascript';
+    script.innerHTML = JSON.stringify({
+      symbol: tvSymbol,
+      interval: interval,
+      theme: 'dark',
+      style: '1',
+      locale: 'en',
+      timezone: 'Etc/UTC',
+      studies: [
+        { id: "MAExp@tv-basicstudies", inputs: { length: 9 } },
+        { id: "MAExp@tv-basicstudies", inputs: { length: 15 } },
+        { id: "MAExp@tv-basicstudies", inputs: { length: 200 } },
+        { id: "RSI@tv-basicstudies" },
+      ],
+      hide_top_toolbar: true,
+      hide_legend: false,
+      save_image: false,
+      allow_symbol_change: false,
+      width: '100%',
+      height: '100%',
+      support_host: 'https://www.tradingview.com',
+    });
+
+    widgetContainer.appendChild(script);
+    containerRef.current.appendChild(widgetContainer);
   }, [symbol, interval]);
 
   return (
