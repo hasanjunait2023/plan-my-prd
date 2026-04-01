@@ -1,84 +1,74 @@
 
 
-# Currency Strength Page — Enhanced Visualization + Date History
+# সমস্ত Page এ Currency Strength এর Premium UI Theme Apply
 
 ## বর্তমান অবস্থা
-এখন শুধু একটা horizontal bar chart আছে timeframe tabs সহ। তুমি চাও:
-1. **আরো visual structures** — যাতে seconds এ বোঝা যায় কে strong, কে weak
-2. **Date-wise history** — পুরনো data stored থাকবে, যেকোনো date এর data দেখা যাবে
-3. **Additional features** — আরো কী কী useful হতে পারে
+Currency Strength page এ premium UI আছে — glass-morphism cards, gradient backgrounds, icon badges, backdrop-blur, glowing shadows। কিন্তু বাকি pages (Dashboard, Analytics, Psychology, Settings, NewTrade, TradeJournal) এ plain `<Card>` ব্যবহার করা হয়েছে কোনো premium styling ছাড়া।
 
-## Plan
+## কী করবো
 
-### 1. Summary Cards (Top Row)
-Page এর top এ 4টা summary card:
-- 🟢 **Strongest Currency** — flag + name + score (বড় করে)
-- 🔴 **Weakest Currency** — flag + name + score
-- 📊 **Best Pair to Trade** — strongest vs weakest (e.g. "EUR/NZD — BUY")
-- ⚡ **Strength Gap** — strongest আর weakest এর মধ্যে difference
+### Premium UI Pattern (Currency Strength থেকে নেওয়া)
+- **Cards**: `border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]`
+- **Page Headers**: Icon badge (rounded bg with icon) + bold title + subtitle
+- **Section Headers**: Small icon badge + bold title inside CardHeader
+- **Metric Cards**: Gradient backgrounds (`from-color/20 to-transparent`), glowing accents
+- **Buttons/Tabs**: `bg-card/50 backdrop-blur-sm border-border/40` style
+- **Layout**: Consistent `max-w-6xl mx-auto` spacing
 
-এতে এক নজরে বুঝে যাবে কোন pair trade করতে হবে।
-
-### 2. Ranking Table
-Bar chart এর পাশে একটা compact **ranking list**:
-- 1st, 2nd, 3rd... rank number
-- Flag + Currency + Score
-- Category color dot
-- Arrow icon (↑ bullish / ↓ bearish)
-
-### 3. Pair Suggestion Grid
-Strongest আর weakest currencies combine করে automatically **tradable pair suggestions** দেখাবে:
-- Top 3 BUY pairs (strong vs weak)
-- Top 3 SELL pairs (weak vs strong)
-- Direction + expected strength
-
-### 4. Date Picker — Historical Data
-- Page এ একটা **date picker** add করবো
-- Default: আজকের date
-- যেকোনো পুরনো date select করলে সেই দিনের data দেখাবে
-- Query: `recorded_at` column filter করে সেই date এর data আনবে
-
-### 5. DB Change — Data Retention
-বর্তমানে edge function পুরনো data delete করে নতুন data insert করে। পরিবর্তন:
-- **Delete বন্ধ** — পুরনো data রাখবো
-- শুধু নতুন data insert হবে
-- Frontend এ latest data default দেখাবে, date picker দিয়ে পুরনো দেখা যাবে
-
-### 6. Strength Change Indicator (Bonus)
-যদি আগের দিনের data থাকে:
-- প্রতিটা currency র পাশে ↑↓ arrow দেখাবে — আগের দিনের তুলনায় strength বেড়েছে না কমেছে
-
-## Files to Change
+### Files to Change
 
 | File | Change |
 |------|--------|
-| `src/pages/CurrencyStrength.tsx` | Date picker, summary cards, pair suggestions, ranking table add |
-| `src/components/correlation/StrengthMeter.tsx` | Ranking numbers + change indicators add |
-| `src/components/correlation/SummaryCards.tsx` (new) | Top summary cards component |
-| `src/components/correlation/PairSuggestions.tsx` (new) | Auto pair suggestion grid |
-| `supabase/functions/store-currency-strength/index.ts` | Delete logic সরাবো — শুধু insert করবে |
-| `src/types/correlation.ts` | PairSuggestion interface add |
+| `src/pages/Index.tsx` | Dashboard — premium header, glass cards, gradient metric cards, glowing equity curve |
+| `src/pages/Analytics.tsx` | Premium header, gradient metric grid, glass chart cards |
+| `src/pages/Psychology.tsx` | Premium header, glass form card, gradient trend charts |
+| `src/pages/Settings.tsx` | Premium header, glass setting cards |
+| `src/pages/NewTrade.tsx` | Premium header, glass form sections |
+| `src/pages/TradeJournal.tsx` | Premium header, glass panel borders |
+| `src/components/AppSidebar.tsx` | Sidebar — glass effect, subtle glow on logo |
+| `src/components/Layout.tsx` | Header bar — glass effect with backdrop-blur |
 
-## Visual Layout
+### প্রতিটা Page এর Changes
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  💱 Currency Strength    [Date Picker] [1H|15M|3M]  │
-│  আপডেট: 01 Apr 2026, 12:00 PM         [রিফ্রেশ]   │
-├──────────┬──────────┬──────────┬────────────────────┤
-│ 🟢 EUR   │ 🔴 NZD   │ 📊 BUY   │ ⚡ Gap: 13       │
-│ Strongest│ Weakest  │ EUR/NZD  │ (6 vs -7)         │
-│ +6       │ -7       │          │                    │
-├──────────┴──────────┴──────────┴────────────────────┤
-│  [Strength Meter Bars — existing + rank numbers]    │
-│  1. 🇪🇺 EUR  ████████████▓  +6  STRONG             │
-│  2. 🇯🇵 JPY  ████████████▓  +6  STRONG             │
-│  3. 🇺🇸 USD  ██████▓        +3  NEUTRAL            │
-│  ...                                                │
-├─────────────────────────────────────────────────────┤
-│  📈 Suggested Pairs                                 │
-│  BUY: EUR/NZD, JPY/NZD, EUR/CAD                    │
-│  SELL: NZD/EUR, NZD/JPY, CAD/EUR                   │
-└─────────────────────────────────────────────────────┘
-```
+**Dashboard (Index.tsx)**:
+- Header: Icon badge + "Dashboard" title + subtitle
+- Top 4 metric cards: Gradient bg variants (green for P&L, blue for win rate, etc.)
+- Chart cards: Glass card style
+- Streak/Rule/Psych cards: Subtle gradient accents
+
+**Analytics**:
+- Header: Icon badge + title
+- 10-metric grid: Individual gradient accent colors
+- Equity Curve + Daily P&L cards: Glass style with section icon badges
+
+**Psychology**:
+- Header: Brain icon badge
+- Form card: Glass card, gradient auto-score section
+- Chart cards: Glass style
+
+**Settings**:
+- Header: Settings icon badge
+- Form cards: Glass style with section icon badges
+- Save button: Gradient or glow effect
+
+**NewTrade**:
+- Header: Plus icon badge
+- Form sections: Glass cards with section icon badges
+
+**TradeJournal**:
+- Header: BookOpen icon badge with glow
+- Panel container: Glass border effect
+
+**Sidebar**:
+- Logo: Gradient glow effect
+- Active item: Subtle gradient highlight
+
+**Layout Header**:
+- `backdrop-blur-md bg-background/80 border-border/30` — glass top bar
+
+### মূল নীতি
+- সব page এ **একই card style** — glass + shadow + border opacity
+- সব page header এ **icon badge + bold title + muted subtitle**
+- Chart tooltip styles সব জায়গায় consistent
+- কোনো functional change নেই — শুধু visual upgrade
 
