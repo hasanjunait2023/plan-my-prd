@@ -1,46 +1,51 @@
 
 
-# TradingView Chart Indicators Fix
+# Correlation Pairs Page — Multi-Chart Grid (Modified)
 
-## সমস্যা
-`widgetembed` URL এ studies parameter এর format সঠিক না — `MAExp@tv-basicstudies|{\"length\":9}` syntax এই widget type এ কাজ করে না।
+## কি করতে হবে
+নতুন `/correlation-pairs` page — user একটা currency select করবে, তারপর সেই currency র **6টা** major pairs 2x3 grid এ TradingView charts এ দেখাবে।
 
-## সমাধান
-TradingView এর **Advanced Chart Widget** (`embed-widget/advanced-chart/`) ব্যবহার করবো — এটা newer endpoint যেখানে studies properly কাজ করে। Script-based widget initialization করবো iframe এর বদলে।
+## Pair Generation Logic
 
-## Technical Change
+প্রতিটা currency র জন্য সবচেয়ে traded 6টা pair select করবো (7টার মধ্যে least liquid টা বাদ):
 
-**File: `src/components/assets/TradingViewChart.tsx`**
-
-iframe URL approach বাদ দিয়ে TradingView widget script inject করবো:
-
-```typescript
-const script = document.createElement('script');
-script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-script.async = true;
-script.innerHTML = JSON.stringify({
-  symbol: tvSymbol,
-  interval: interval,
-  theme: 'dark',
-  style: '1',
-  locale: 'en',
-  timezone: 'Etc/UTC',
-  studies: [
-    { id: "MAExp@tv-basicstudies", inputs: { length: 9 } },
-    { id: "MAExp@tv-basicstudies", inputs: { length: 15 } },
-    { id: "MAExp@tv-basicstudies", inputs: { length: 200 } },
-    { id: "RSI@tv-basicstudies" }
-  ],
-  hide_top_toolbar: true,
-  hide_legend: false,
-  save_image: false,
-  width: '100%',
-  height: '100%',
-});
+```text
+Selected: CAD → USDCAD, GBPCAD, EURCAD, NZDCAD, AUDCAD, CADJPY
+Selected: EUR → EURUSD, EURGBP, EURJPY, EURAUD, EURNZD, EURCAD
+Selected: USD → EURUSD, GBPUSD, USDJPY, AUDUSD, NZDUSD, USDCAD
 ```
 
-- Script-based embed properly supports `studies` array with `inputs`
-- EMA 9, 15, 200 এবং RSI সব correctly render হবে
-- Timeframe switch ও আগের মতো কাজ করবে — `useEffect` dependency তে `interval` আছে
-- শুধু একটা file change
+## UI Layout
+
+```text
+┌──────────────────────────────────────────┐
+│  📊 Correlation Pairs                     │
+│  [🇪🇺EUR] [🇺🇸USD] [🇬🇧GBP] [🇯🇵JPY]...  │
+│  Timeframe: [3M] [15M] [1H]             │
+├──────────┬──────────┬──────────┐         │
+│ Pair 1   │ Pair 2   │ Pair 3   │         │
+│ (chart)  │ (chart)  │ (chart)  │         │
+├──────────┼──────────┼──────────┤         │
+│ Pair 4   │ Pair 5   │ Pair 6   │         │
+│ (chart)  │ (chart)  │ (chart)  │         │
+└──────────────────────────────────────────┘
+```
+
+Clean 2x3 grid — কোনো orphan chart নেই।
+
+## Files
+
+| Action | File | Description |
+|--------|------|-------------|
+| **Create** | `src/pages/CorrelationPairs.tsx` | Main page — currency selector, timeframe, 2x3 pair grid |
+| **Create** | `src/components/correlation/MiniChart.tsx` | Compact TradingView chart (~250px height) with EMA+RSI |
+| **Modify** | `src/App.tsx` | Route `/correlation-pairs` যোগ |
+| **Modify** | `src/components/Layout.tsx` | Navigation link যোগ |
+
+## Technical Details
+
+- **MiniChart**: `TradingViewChart` এর compact version — height ~250px, `hide_top_toolbar: true`, `hide_side_toolbar: true`, flag emoji header
+- **Pair ordering**: Standard forex convention (EUR > GBP > AUD > NZD > USD > CAD > CHF > JPY), প্রতিটা currency থেকে top 6 pairs
+- **TradingView symbols**: `OANDA:` prefix
+- **Grid**: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3` — responsive 2x3
 
