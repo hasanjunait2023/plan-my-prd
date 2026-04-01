@@ -1,71 +1,56 @@
 
 
-# Trade Journal Export Feature — Updated Plan
+# OpenRouter দিয়ে Screenshot Analysis — Plan
 
 ## কি করতে হবে
-Journal page থেকে trades export — PDF বা DOCX format এ, date filter + **trade outcome filter** সহ।
+বর্তমানে screenshot analysis Lovable AI Gateway ব্যবহার করে। এটা পরিবর্তন করে **OpenRouter API** ব্যবহার করবো, free vision models দিয়ে।
 
-## UI Design
-
-### Export Button
-Journal header এ "New Trade" button এর পাশে **Export** button (Download icon)। Click করলে Export Dialog open হবে।
-
-### Export Dialog (`ExportDialog.tsx`)
-
-1. **Format Selection**: PDF / DOCX (radio buttons)
-
-2. **Date Range Selection** (3 options):
-   - **Monthly** — Month + Year picker
-   - **Yearly** — Year picker
-   - **Custom Range** — Start date + End date
-
-3. **Trade Outcome Filter** (multi-select checkboxes, সব default selected):
-   - ✅ Winning Trades
-   - ✅ Losing Trades
-   - ✅ Breakeven Trades
-
-4. **Preview**: "12 trades found" — filter অনুযায়ী count দেখাবে
-
-5. **Export Button** — file generate + download
-
-## Filtering Logic
-
-```text
-Date filter:
-  Monthly → trades.filter(t => t.date starts with "YYYY-MM")
-  Yearly  → trades.filter(t => t.date starts with "YYYY")
-  Custom  → trades.filter(t => t.date >= start && t.date <= end)
-
-Outcome filter:
-  trades.filter(t => selectedOutcomes.includes(t.outcome))
-  // t.outcome is 'WIN' | 'LOSS' | 'BREAKEVEN'
-
-Combined: date filter first, then outcome filter
-```
-
-## Export File Content
-
-1. **Header** — "TradeVault Pro — Trade Journal Report", date range, applied filters (e.g., "Winning & Breakeven trades only")
-2. **Summary Stats** — Total P&L, Win Rate, Total Pips, Avg RRR (filtered trades এর)
-3. **Summary Table** — Date, Pair, Direction, Session, P&L, Pips, Outcome
-4. **Individual Trade Details** — Entry/Exit, SMC Tags, Notes, Psychology (date-wise grouped)
+## OpenRouter Free Vision Models
+- `google/gemini-2.0-flash-exp:free` — ভালো vision support, free
+- `meta-llama/llama-4-maverick:free` — free, multimodal
+- Fallback strategy: primary model fail করলে secondary try করবে
 
 ## Technical Changes
 
-### New Files
-- **`src/components/journal/ExportDialog.tsx`** — Dialog with format, date range, outcome filter
-- **`src/lib/exportTrades.ts`** — PDF generation (`jspdf` + `jspdf-autotable`), DOCX generation (`docx` package)
+### Step 1: Secret Store
+- `OPENROUTER_API_KEY` নামে Supabase secret হিসেবে store করবো (user কে নতুন key দিতে বলবো কারণ এটা leaked)
 
-### Modified Files
-- **`src/pages/TradeJournal.tsx`** — Export button + dialog state
+### Step 2: Edge Function Update
+**File: `supabase/functions/analyze-trade-screenshot/index.ts`**
 
-### Libraries to Install
-- `jspdf` + `jspdf-autotable` — client-side PDF
-- `docx` + `file-saver` — client-side DOCX
+পরিবর্তন:
+- API URL: `https://ai.gateway.lovable.dev/...` → `https://openrouter.ai/api/v1/chat/completions`
+- Auth header: `LOVABLE_API_KEY` → `OPENROUTER_API_KEY`
+- Model: `google/gemini-2.5-flash` → `google/gemini-2.0-flash-exp:free`
+- Extra headers: `HTTP-Referer` এবং `X-Title` (OpenRouter requires)
+- Fallback: primary model 429/error দিলে `meta-llama/llama-4-maverick:free` try করবে
 
-### Flow
-1. User selects format + date range + outcome filter
-2. `mockTrades` filtered by date then outcome
-3. Client-side file generation (no backend)
-4. Auto-download via `Blob` + `URL.createObjectURL`
+### Step 3: Frontend — No Change
+`ScreenshotAnalyzer.tsx` এ কোনো পরিবর্তন নেই — edge function invoke আগের মতোই থাকবে।
+
+## Architecture
+
+```text
+ScreenshotAnalyzer.tsx
+  → supabase.functions.invoke('analyze-trade-screenshot')
+    → Edge Function
+      → OpenRouter API (free model)
+        → google/gemini-2.0-flash-exp:free (primary)
+        → meta-llama/llama-4-maverick:free (fallback)
+      → Extracted trade data JSON
+    ← { data: ExtractedTradeData }
+```
+
+## Edge Function Changes Summary
+
+```text
+BEFORE                              AFTER
+──────                              ─────
+LOVABLE_API_KEY                     OPENROUTER_API_KEY
+ai.gateway.lovable.dev/v1/...       openrouter.ai/api/v1/...
+google/gemini-2.5-flash             google/gemini-2.0-flash-exp:free
+No fallback                         Fallback to llama-4-maverick:free
+```
+
+Tool calling, system prompt, response parsing — সব একই থাকবে কারণ OpenRouter OpenAI-compatible API।
 
