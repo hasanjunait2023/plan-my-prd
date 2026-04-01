@@ -88,10 +88,14 @@ const TradeJournal = () => {
             </div>
             <h1 className="text-lg font-bold">Trade Journal</h1>
           </div>
-          <Button size="sm" onClick={() => navigate('/new-trade')}>
-            <Plus className="w-4 h-4 mr-1" /> New
-          </Button>
-        </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setExportOpen(true)}>
+              <Download className="w-4 h-4" />
+            </Button>
+            <Button size="sm" onClick={() => navigate('/new-trade')}>
+              <Plus className="w-4 h-4 mr-1" /> New
+            </Button>
+          </div>
 
         {mobileView === 'dates' && (
           <div className="flex-1 overflow-hidden rounded-lg border border-border/30 bg-card/50 backdrop-blur-sm">
