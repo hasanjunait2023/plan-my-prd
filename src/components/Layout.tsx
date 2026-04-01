@@ -194,8 +194,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </nav>
 
-          {/* Right side — Bell + Avatar */}
+          {/* Right side — Theme Toggle + Bell + Avatar */}
           <div className="flex items-center gap-2 shrink-0">
+            <ThemeToggleButton />
             <div className="relative">
               <button
                 ref={bellRef}
