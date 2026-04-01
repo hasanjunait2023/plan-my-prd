@@ -16,6 +16,9 @@ import ImageUpload from '@/components/journal/ImageUpload';
 import ScreenshotAnalyzer, { ExtractedTradeData } from '@/components/journal/ScreenshotAnalyzer';
 import { formatPairWithFlags } from '@/lib/pairFlags';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
+import { useInsertTrade } from '@/hooks/useTrades';
+import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 
 const sessions: Session[] = ['Asian', 'London', 'New York', 'London Close'];
 const timeframes: Timeframe[] = ['1M', '5M', '15M', '1H', '4H', 'D', 'W'];
@@ -24,6 +27,8 @@ const emotions: PsychEmotion[] = ['Confident', 'Fearful', 'Greedy', 'Calm', 'Anx
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 
 const NewTrade = () => {
+  const insertTrade = useInsertTrade();
+  const navigate = useNavigate();
   const [direction, setDirection] = useState<Direction>('LONG');
   const [pair, setPair] = useState('');
   const [session, setSession] = useState<string>('');
@@ -86,12 +91,61 @@ const NewTrade = () => {
     if (data.lotSize) setLotSize(String(data.lotSize));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!pair || !entryPrice || !exitPrice || !stopLoss) {
       toast.error('Required fields পূরণ করো: Pair, Entry, Exit, Stop Loss');
       return;
     }
-    toast.success('Trade সফলভাবে log হয়েছে! (Mock — backend পরে যোগ হবে)');
+    const outcome = pnl > 0 ? 'WIN' : pnl < 0 ? 'LOSS' : 'BREAKEVEN';
+    try {
+      await insertTrade.mutateAsync({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        pair,
+        direction,
+        session: (session || 'London') as any,
+        timeframe: (timeframe || '15M') as any,
+        strategy: strategy || '',
+        entryPrice: entry,
+        exitPrice: exit,
+        stopLoss: sl,
+        takeProfit: tp,
+        lotSize: lots,
+        riskPercent: 0,
+        riskDollars: riskDollars,
+        rrr,
+        pnl,
+        pips,
+        outcome,
+        smcTags: selectedSmcTags,
+        mistakes: selectedMistakes,
+        psychologyState: parseInt(psychState) || 5,
+        psychologyEmotion: (psychEmotion || 'Calm') as any,
+        planAdherence,
+        preTradeNotes: '',
+        postTradeNotes: '',
+        reasonForEntry,
+        confidenceLevel: confidenceLevel[0],
+        preSituation,
+        duringSituation,
+        postSituation,
+        whatWentWell,
+        improvementNotes,
+        entryScreenshots,
+        exitScreenshots,
+        screenshots: [],
+        partialCloses: partialCloses.map((pc, i) => ({
+          id: `p${i}`,
+          lots: parseFloat(pc.lots) || 0,
+          exitPrice: parseFloat(pc.price) || 0,
+          pnl: 0,
+        })),
+        starred: false,
+      });
+      toast.success('Trade সফলভাবে log হয়েছে!');
+      navigate('/journal');
+    } catch {
+      toast.error('Trade save করতে সমস্যা হয়েছে');
+    }
   };
 
   return (
@@ -367,8 +421,8 @@ const NewTrade = () => {
         )}
       </Card>
 
-      <Button onClick={handleSubmit} className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-[0_0_20px_hsla(145,63%,49%,0.2)]" size="lg">
-        Trade Log করো
+      <Button onClick={handleSubmit} disabled={insertTrade.isPending} className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-[0_0_20px_hsla(145,63%,49%,0.2)]" size="lg">
+        {insertTrade.isPending ? 'Saving...' : 'Trade Log করো'}
       </Button>
     </div>
   );

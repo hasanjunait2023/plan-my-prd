@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_settings: {
+        Row: {
+          created_at: string
+          currency: string
+          current_balance: number
+          daily_loss_limit: number
+          id: string
+          max_risk_percent: number
+          max_trades_per_day: number
+          starting_balance: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          current_balance?: number
+          daily_loss_limit?: number
+          id?: string
+          max_risk_percent?: number
+          max_trades_per_day?: number
+          starting_balance?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          current_balance?: number
+          daily_loss_limit?: number
+          id?: string
+          max_risk_percent?: number
+          max_trades_per_day?: number
+          starting_balance?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       adr_data: {
         Row: {
           adr_percent_used: number
@@ -278,6 +314,36 @@ export type Database = {
         }
         Relationships: []
       }
+      market_scan_temp: {
+        Row: {
+          change_percent: number
+          current_price: number
+          fetched_at: string
+          id: string
+          pair: string
+          previous_close: number
+          scan_id: string
+        }
+        Insert: {
+          change_percent?: number
+          current_price?: number
+          fetched_at?: string
+          id?: string
+          pair: string
+          previous_close?: number
+          scan_id: string
+        }
+        Update: {
+          change_percent?: number
+          current_price?: number
+          fetched_at?: string
+          id?: string
+          pair?: string
+          previous_close?: number
+          scan_id?: string
+        }
+        Relationships: []
+      }
       mt5_account_info: {
         Row: {
           account_id: string
@@ -383,6 +449,192 @@ export type Database = {
           swap?: number | null
           ticket?: string
           tp?: number | null
+        }
+        Relationships: []
+      }
+      psychology_logs: {
+        Row: {
+          created_at: string
+          date: string
+          emotions: string[]
+          id: string
+          intention: string
+          life_stress: number
+          mental_state: number
+          overall_score: number
+          reflection: string
+          rule_adherence: boolean
+          sleep_quality: number
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          emotions?: string[]
+          id?: string
+          intention?: string
+          life_stress?: number
+          mental_state?: number
+          overall_score?: number
+          reflection?: string
+          rule_adherence?: boolean
+          sleep_quality?: number
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          emotions?: string[]
+          id?: string
+          intention?: string
+          life_stress?: number
+          mental_state?: number
+          overall_score?: number
+          reflection?: string
+          rule_adherence?: boolean
+          sleep_quality?: number
+        }
+        Relationships: []
+      }
+      trades: {
+        Row: {
+          confidence_level: number
+          created_at: string
+          date: string
+          direction: string
+          during_situation: string
+          entry_price: number
+          entry_screenshots: string[]
+          exit_price: number
+          exit_screenshots: string[]
+          id: string
+          improvement_notes: string
+          lot_size: number
+          mistakes: string[]
+          outcome: string
+          pair: string
+          partial_closes: Json
+          pips: number
+          plan_adherence: boolean
+          pnl: number
+          post_situation: string
+          post_trade_notes: string
+          pre_situation: string
+          pre_trade_notes: string
+          psychology_emotion: string
+          psychology_state: number
+          reason_for_entry: string
+          risk_dollars: number
+          risk_percent: number
+          rrr: number
+          screenshots: string[]
+          session: string
+          smc_tags: string[]
+          starred: boolean
+          stop_loss: number
+          strategy: string
+          take_profit: number
+          timeframe: string
+          what_went_well: string
+        }
+        Insert: {
+          confidence_level?: number
+          created_at?: string
+          date: string
+          direction: string
+          during_situation?: string
+          entry_price?: number
+          entry_screenshots?: string[]
+          exit_price?: number
+          exit_screenshots?: string[]
+          id?: string
+          improvement_notes?: string
+          lot_size?: number
+          mistakes?: string[]
+          outcome?: string
+          pair: string
+          partial_closes?: Json
+          pips?: number
+          plan_adherence?: boolean
+          pnl?: number
+          post_situation?: string
+          post_trade_notes?: string
+          pre_situation?: string
+          pre_trade_notes?: string
+          psychology_emotion?: string
+          psychology_state?: number
+          reason_for_entry?: string
+          risk_dollars?: number
+          risk_percent?: number
+          rrr?: number
+          screenshots?: string[]
+          session?: string
+          smc_tags?: string[]
+          starred?: boolean
+          stop_loss?: number
+          strategy?: string
+          take_profit?: number
+          timeframe?: string
+          what_went_well?: string
+        }
+        Update: {
+          confidence_level?: number
+          created_at?: string
+          date?: string
+          direction?: string
+          during_situation?: string
+          entry_price?: number
+          entry_screenshots?: string[]
+          exit_price?: number
+          exit_screenshots?: string[]
+          id?: string
+          improvement_notes?: string
+          lot_size?: number
+          mistakes?: string[]
+          outcome?: string
+          pair?: string
+          partial_closes?: Json
+          pips?: number
+          plan_adherence?: boolean
+          pnl?: number
+          post_situation?: string
+          post_trade_notes?: string
+          pre_situation?: string
+          pre_trade_notes?: string
+          psychology_emotion?: string
+          psychology_state?: number
+          reason_for_entry?: string
+          risk_dollars?: number
+          risk_percent?: number
+          rrr?: number
+          screenshots?: string[]
+          session?: string
+          smc_tags?: string[]
+          starred?: boolean
+          stop_loss?: number
+          strategy?: string
+          take_profit?: number
+          timeframe?: string
+          what_went_well?: string
+        }
+        Relationships: []
+      }
+      trading_rules: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          text: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          text: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          text?: string
         }
         Relationships: []
       }

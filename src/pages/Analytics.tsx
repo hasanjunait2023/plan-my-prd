@@ -1,9 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockTrades, mockDailyPnL, mockAccountSettings } from '@/data/mockData';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { BarChart3, TrendingUp, Activity } from 'lucide-react';
+import { useTrades } from '@/hooks/useTrades';
+import { useAccountSettings } from '@/hooks/useAccountSettings';
+import { defaultAccountSettings } from '@/data/mockData';
+import { Skeleton } from '@/components/ui/skeleton';
+import { DailyPnL } from '@/types/trade';
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 const tooltipStyle = { backgroundColor: 'hsl(0, 0%, 8%)', border: '1px solid hsla(0,0%,100%,0.1)', borderRadius: '8px', color: 'hsl(0, 0%, 95%)' };
@@ -15,9 +18,42 @@ const gradientAccents = [
 ];
 
 const Analytics = () => {
-  const [period, setPeriod] = useState('all');
+  const { data: trades = [], isLoading } = useTrades();
+  const { data: accountSettings = defaultAccountSettings } = useAccountSettings();
 
-  const trades = mockTrades;
+  const dailyPnL: DailyPnL[] = useMemo(() => {
+    const map: Record<string, { pnl: number; trades: number }> = {};
+    trades.forEach(t => {
+      if (!map[t.date]) map[t.date] = { pnl: 0, trades: 0 };
+      map[t.date].pnl += t.pnl;
+      map[t.date].trades++;
+    });
+    return Object.entries(map)
+      .map(([date, d]) => ({ date, pnl: d.pnl, trades: d.trades }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [trades]);
+
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-20" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (trades.length === 0) {
+    return (
+      <div className="max-w-6xl mx-auto flex flex-col items-center justify-center py-24 gap-4">
+        <BarChart3 className="w-16 h-16 text-muted-foreground/30" />
+        <h2 className="text-xl font-semibold">কোনো analytics data নেই!</h2>
+        <p className="text-muted-foreground text-sm text-center">Trade entry করলে এখানে performance statistics দেখা যাবে।</p>
+      </div>
+    );
+  }
+
   const wins = trades.filter(t => t.outcome === 'WIN');
   const losses = trades.filter(t => t.outcome === 'LOSS');
 
@@ -32,14 +68,14 @@ const Analytics = () => {
   const expectancy = (winRate / 100) * avgWin - ((100 - winRate) / 100) * avgLoss;
 
   let maxDD = 0, peak = 0, running = 0;
-  mockDailyPnL.forEach(d => { running += d.pnl; if (running > peak) peak = running; const dd = peak - running; if (dd > maxDD) maxDD = dd; });
+  dailyPnL.forEach(d => { running += d.pnl; if (running > peak) peak = running; const dd = peak - running; if (dd > maxDD) maxDD = dd; });
 
-  const equityCurve = useMemo(() => {
-    let balance = mockAccountSettings.startingBalance;
-    return mockDailyPnL.map(d => { balance += d.pnl; return { date: d.date.slice(5), balance }; });
-  }, []);
+  const equityCurve = (() => {
+    let balance = accountSettings.startingBalance;
+    return dailyPnL.map(d => { balance += d.pnl; return { date: d.date.slice(5), balance }; });
+  })();
 
-  const monthlyPnL = mockDailyPnL.map(d => ({ date: d.date.slice(5), pnl: d.pnl }));
+  const monthlyPnL = dailyPnL.map(d => ({ date: d.date.slice(5), pnl: d.pnl }));
 
   const metrics = [
     { label: 'Total P&L', value: `$${totalPnL.toFixed(0)}`, color: totalPnL >= 0 ? 'text-profit' : 'text-loss' },
@@ -56,28 +92,16 @@ const Analytics = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center border border-blue-500/20">
-            <BarChart3 className="w-5 h-5 text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
-            <p className="text-sm text-muted-foreground">Performance overview & statistics</p>
-          </div>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center border border-blue-500/20">
+          <BarChart3 className="w-5 h-5 text-blue-400" />
         </div>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-36 bg-card/50 backdrop-blur-sm border-border/40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="week">This Week</SelectItem>
-            <SelectItem value="month">This Month</SelectItem>
-            <SelectItem value="quarter">Quarter</SelectItem>
-            <SelectItem value="all">All Time</SelectItem>
-          </SelectContent>
-        </Select>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
+          <p className="text-sm text-muted-foreground">Performance overview & statistics</p>
+        </div>
       </div>
 
-      {/* Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {metrics.map((m, i) => (
           <Card key={m.label} className={`${glassCard} bg-gradient-to-br ${gradientAccents[i]} to-transparent`}>
@@ -89,7 +113,6 @@ const Analytics = () => {
         ))}
       </div>
 
-      {/* Equity Curve */}
       <Card className={glassCard}>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
@@ -114,7 +137,6 @@ const Analytics = () => {
         </CardContent>
       </Card>
 
-      {/* Daily P&L Bar Chart */}
       <Card className={glassCard}>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
