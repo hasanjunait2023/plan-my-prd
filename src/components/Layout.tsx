@@ -60,6 +60,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
               ))}
             </div>
           </nav>
+
+          {/* Right side — Bell + Avatar */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-card/50 transition-all duration-200">
+              <Bell className="w-[18px] h-[18px]" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full shadow-[0_0_6px_hsla(var(--primary)/0.6)]" />
+            </button>
+            <Avatar className="w-8 h-8 border border-border/50 cursor-pointer hover:border-primary/50 transition-colors">
+              <AvatarFallback className="bg-card text-xs font-semibold text-foreground">
+                TV
+              </AvatarFallback>
+            </Avatar>
+          </div>
         </div>
       </header>
 
