@@ -1,41 +1,46 @@
 
 
-# TradingView Chart — EMA, RSI ও Timeframe Selector
+# TradingView Chart Indicators Fix
 
-## কি করতে হবে
-TradingView chart embed এ **EMA 9, 15, 200** ও **RSI** indicators যোগ করা, এবং **timeframe switch** (3M, 15M, 1H) করার UI দেওয়া।
+## সমস্যা
+`widgetembed` URL এ studies parameter এর format সঠিক না — `MAExp@tv-basicstudies|{\"length\":9}` syntax এই widget type এ কাজ করে না।
 
-## Technical Changes
+## সমাধান
+TradingView এর **Advanced Chart Widget** (`embed-widget/advanced-chart/`) ব্যবহার করবো — এটা newer endpoint যেখানে studies properly কাজ করে। Script-based widget initialization করবো iframe এর বদলে।
+
+## Technical Change
 
 **File: `src/components/assets/TradingViewChart.tsx`**
 
-1. **State যোগ**: `useState` দিয়ে selected timeframe track করা (default: `60` i.e. 1H)
+iframe URL approach বাদ দিয়ে TradingView widget script inject করবো:
 
-2. **Timeframe buttons**: Chart header এ 3টা button — `3M`, `15M`, `1H`। Active button highlighted।
-
-3. **iframe URL update**:
-   - `"interval"` parameter: `"3"` / `"15"` / `"60"` (timeframe অনুযায়ী)
-   - `"studies"` parameter: `["MAExp@tv-basicstudies@9","MAExp@tv-basicstudies@15","MAExp@tv-basicstudies@200","RSI@tv-basicstudies"]`
-
-4. **useEffect dependency**: `symbol` ও `timeframe` দুটোতেই re-render হবে
-
-```text
-Timeframe map:
-  "3M"  → interval: "3"
-  "15M" → interval: "15"  
-  "1H"  → interval: "60"
+```typescript
+const script = document.createElement('script');
+script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+script.async = true;
+script.innerHTML = JSON.stringify({
+  symbol: tvSymbol,
+  interval: interval,
+  theme: 'dark',
+  style: '1',
+  locale: 'en',
+  timezone: 'Etc/UTC',
+  studies: [
+    { id: "MAExp@tv-basicstudies", inputs: { length: 9 } },
+    { id: "MAExp@tv-basicstudies", inputs: { length: 15 } },
+    { id: "MAExp@tv-basicstudies", inputs: { length: 200 } },
+    { id: "RSI@tv-basicstudies" }
+  ],
+  hide_top_toolbar: true,
+  hide_legend: false,
+  save_image: false,
+  width: '100%',
+  height: '100%',
+});
 ```
 
-### UI Layout
-```text
-┌─ Chart Card ──────────────────────┐
-│  📊 Title        [3M] [15M] [1H] │
-│  ┌──────────────────────────────┐ │
-│  │  TradingView Chart           │ │
-│  │  (EMA 9/15/200 + RSI)       │ │
-│  └──────────────────────────────┘ │
-└───────────────────────────────────┘
-```
-
-শুধু একটা file modify হবে: `TradingViewChart.tsx`
+- Script-based embed properly supports `studies` array with `inputs`
+- EMA 9, 15, 200 এবং RSI সব correctly render হবে
+- Timeframe switch ও আগের মতো কাজ করবে — `useEffect` dependency তে `interval` আছে
+- শুধু একটা file change
 
