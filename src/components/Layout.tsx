@@ -1,8 +1,17 @@
+import { useState, useRef, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, User
+  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
+const mockNotifications = [
+  { id: 1, icon: TrendingUp, color: 'text-green-400', title: 'EUR/USD +2.3%', desc: 'Take profit hit — $124 profit', time: '5m ago', unread: true },
+  { id: 2, icon: AlertTriangle, color: 'text-yellow-400', title: 'GBP weakening', desc: 'Strength dropped below 3.0', time: '12m ago', unread: true },
+  { id: 3, icon: TrendingDown, color: 'text-red-400', title: 'USD/JPY -1.1%', desc: 'Stop loss triggered — $45 loss', time: '1h ago', unread: false },
+  { id: 4, icon: CheckCircle2, color: 'text-primary', title: 'Journal saved', desc: 'Trade #47 entry added', time: '2h ago', unread: false },
+  { id: 5, icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false },
+];
 
 const navItems = [
   { title: 'Dashboard', short: 'Home', url: '/', icon: LayoutDashboard },
