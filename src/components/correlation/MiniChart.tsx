@@ -7,6 +7,7 @@ interface MiniChartProps {
   symbol: string;
   pair: string;
   interval: string;
+  dimmed?: boolean;
 }
 
 function TradingViewWidget({ symbol, interval, height }: { symbol: string; interval: string; height: string }) {
@@ -68,14 +69,21 @@ function TradingViewWidget({ symbol, interval, height }: { symbol: string; inter
   return <div ref={containerRef} className="w-full" style={{ height }} />;
 }
 
-export function MiniChart({ symbol, pair, interval }: MiniChartProps) {
+export function MiniChart({ symbol, pair, interval, dimmed }: MiniChartProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
     <>
-      <div className="rounded-xl border border-border/30 bg-card/50 backdrop-blur-sm overflow-hidden">
-        <div className="px-3 py-2 border-b border-border/20 flex items-center justify-between">
-          <PairWithFlags pair={pair} className="text-sm font-semibold text-foreground" />
+      <div className={`rounded-xl border bg-card/50 backdrop-blur-sm overflow-hidden transition-opacity ${dimmed ? 'border-orange-500/30 opacity-60' : 'border-border/30'}`}>
+        <div className={`px-3 py-2 border-b flex items-center justify-between ${dimmed ? 'border-orange-500/20' : 'border-border/20'}`}>
+          <div className="flex items-center gap-2">
+            <PairWithFlags pair={pair} className="text-sm font-semibold text-foreground" />
+            {dimmed && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-400 font-medium">
+                ↕ Inverse
+              </span>
+            )}
+          </div>
           <button
             onClick={() => setExpanded(true)}
             className="p-1 rounded hover:bg-accent/50 text-muted-foreground hover:text-foreground transition-colors"
