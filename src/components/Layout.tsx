@@ -152,15 +152,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Desktop Nav Tabs — hidden on mobile */}
-          <nav className="flex-1 overflow-x-auto scrollbar-hide hidden md:block">
-            <div className="flex items-center gap-1">
+          <nav className="flex-1 overflow-x-auto hidden md:block" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--muted)) transparent' }}>
+            <div className="flex items-center gap-0.5">
               {navItems.map((item) => (
                 <NavLink
                   key={item.title}
                   to={item.url}
                   end={item.url === '/'}
                   className={({ isActive }) =>
-                    `flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 relative ${
+                    `flex items-center gap-1 px-2.5 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 relative ${
+                      isActive
+                        ? 'text-primary bg-primary/10 shadow-[0_0_8px_hsla(145,63%,49%,0.15)]'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
+                    }`
+                  }
                       isActive
                         ? 'text-primary bg-primary/10 shadow-[0_0_8px_hsla(145,63%,49%,0.15)]'
                         : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
