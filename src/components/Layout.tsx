@@ -258,11 +258,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               )}
             </div>
-            <Avatar className="w-8 h-8 border border-border/50 cursor-pointer hover:border-primary/50 transition-colors">
-              <AvatarFallback className="bg-card text-xs font-semibold text-foreground">
-                TV
-              </AvatarFallback>
-            </Avatar>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50">
+                  <Avatar className="w-8 h-8 border border-border/50 cursor-pointer hover:border-primary/50 transition-colors">
+                    <AvatarFallback className="bg-card text-xs font-semibold text-foreground">
+                      TV
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 bg-card border-border/40">
+                {profileMenuItems.map((item) => (
+                  <DropdownMenuItem
+                    key={item.title}
+                    onClick={() => navigate(item.url)}
+                    className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground"
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.title}</span>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator className="bg-border/30" />
+                <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground">
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
