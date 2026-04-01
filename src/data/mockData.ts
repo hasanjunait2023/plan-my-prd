@@ -71,7 +71,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'বাকি position TP তে close হয়েছে। Perfect execution।',
     whatWentWell: 'ধৈর্য ধরে setup এর জন্য অপেক্ষা করেছি। Partial close সঠিক সময়ে নিয়েছি।',
     improvementNotes: 'এই ধরনের setup এ আরো বড় position নেওয়া যেত।',
-    screenshots: [],
+    entryScreenshots: [], exitScreenshots: [], screenshots: [],
     partialCloses: [{ id: 'p1', lots: 0.2, exitPrice: 150.60, pnl: 80 }],
     starred: true, createdAt: '2026-03-30T04:00:00Z',
   },
