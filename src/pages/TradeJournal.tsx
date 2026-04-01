@@ -96,6 +96,7 @@ const TradeJournal = () => {
               <Plus className="w-4 h-4 mr-1" /> New
             </Button>
           </div>
+        </div>
 
         {mobileView === 'dates' && (
           <div className="flex-1 overflow-hidden rounded-lg border border-border/30 bg-card/50 backdrop-blur-sm">
