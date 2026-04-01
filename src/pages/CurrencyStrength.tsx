@@ -138,6 +138,16 @@ export default function CurrencyStrength() {
       {/* Pair Suggestions */}
       {!isLoading && data && data.length > 0 && <PairSuggestions data={data} />}
 
+      {/* Trend Chart */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">📈 Strength Trend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StrengthTrendChart timeframe={activeTab} />
+        </CardContent>
+      </Card>
+
       {/* Legend */}
       <Card className="border-border/50">
         <CardContent className="pt-6">
