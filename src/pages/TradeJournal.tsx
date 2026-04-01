@@ -178,6 +178,7 @@ const TradeJournal = () => {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} trades={filteredTrades} />
     </div>
   );
 };
