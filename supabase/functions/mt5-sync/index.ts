@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const META_API_BASE = 'https://mt-client-api-v1.agiliumtrade.agiliumtrade.ai';
+const META_API_BASE = 'https://mt-client-api-v1.new-york.agiliumtrade.ai';
 
 // Use Node.js https module to bypass SSL cert verification for MetaApi
 async function metaFetch(url: string, headers: Record<string, string>): Promise<{ ok: boolean; status: number; text: () => Promise<string>; json: () => Promise<any> }> {
