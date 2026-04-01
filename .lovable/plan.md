@@ -1,33 +1,46 @@
 
 
-# Correlation Page — Chart Visibility Improvement
+# Session Tracker Component — Alternative Plan
 
 ## সমস্যা
-বর্তমানে chart height মাত্র 250px — EMA + RSI সহ analysis করা কঠিন। 3-column grid এ chart গুলো খুব ছোট হয়ে যায়।
+LuxAlgo Sessions Pine Script indicator TradingView embed widget এ add করা সম্ভব না — embed API শুধু built-in studies support করে, custom Pine Script না।
 
 ## সমাধান
+Chart এর পাশে/উপরে একটা **Session Status Panel** component বানানো যেটা Pine Script এর dashboard এর মতো কাজ করবে:
 
-### 1. Grid Layout পরিবর্তন — 2 column
-- `lg:grid-cols-3` → `lg:grid-cols-2` করবো
-- এতে প্রতিটা chart wider হবে, candlestick ও indicators ভালো দেখা যাবে
-- 2x3 layout (2 columns, 3 rows)
+### Features
+1. **4 Sessions** — New York (13:00-22:00 UTC), London (07:00-16:00 UTC), Tokyo (00:00-09:00 UTC), Sydney (21:00-06:00 UTC)
+2. **Live Status** — Active/Inactive badge (real-time UTC clock অনুযায়ী)
+3. **Color coded** — NY: #ff5d00, London: #2157f3, Tokyo: #e91e63, Sydney: #ffeb3b
+4. **Time remaining** — Active session এ কত সময় বাকি
+5. **Session overlap indicator** — কোন sessions overlap করছে সেটা দেখাবে
 
-### 2. Chart Height বাড়ানো
-- `h-[250px]` → `h-[400px]` করবো
-- RSI নিচে separate pane এ থাকে, তাই বেশি height দরকার proper analysis এর জন্য
+### যেখানে যেখানে যোগ হবে
+- Correlation Pairs page — chart grid এর উপরে
+- Commodities page
+- Crypto page
 
-### 3. Full-screen Expand Button
-- প্রতিটা MiniChart এ একটা expand icon button যোগ করবো (header এ)
-- Click করলে chart টা full-screen modal/dialog এ open হবে `h-[80vh]` height সহ
-- Dialog এ same TradingView widget বড় করে render হবে — detailed analysis করা যাবে
+### UI Layout
+```text
+┌──────────────────────────────────────────────┐
+│ 🟠 New York: Active (2h 15m left)            │
+│ 🔵 London: Active (45m left)                 │
+│ 🔴 Tokyo: Inactive (starts in 3h)            │
+│ 🟡 Sydney: Inactive (starts in 8h)           │
+│ ⚡ Overlap: NY + London                      │
+└──────────────────────────────────────────────┘
+```
 
-### 4. Page Max Width বাড়ানো
-- `max-w-[1400px]` → `max-w-[1600px]` করবো — wider screen এ আরো জায়গা পাবে
+### Files
+| Action | File |
+|--------|------|
+| **Create** | `src/components/correlation/SessionPanel.tsx` |
+| **Modify** | `src/pages/CorrelationPairs.tsx` — panel যোগ |
+| **Modify** | `src/pages/Commodities.tsx` — panel যোগ |
+| **Modify** | `src/pages/Crypto.tsx` — panel যোগ |
 
-## Files
-
-| File | Change |
-|------|--------|
-| `src/components/correlation/MiniChart.tsx` | Height 250→400px, expand button যোগ, fullscreen dialog |
-| `src/pages/CorrelationPairs.tsx` | Grid 3→2 cols, max-width বাড়ানো |
+### Technical
+- `setInterval` দিয়ে প্রতি minute এ UTC time check করে session status update
+- কোনো API call লাগবে না — pure client-side time calculation
+- Compact horizontal layout (mobile responsive)
 
