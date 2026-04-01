@@ -160,7 +160,7 @@ export const mockTrades: Trade[] = [
     postSituation: 'TP hit হয়েছে। ধৈর্যের পুরস্কার পেয়েছি।',
     whatWentWell: 'ধৈর্য ধরে setup এর জন্য অপেক্ষা করেছি। Plan follow করেছি।',
     improvementNotes: '',
-    screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-25T15:30:00Z',
+    entryScreenshots: [], exitScreenshots: [], screenshots: [], partialCloses: [], starred: false, createdAt: '2026-03-25T15:30:00Z',
   },
 ];
 
