@@ -12,6 +12,7 @@ import Psychology from "./pages/Psychology.tsx";
 import Settings from "./pages/Settings.tsx";
 import CurrencyStrength from "./pages/CurrencyStrength.tsx";
 import EmaScanner from "./pages/EmaScanner.tsx";
+import TradeIntelligence from "./pages/TradeIntelligence.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/currency-strength" element={<CurrencyStrength />} />
             <Route path="/ema-scanner" element={<EmaScanner />} />
+            <Route path="/trade-intelligence" element={<TradeIntelligence />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

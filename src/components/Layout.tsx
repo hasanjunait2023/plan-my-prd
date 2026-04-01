@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair
+  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +30,7 @@ const navItems = [
   { title: 'Psychology', short: 'Psy', url: '/psychology', icon: Brain },
   { title: 'Strength', short: 'Str', url: '/currency-strength', icon: Gauge },
   { title: 'EMA Scan', short: 'EMA', url: '/ema-scanner', icon: Crosshair },
+  { title: 'Intel', short: 'Intel', url: '/trade-intelligence', icon: Zap },
   { title: 'Settings', short: 'Set', url: '/settings', icon: Settings },
 ];
 
