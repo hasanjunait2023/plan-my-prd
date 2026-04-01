@@ -74,13 +74,11 @@ async function callOpenRouter(apiKey: string, model: string, imageBase64: string
         {
           role: "user",
           content: [
-            { type: "text", text: "Analyze this trading chart screenshot and extract all trade data you can find." },
+            { type: "text", text: "Analyze this trading chart screenshot and extract all trade data you can find. Respond with JSON only." },
             { type: "image_url", image_url: { url: imageBase64 } },
           ],
         },
       ],
-      tools,
-      tool_choice: { type: "function", function: { name: "extract_trade_data" } },
     }),
   });
 
