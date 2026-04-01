@@ -9,7 +9,7 @@ interface EmaDetailViewProps {
 
 export function EmaDetailView({ pair, alignments, onClose }: EmaDetailViewProps) {
   const grouped = {
-    '3min': alignments.find((a) => a.timeframe === '3min'),
+    '5min': alignments.find((a) => a.timeframe === '5min'),
     '15min': alignments.find((a) => a.timeframe === '15min'),
     '1h': alignments.find((a) => a.timeframe === '1h'),
   };
