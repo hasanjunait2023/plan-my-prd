@@ -6,26 +6,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+const MODELS = [
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-4-maverick:free",
+];
 
-  try {
-    const { imageBase64 } = await req.json();
-    if (!imageBase64) {
-      return new Response(JSON.stringify({ error: "No image provided" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
-    const systemPrompt = `You are an expert forex/trading chart analyzer. Given a trading chart screenshot, extract as much trade data as possible.
+const systemPrompt = `You are an expert forex/trading chart analyzer. Given a trading chart screenshot, extract as much trade data as possible.
 
 Return a JSON object using the tool provided. Extract these fields from the chart:
 - pair: The currency pair or instrument (e.g. "USD/JPY", "EUR/USD", "XAU/USD")
@@ -43,99 +29,141 @@ Return a JSON object using the tool provided. Extract these fields from the char
 
 Only include fields you can confidently extract. Use null for fields you cannot determine.`;
 
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "extract_trade_data",
+      description: "Extract structured trade data from a chart screenshot",
+      parameters: {
+        type: "object",
+        properties: {
+          pair: { type: "string", description: "Currency pair e.g. USD/JPY" },
+          timeframe: { type: "string", enum: ["1M", "5M", "15M", "1H", "4H", "D", "W"] },
+          direction: { type: "string", enum: ["LONG", "SHORT"] },
+          entryPrice: { type: "number" },
+          exitPrice: { type: "number" },
+          stopLoss: { type: "number" },
+          takeProfit: { type: "number" },
+          lotSize: { type: "number" },
+          riskAmount: { type: "number" },
+          profitAmount: { type: "number" },
+          session: { type: "string", enum: ["Asian", "London", "New York", "London Close"] },
+          pips: { type: "number" },
         },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            { role: "system", content: systemPrompt },
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Analyze this trading chart screenshot and extract all trade data you can find.",
-                },
-                {
-                  type: "image_url",
-                  image_url: { url: imageBase64 },
-                },
-              ],
-            },
+        required: ["pair"],
+        additionalProperties: false,
+      },
+    },
+  },
+];
+
+async function callOpenRouter(apiKey: string, model: string, imageBase64: string) {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://tradevault-pro.lovable.app",
+      "X-Title": "TradeVault Pro",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Analyze this trading chart screenshot and extract all trade data you can find." },
+            { type: "image_url", image_url: { url: imageBase64 } },
           ],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "extract_trade_data",
-                description:
-                  "Extract structured trade data from a chart screenshot",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    pair: { type: "string", description: "Currency pair e.g. USD/JPY" },
-                    timeframe: { type: "string", enum: ["1M", "5M", "15M", "1H", "4H", "D", "W"] },
-                    direction: { type: "string", enum: ["LONG", "SHORT"] },
-                    entryPrice: { type: "number" },
-                    exitPrice: { type: "number" },
-                    stopLoss: { type: "number" },
-                    takeProfit: { type: "number" },
-                    lotSize: { type: "number" },
-                    riskAmount: { type: "number" },
-                    profitAmount: { type: "number" },
-                    session: { type: "string", enum: ["Asian", "London", "New York", "London Close"] },
-                    pips: { type: "number" },
-                  },
-                  required: ["pair"],
-                  additionalProperties: false,
-                },
-              },
-            },
-          ],
-          tool_choice: {
-            type: "function",
-            function: { name: "extract_trade_data" },
-          },
-        }),
+        },
+      ],
+      tools,
+      tool_choice: { type: "function", function: { name: "extract_trade_data" } },
+    }),
+  });
+
+  return response;
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { imageBase64 } = await req.json();
+    if (!imageBase64) {
+      return new Response(JSON.stringify({ error: "No image provided" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+    if (!OPENROUTER_API_KEY) {
+      throw new Error("OPENROUTER_API_KEY is not configured");
+    }
+
+    let lastError: string = "";
+
+    for (const model of MODELS) {
+      console.log(`Trying model: ${model}`);
+      try {
+        const response = await callOpenRouter(OPENROUTER_API_KEY, model, imageBase64);
+
+        if (response.status === 429) {
+          console.warn(`Rate limited on ${model}, trying next...`);
+          lastError = `Rate limited on ${model}`;
+          continue;
+        }
+
+        if (!response.ok) {
+          const text = await response.text();
+          console.error(`Error from ${model}:`, response.status, text);
+          lastError = `${model} error: ${response.status}`;
+          continue;
+        }
+
+        const data = await response.json();
+        const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+
+        if (!toolCall) {
+          // Try parsing content as JSON fallback
+          const content = data.choices?.[0]?.message?.content;
+          if (content) {
+            try {
+              const parsed = JSON.parse(content);
+              return new Response(JSON.stringify({ data: parsed }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            } catch {
+              console.warn(`No tool call and content not JSON from ${model}`);
+              lastError = `No structured response from ${model}`;
+              continue;
+            }
+          }
+          lastError = `No response from ${model}`;
+          continue;
+        }
+
+        const extractedData = JSON.parse(toolCall.function.arguments);
+        return new Response(JSON.stringify({ data: extractedData }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        console.error(`Exception with ${model}:`, e);
+        lastError = e instanceof Error ? e.message : "Unknown error";
+        continue;
       }
+    }
+
+    // All models failed
+    return new Response(
+      JSON.stringify({ error: `All models failed. Last error: ${lastError}` }),
+      { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const text = await response.text();
-      console.error("AI gateway error:", response.status, text);
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    
-    if (!toolCall) {
-      throw new Error("No tool call response from AI");
-    }
-
-    const extractedData = JSON.parse(toolCall.function.arguments);
-
-    return new Response(JSON.stringify({ data: extractedData }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
   } catch (e) {
     console.error("analyze-trade-screenshot error:", e);
     return new Response(
