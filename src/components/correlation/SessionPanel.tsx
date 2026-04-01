@@ -9,6 +9,10 @@ interface Session {
   emoji: string;
 }
 
+function formatUtc(h: number) {
+  return `${String(h).padStart(2, '0')}:00`;
+}
+
 const SESSIONS: Session[] = [
   { name: 'New York', startUtc: 13, endUtc: 22, color: '#ff5d00', emoji: '🟠' },
   { name: 'London', startUtc: 7, endUtc: 16, color: '#2157f3', emoji: '🔵' },
@@ -86,6 +90,9 @@ export function SessionPanel() {
               <div className="flex flex-col min-w-0">
                 <span className="text-xs font-medium truncate" style={{ color: active ? s.color : 'hsl(var(--muted-foreground))' }}>
                   {s.name}
+                </span>
+                <span className="text-[9px] text-muted-foreground/60 font-mono">
+                  {formatUtc(s.startUtc)}–{formatUtc(s.endUtc)} UTC
                 </span>
                 <span className="text-[10px] text-muted-foreground">
                   {active ? timeLeft(s, h, m) : timeUntil(s, h, m)}
