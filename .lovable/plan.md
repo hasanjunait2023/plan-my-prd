@@ -1,128 +1,100 @@
 
 
-# EMA Alignment Scanner — TwelveData API Integration
+# Trading Intelligence Dashboard — Advanced Metrics Plan
 
-## কী বানাবো
-Currency strength থেকে যে strong/weak pair পাওয়া যায়, সেগুলোর **EMA 9, 15, 200** তিনটা timeframe এ (3min, 15min, 1H) alignment check করবো TwelveData API দিয়ে। Aligned pairs গুলো একটা নতুন page এ premium UI তে দেখাবো। Trading hours এ প্রতি ঘন্টায় auto-sync হবে।
+## বর্তমানে যা আছে
+1. **Currency Strength** — 8 currency এর strength/weakness ranking
+2. **EMA Scanner** — EMA 9/15/200 alignment across 5min, 15min, 1H
+3. **Pair Suggestions** — Strong vs Weak pair generation
+4. **Analytics** — Win rate, P&L, profit factor (mock data)
 
-## Architecture
+## নতুন Metrics — যা Trading Focus ও Output বাড়াবে
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                    Edge Function (scan-ema-alignment)        │
-│                                                             │
-│  1. DB থেকে latest currency_strength পড়ো                   │
-│  2. Strong/weak pairs generate করো                           │
-│  3. প্রতিটা pair এর জন্য TwelveData EMA API call:           │
-│     - EMA 9, EMA 15, EMA 200                                │
-│     - 3 timeframes: 3min, 15min, 1h                         │
-│  4. Alignment check:                                         │
-│     - BULLISH: price > EMA9 > EMA15 > EMA200                │
-│     - BEARISH: price < EMA9 < EMA15 < EMA200                │
-│  5. Results → ema_alignments table এ store                   │
-│  6. Aligned pairs থাকলে → notification store                 │
-└─────────────────────────────────────────────────────────────┘
+### 1. Confluence Score Dashboard (নতুন page)
+Currency Strength + EMA Alignment + Session Timing combine করে প্রতিটা pair কে **A+, A, B, C, D** grade দেবে।
 
-┌─────────────────────────────────────────────────────────────┐
-│              pg_cron (hourly during trading hours)           │
-│  6:00-9:00, 13:00-15:00, 19:00-21:00 (user's timezone)     │
-│  → calls scan-ema-alignment edge function                    │
-└─────────────────────────────────────────────────────────────┘
+- **A+ Setup**: Strength diff > 5 AND EMA 9/9 aligned AND active session (London/NY overlap)
+- **A Setup**: Strength diff > 3 AND EMA 7+/9
+- **B/C/D**: ক্রমশ কম confluence
 
-┌─────────────────────────────────────────────────────────────┐
-│               Frontend: /ema-scanner page                    │
-│                                                             │
-│  ┌─ Summary Cards ─────────────────────────────────────┐    │
-│  │ Total Pairs Scanned │ Bullish Aligned │ Bearish Aligned│  │
-│  └─────────────────────────────────────────────────────┘    │
-│                                                             │
-│  ┌─ Aligned Pairs Table ───────────────────────────────┐    │
-│  │ Pair │ Direction │ 3m EMA │ 15m EMA │ 1H EMA │ Score│    │
-│  │ EUR/NZD │ BUY 🟢 │ ✅✅✅ │ ✅✅✅ │ ✅✅✅ │ 9/9 │    │
-│  │ GBP/CAD │ BUY 🟢 │ ✅✅❌ │ ✅✅✅ │ ✅✅✅ │ 8/9 │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                                                             │
-│  ┌─ EMA Detail View (click a pair) ────────────────────┐    │
-│  │ Price vs EMA 9/15/200 — visual comparison per TF    │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                                                             │
-│  ┌─ Scan History ──────────────────────────────────────┐    │
-│  │ Date picker → past scan results দেখা যাবে          │    │
-│  └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-```
+এটা তোমাকে বলবে — "এই মুহূর্তে কোন pair এ সবচেয়ে বেশি edge আছে"
 
-## Steps
+### 2. Session Overlap Tracker
+Forex market sessions (Tokyo, London, New York) এর overlap সময়ে volume ও volatility সবচেয়ে বেশি। এই widget দেখাবে:
+- এখন কোন session active
+- পরের high-volatility overlap কখন
+- Session অনুযায়ী কোন pair এ সবচেয়ে বেশি move হয় (historical data থেকে)
 
-### 1. Database — 2 নতুন table
+### 3. ADR (Average Daily Range) Monitor
+প্রতিটা pair আজকে তার Average Daily Range এর কতটুকু move করেছে — percentage হিসেবে।
+- ADR 80%+ মানে pair exhausted — **entry avoid**
+- ADR 20-50% মানে room আছে — **good entry zone**
+- TwelveData `time_series` API থেকে daily high/low নিয়ে calculate করা যাবে
 
-**`ema_alignments`** — scan results store:
-- `id`, `pair` (EUR/USD), `direction` (BUY/SELL), `timeframe` (3min/15min/1h)
-- `ema_9`, `ema_15`, `ema_200`, `current_price` (numeric values)
-- `is_aligned` (boolean), `alignment_type` (BULLISH/BEARISH/NONE)
-- `scanned_at`, `created_at`
+### 4. Risk-Reward Calculator Widget
+Trade entry এর আগে quick R:R calculation:
+- Entry, SL, TP input দিলে auto-calculate: lot size, risk amount, potential profit
+- Account balance ও risk % (1-2%) integrate
+- EMA Scanner এর aligned pair click করলে auto-populate entry price
 
-**`ema_scan_notifications`** — alignment alerts:
-- `id`, `pair`, `direction`, `alignment_score` (1-9)
-- `message`, `is_read` (boolean), `created_at`
+### 5. Strength Divergence Alert
+Currency strength যখন direction change করে (strong থেকে weak হচ্ছে বা vice versa) — সেটা early reversal signal। এই metric:
+- Last 3-4 scan এর strength trend track করবে
+- Divergence detect করলে notification দেবে
+- "USD weakening — USD pairs এ SELL bias shift হচ্ছে" type alert
 
-### 2. Edge Function — `scan-ema-alignment`
+### 6. Kill Zone Heatmap
+ICT/SMC concept অনুযায়ী নির্দিষ্ট সময়ে (Kill Zones) price সবচেয়ে বেশি move করে:
+- London Kill Zone: 7-9 AM GMT
+- NY Kill Zone: 12-2 PM GMT
+- Asian Kill Zone: 12-2 AM GMT
+Calendar heatmap দেখাবে কোন kill zone এ তোমার win rate সবচেয়ে ভালো
 
-- TWELVEDATA_API_KEY secret add করবো (user এর key: `2c7f2479b4e645b8a7746d8f74bb08ca`)
-- Currency strength DB থেকে strong/weak pairs নেবে
-- প্রতিটা pair + timeframe এর জন্য TwelveData EMA API call:
-  ```
-  GET https://api.twelvedata.com/ema?symbol=EUR/USD&interval=3min&time_period=9&apikey=KEY
-  ```
-- 3 EMAs × 3 timeframes = 9 checks per pair
-- Alignment logic: সব EMA aligned থাকলে score 9/9 — partial alignment ও track হবে
-- Results `ema_alignments` এ insert, aligned pairs `ema_scan_notifications` এ insert
+### 7. Pair Correlation Matrix
+28 major pairs এর মধ্যে correlation coefficient (-1 to +1) matrix:
+- Highly correlated pairs এ একসাথে trade নেওয়া = double risk
+- Negative correlation = hedge opportunity
+- Color-coded grid: green (positive), red (negative)
 
-### 3. Scheduled Sync — pg_cron
+---
 
-- Trading hours: 6-9 AM, 1-3 PM, 7-9 PM (Bangladesh time, UTC+6)
-- প্রতি ঘন্টায় edge function invoke করবে
-- Cron expressions: `0 0-3,7-9,13-15 * * 1-5` (UTC equivalent)
+## Implementation Priority (সুপারিশ)
 
-### 4. New Page — `/ema-scanner`
+| Priority | Feature | Impact | Effort |
+|----------|---------|--------|--------|
+| 1 | **Confluence Score** | Highest — best setup filter | Medium |
+| 2 | **ADR Monitor** | High — overextended pair avoid | Medium (API) |
+| 3 | **Risk-Reward Calculator** | High — pre-trade discipline | Low (frontend only) |
+| 4 | **Session Overlap Tracker** | Medium — timing awareness | Low (frontend only) |
+| 5 | **Strength Divergence** | Medium — early reversal catch | Medium (DB history) |
+| 6 | **Kill Zone Heatmap** | Medium — pattern recognition | Medium (trade data) |
+| 7 | **Pair Correlation Matrix** | Lower — risk management | High (API + compute) |
 
-- **Summary cards**: Total scanned, bullish aligned, bearish aligned count
-- **Aligned pairs grid**: Premium glass cards — pair name, direction badge, per-timeframe EMA status (✅/❌), alignment score bar
-- **Manual scan button**: Instantly trigger scan
-- **Date picker**: Past scan results দেখার জন্য
-- **Notification integration**: Layout এর notification panel এ real alerts add হবে DB থেকে
+## Technical Approach
 
-### 5. Layout Update
+### নতুন Page: `/trade-intelligence`
+সব advanced metrics একটা unified "Trade Intelligence" page এ — tabs বা sections দিয়ে organize।
 
-- Nav items এ "EMA Scanner" add করবো (icon: `Crosshair` বা `ScanLine`)
-- Route add `/ema-scanner` in App.tsx
+### Database
+- `confluence_scores` table — pair, grade, components breakdown, timestamp
+- `adr_data` table — pair, daily range, % used, date
+- Existing `ema_alignments` + `currency_strength` combine query
 
-## Additional Ideas — ভবিষ্যতে আরো কী করা যায়
+### Edge Functions
+- `calculate-confluence` — strength + EMA data merge করে grade assign
+- `fetch-adr` — TwelveData `time_series` API থেকে daily high/low
 
-1. **Multi-Timeframe Confluence Score** — 3min + 15min + 1H alignment score combine করে "A+ Setup" grade দেওয়া
-2. **Alert Sound/Push** — browser notification API ব্যবহার করে sound alert
-3. **Backtesting** — historical alignment data দিয়ে past win rate calculate
-4. **Heatmap View** — all 28 forex pairs এর alignment status একটা heatmap grid এ
-5. **Telegram/Discord Alert** — aligned pair পেলে Telegram bot এ notification
+### Frontend Components
+- `ConfluenceCard.tsx` — A+ to D grade badge with breakdown
+- `SessionTracker.tsx` — live session indicator with countdown
+- `AdrGauge.tsx` — circular progress showing ADR % used
+- `RiskCalculator.tsx` — input form with auto-calculation
+- `DivergenceAlert.tsx` — strength trend mini-chart
+- `CorrelationMatrix.tsx` — color-coded grid
 
-## Files
-
-| File | Action |
-|------|--------|
-| `supabase/migrations/` | 2 tables: ema_alignments, ema_scan_notifications |
-| `supabase/functions/scan-ema-alignment/index.ts` | Edge function — TwelveData API → DB |
-| `src/pages/EmaScanner.tsx` | New page — scanner UI |
-| `src/types/ema.ts` | TypeScript types |
-| `src/components/ema/AlignmentCard.tsx` | Aligned pair card component |
-| `src/components/ema/ScanSummary.tsx` | Summary cards |
-| `src/components/ema/EmaDetailView.tsx` | Per-pair EMA detail |
-| `src/components/Layout.tsx` | Nav item add |
-| `src/App.tsx` | Route add |
-| Secret: TWELVEDATA_API_KEY | API key store |
-
-## TwelveData API Notes
-- Free tier: 8 API calls/minute, 800/day
-- EMA endpoint: `GET /ema?symbol=EUR/USD&interval=3min&time_period=9&outputsize=1`
-- Each pair needs 9 calls (3 EMAs × 3 TFs) — rate limiting এবং batching handle করতে হবে
-- Edge function এ delay/throttle add করবো API limit exceed না করার জন্য
+### API Usage
+TwelveData free tier (800 calls/day) এর মধ্যে থাকতে:
+- ADR: দিনে 1 বার fetch (28 pairs × 1 call = 28)
+- Confluence: existing EMA + strength data reuse — extra API call নেই
+- Session tracker: pure frontend, no API needed
 
