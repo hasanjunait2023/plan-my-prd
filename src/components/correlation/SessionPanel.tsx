@@ -27,7 +27,7 @@ function isActive(s: Session, h: number, m: number): boolean {
 
 function timeLeft(s: Session, h: number, m: number): string {
   let endMin = s.endUtc * 60;
-  let nowMin = h * 60 + m;
+  const nowMin = h * 60 + m;
   if (s.startUtc > s.endUtc && h < s.endUtc) endMin = s.endUtc * 60;
   else if (s.startUtc > s.endUtc) endMin = (s.endUtc + 24) * 60;
   let diff = endMin - nowMin;
@@ -38,14 +38,15 @@ function timeLeft(s: Session, h: number, m: number): string {
 }
 
 function timeUntil(s: Session, h: number, m: number): string {
-  let startMin = s.startUtc * 60;
-  let nowMin = h * 60 + m;
+  const startMin = s.startUtc * 60;
+  const nowMin = h * 60 + m;
   let diff = startMin - nowMin;
   if (diff <= 0) diff += 24 * 60;
   const hrs = Math.floor(diff / 60);
   const mins = diff % 60;
   return hrs > 0 ? `starts in ${hrs}h ${mins}m` : `starts in ${mins}m`;
 }
+
 function getProgress(s: Session, h: number, m: number): number {
   const total = ((s.endUtc - s.startUtc + 24) % 24 || 24) * 60;
   const elapsed = ((h - s.startUtc + 24) % 24) * 60 + m;
@@ -69,69 +70,84 @@ export function SessionPanel() {
     : null;
 
   return (
-    <div className="rounded-lg border border-border/40 bg-card/60 backdrop-blur-sm p-3">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
-          Market Sessions
-        </span>
-        <span className="text-[10px] text-muted-foreground font-mono">
-          UTC {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {SESSIONS.map(s => {
-          const active = isActive(s, h, m);
-          const progress = active ? getProgress(s, h, m) : 0;
-          return (
-            <div
-              key={s.name}
-              className="flex flex-col gap-1 rounded-md px-2.5 py-1.5"
-              style={{
-                backgroundColor: active ? `${s.color}15` : 'transparent',
-                border: `1px solid ${active ? `${s.color}40` : 'hsl(var(--border) / 0.2)'}`,
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-sm">{s.emoji}</span>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-medium truncate" style={{ color: active ? s.color : 'hsl(var(--muted-foreground))' }}>
-                    {s.name}
-                  </span>
-                  <span className="text-[9px] text-muted-foreground/60 font-mono">
-                    {formatUtc(s.startUtc)}–{formatUtc(s.endUtc)} UTC
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {active ? timeLeft(s, h, m) : timeUntil(s, h, m)}
-                  </span>
-                </div>
-                <Badge
-                  variant={active ? 'default' : 'outline'}
-                  className="ml-auto text-[9px] px-1.5 py-0 h-4 shrink-0"
-                  style={active ? { backgroundColor: s.color, color: '#fff', borderColor: s.color } : {}}
-                >
-                  {active ? 'ON' : 'OFF'}
-                </Badge>
-              </div>
-              {active && (
-                <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: `${s.color}20` }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-1000"
-                    style={{ width: `${progress}%`, backgroundColor: s.color }}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {overlaps && (
-        <div className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <span>⚡</span>
-          <span>Overlap: <span className="text-foreground font-medium">{overlaps}</span></span>
+    <div className="relative rounded-xl border border-border/20 bg-card/80 backdrop-blur-xl shadow-lg overflow-hidden">
+      {/* Subtle top gradient line */}
+      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+      
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[11px] font-bold text-muted-foreground tracking-[0.15em] uppercase">
+            Market Sessions
+          </span>
+          <div className="flex items-center gap-2">
+            {overlaps && (
+              <span className="text-[10px] text-primary font-semibold flex items-center gap-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                {overlaps} Overlap
+              </span>
+            )}
+            <span className="text-[11px] text-muted-foreground font-mono font-semibold bg-muted/20 px-2 py-0.5 rounded-md border border-border/20">
+              UTC {String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}
+            </span>
+          </div>
         </div>
-      )}
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+          {SESSIONS.map(s => {
+            const active = isActive(s, h, m);
+            const progress = active ? getProgress(s, h, m) : 0;
+            return (
+              <div
+                key={s.name}
+                className="flex flex-col gap-1.5 rounded-lg px-3 py-2 transition-all duration-300"
+                style={{
+                  backgroundColor: active ? `${s.color}12` : 'hsla(0,0%,100%,0.02)',
+                  border: `1px solid ${active ? `${s.color}35` : 'hsla(0,0%,100%,0.05)'}`,
+                  boxShadow: active ? `0 0 16px ${s.color}10, inset 0 1px 0 ${s.color}15` : 'none',
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{s.emoji}</span>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="text-xs font-semibold truncate"
+                        style={{ color: active ? s.color : 'hsl(var(--muted-foreground))' }}
+                      >
+                        {s.name}
+                      </span>
+                      <Badge
+                        variant={active ? 'default' : 'outline'}
+                        className="text-[8px] px-1.5 py-0 h-3.5 shrink-0 font-bold tracking-wider"
+                        style={active ? { backgroundColor: s.color, color: '#fff', borderColor: s.color } : { opacity: 0.5 }}
+                      >
+                        {active ? 'LIVE' : 'OFF'}
+                      </Badge>
+                    </div>
+                    <span className="text-[9px] text-muted-foreground/50 font-mono">
+                      {formatUtc(s.startUtc)}–{formatUtc(s.endUtc)} UTC
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      {active ? timeLeft(s, h, m) : timeUntil(s, h, m)}
+                    </span>
+                  </div>
+                </div>
+                {active && (
+                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${s.color}15` }}>
+                    <div
+                      className="h-full rounded-full transition-all duration-1000"
+                      style={{
+                        width: `${progress}%`,
+                        background: `linear-gradient(90deg, ${s.color}90, ${s.color})`,
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

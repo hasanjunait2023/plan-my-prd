@@ -15,6 +15,7 @@ import { Plus, Trash2, PlusCircle } from 'lucide-react';
 import ImageUpload from '@/components/journal/ImageUpload';
 import ScreenshotAnalyzer, { ExtractedTradeData } from '@/components/journal/ScreenshotAnalyzer';
 import { formatPairWithFlags } from '@/lib/pairFlags';
+import { SessionPanel } from '@/components/correlation/SessionPanel';
 
 const sessions: Session[] = ['Asian', 'London', 'New York', 'London Close'];
 const timeframes: Timeframe[] = ['1M', '5M', '15M', '1H', '4H', 'D', 'W'];
@@ -105,6 +106,8 @@ const NewTrade = () => {
           <p className="text-sm text-muted-foreground">তোমার trade এর সব details লেখো</p>
         </div>
       </div>
+
+      <SessionPanel />
 
       {/* Direction Toggle */}
       <div className="flex gap-2">

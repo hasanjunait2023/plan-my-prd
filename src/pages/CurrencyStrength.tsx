@@ -15,6 +15,7 @@ import { RefreshCw, TrendingUp, CalendarIcon, Activity } from 'lucide-react';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { SessionPanel } from '@/components/correlation/SessionPanel';
 
 function useCurrencyStrength(timeframe: string, selectedDate: Date) {
   return useQuery({
@@ -104,6 +105,8 @@ export default function CurrencyStrength() {
           </Button>
         </div>
       </div>
+
+      <SessionPanel />
 
       {/* Summary Cards */}
       {!isLoading && data && data.length > 0 && <SummaryCards data={data} />}
