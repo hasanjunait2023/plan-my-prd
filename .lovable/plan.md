@@ -1,46 +1,43 @@
 
 
-# Session Tracker Component — Alternative Plan
+# Correlation Pairs — Opposite Pair Highlighting
 
-## সমস্যা
-LuxAlgo Sessions Pine Script indicator TradingView embed widget এ add করা সম্ভব না — embed API শুধু built-in studies support করে, custom Pine Script না।
+## ধারণা
+Selected currency (যেমন EUR) এর 6টা pair এর মধ্যে:
+- **Direct pairs** (EUR base): EURUSD, EURGBP, EURJPY — EUR strong হলে এগুলো **উপরে** যায়
+- **Inverse pairs** (EUR quote): GBPEUR → chart এ EURGBP — EUR strong হলে এগুলো **নিচে** যায়
 
-## সমাধান
-Chart এর পাশে/উপরে একটা **Session Status Panel** component বানানো যেটা Pine Script এর dashboard এর মতো কাজ করবে:
+Majority pairs যেদিকে move করে, তার **opposite** দিকের pairs গুলোর card border/header হালকা (dimmed) করে দেবো — যেন তুমি বুঝতে পারো কোনটা same direction আর কোনটা ulta।
 
-### Features
-1. **4 Sessions** — New York (13:00-22:00 UTC), London (07:00-16:00 UTC), Tokyo (00:00-09:00 UTC), Sydney (21:00-06:00 UTC)
-2. **Live Status** — Active/Inactive badge (real-time UTC clock অনুযায়ী)
-3. **Color coded** — NY: #ff5d00, London: #2157f3, Tokyo: #e91e63, Sydney: #ffeb3b
-4. **Time remaining** — Active session এ কত সময় বাকি
-5. **Session overlap indicator** — কোন sessions overlap করছে সেটা দেখাবে
+## Logic
+- Selected currency pair এর base কিনা check করবো: `pair.startsWith(selected)` → **direct**, না হলে → **inverse**
+- 6টার মধ্যে যেগুলো minority (কম সংখ্যক), সেগুলো "opposite" হিসেবে mark হবে
+- Opposite pair এর card এ `opacity-50` + একটা small "↕ Inverse" badge দেবো
 
-### যেখানে যেখানে যোগ হবে
-- Correlation Pairs page — chart grid এর উপরে
-- Commodities page
-- Crypto page
+## Technical Changes
 
-### UI Layout
+### File: `src/pages/CorrelationPairs.tsx`
+- প্রতিটা pair এর জন্য determine করবো `isBase = pair.startsWith(selected)`
+- Count করবো কতগুলো base, কতগুলো quote — minority group = opposite
+- `MiniChart` এ নতুন `dimmed` prop পাঠাবো
+
+### File: `src/components/correlation/MiniChart.tsx`
+- `dimmed?: boolean` prop accept করবে
+- `dimmed` true হলে:
+  - Card border ও header এ `opacity-50` class
+  - Header এ ছোট `↕ Inverse` badge (orange/muted color)
+  - Chart widget unchanged (full visibility রাখবো analysis এর জন্য)
+
 ```text
-┌──────────────────────────────────────────────┐
-│ 🟠 New York: Active (2h 15m left)            │
-│ 🔵 London: Active (45m left)                 │
-│ 🔴 Tokyo: Inactive (starts in 3h)            │
-│ 🟡 Sydney: Inactive (starts in 8h)           │
-│ ⚡ Overlap: NY + London                      │
-└──────────────────────────────────────────────┘
+┌─ Normal Card ─────────┐   ┌─ Dimmed Card (opacity) ─┐
+│ 🇪🇺🇺🇸 EURUSD          │   │ 🇬🇧🇪🇺 GBPEUR  ↕ Inverse │
+│ [full chart]           │   │ [full chart, dim border] │
+└────────────────────────┘   └──────────────────────────┘
 ```
 
 ### Files
 | Action | File |
 |--------|------|
-| **Create** | `src/components/correlation/SessionPanel.tsx` |
-| **Modify** | `src/pages/CorrelationPairs.tsx` — panel যোগ |
-| **Modify** | `src/pages/Commodities.tsx` — panel যোগ |
-| **Modify** | `src/pages/Crypto.tsx` — panel যোগ |
-
-### Technical
-- `setInterval` দিয়ে প্রতি minute এ UTC time check করে session status update
-- কোনো API call লাগবে না — pure client-side time calculation
-- Compact horizontal layout (mobile responsive)
+| **Modify** | `src/pages/CorrelationPairs.tsx` — base/quote logic + dimmed prop |
+| **Modify** | `src/components/correlation/MiniChart.tsx` — dimmed styling + badge |
 
