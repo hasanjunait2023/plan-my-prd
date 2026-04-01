@@ -4,6 +4,13 @@ interface StrengthMeterProps {
   data: CurrencyStrengthRecord[];
 }
 
+// Convert hsl string to hsla with opacity
+function withOpacity(hslColor: string, opacity: number): string {
+  const match = hslColor.match(/hsl\(([^)]+)\)/);
+  if (match) return `hsla(${match[1]}, ${opacity})`;
+  return hslColor;
+}
+
 export function StrengthMeter({ data }: StrengthMeterProps) {
   const sorted = [...data].sort((a, b) => b.strength - a.strength);
   const maxAbs = 10;
@@ -47,12 +54,12 @@ export function StrengthMeter({ data }: StrengthMeterProps) {
               <div
                 className="absolute top-1 bottom-1 rounded-sm transition-all duration-700 ease-out"
                 style={{
-                  background: `linear-gradient(${isPositive ? '90deg' : '270deg'}, ${color}, ${color}88)`,
+                  background: `linear-gradient(${isPositive ? '90deg' : '270deg'}, ${color}, ${withOpacity(color, 0.5)})`,
                   width: `${percent / 2}%`,
                   ...(isPositive
                     ? { left: '50%' }
                     : { right: '50%' }),
-                  boxShadow: `0 0 12px ${color}30`,
+                  boxShadow: `0 0 12px ${withOpacity(color, 0.3)}`,
                 }}
               />
             </div>
@@ -80,9 +87,9 @@ export function StrengthMeter({ data }: StrengthMeterProps) {
               className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shrink-0 w-20 text-center"
               style={{
                 color,
-                backgroundColor: `${color}15`,
-                border: `1px solid ${color}25`,
-                boxShadow: `0 0 8px ${color}10`,
+                backgroundColor: withOpacity(color, 0.12),
+                border: `1px solid ${withOpacity(color, 0.2)}`,
+                boxShadow: `0 0 8px ${withOpacity(color, 0.08)}`,
               }}
             >
               {item.category}
