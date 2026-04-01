@@ -9,7 +9,7 @@ export function StrengthMeter({ data }: StrengthMeterProps) {
   const maxAbs = 10;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {sorted.map((item, index) => {
         const percent = Math.abs(item.strength) / maxAbs * 100;
         const isPositive = item.strength >= 0;
@@ -17,56 +17,72 @@ export function StrengthMeter({ data }: StrengthMeterProps) {
         const flag = CURRENCY_FLAGS[item.currency] || '🏳️';
 
         return (
-          <div key={item.currency} className="flex items-center gap-3">
-            {/* Rank */}
-            <span className="text-xs text-muted-foreground w-5 text-right shrink-0 font-mono">
+          <div
+            key={item.currency}
+            className="flex items-center gap-3 group rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/10"
+          >
+            {/* Rank badge */}
+            <div
+              className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold shrink-0"
+              style={{
+                color: index === 0 ? 'hsl(142, 71%, 45%)' : index === sorted.length - 1 ? 'hsl(0, 84%, 60%)' : 'hsl(0, 0%, 50%)',
+                backgroundColor: index === 0 ? 'hsla(142, 71%, 45%, 0.12)' : index === sorted.length - 1 ? 'hsla(0, 84%, 60%, 0.12)' : 'hsla(0, 0%, 50%, 0.08)',
+              }}
+            >
               {index + 1}
-            </span>
+            </div>
 
-            {/* Currency label */}
+            {/* Flag + Currency */}
             <div className="flex items-center gap-2 w-20 shrink-0">
-              <span className="text-lg">{flag}</span>
-              <span className="font-semibold text-foreground text-sm">{item.currency}</span>
+              <span className="text-xl leading-none">{flag}</span>
+              <span className="font-bold text-foreground text-sm tracking-wide">{item.currency}</span>
             </div>
 
             {/* Bar container */}
-            <div className="flex-1 relative h-7 rounded bg-muted/20 overflow-hidden">
+            <div className="flex-1 relative h-8 rounded-md bg-muted/10 overflow-hidden border border-border/20">
               {/* Center line */}
-              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-muted-foreground/20 z-10" />
+              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-muted-foreground/15 z-10" />
 
-              {/* Bar */}
+              {/* Gradient bar */}
               <div
-                className="absolute top-1 bottom-1 rounded transition-all duration-500"
+                className="absolute top-1 bottom-1 rounded-sm transition-all duration-700 ease-out"
                 style={{
-                  backgroundColor: color,
+                  background: `linear-gradient(${isPositive ? '90deg' : '270deg'}, ${color}, ${color}88)`,
                   width: `${percent / 2}%`,
                   ...(isPositive
                     ? { left: '50%' }
                     : { right: '50%' }),
-                  opacity: 0.85,
+                  boxShadow: `0 0 12px ${color}30`,
                 }}
               />
             </div>
 
             {/* Score */}
-            <div className="w-10 text-right shrink-0">
-              <span className="font-bold text-sm" style={{ color }}>
+            <div className="w-12 text-right shrink-0">
+              <span
+                className="font-extrabold text-sm tabular-nums"
+                style={{ color }}
+              >
                 {item.strength > 0 ? '+' : ''}{item.strength}
               </span>
             </div>
 
             {/* Direction arrow */}
-            <span className="w-5 text-center shrink-0" style={{ color }}>
-              {item.strength > 0 ? '↑' : item.strength < 0 ? '↓' : '—'}
+            <span
+              className="w-5 text-center shrink-0 text-sm font-bold"
+              style={{ color }}
+            >
+              {item.strength > 0 ? '▲' : item.strength < 0 ? '▼' : '—'}
             </span>
 
             {/* Category badge */}
             <div
-              className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded shrink-0 w-20 text-center"
+              className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shrink-0 w-20 text-center"
               style={{
                 color,
-                backgroundColor: `${color}20`,
-                border: `1px solid ${color}40`,
+                backgroundColor: `${color}15`,
+                border: `1px solid ${color}25`,
+                boxShadow: `0 0 8px ${color}10`,
               }}
             >
               {item.category}
