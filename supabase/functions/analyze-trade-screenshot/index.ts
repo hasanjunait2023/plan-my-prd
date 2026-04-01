@@ -7,13 +7,14 @@ const corsHeaders = {
 };
 
 const MODELS = [
-  "google/gemini-2.0-flash-exp:free",
-  "meta-llama/llama-4-maverick:free",
+  "google/gemma-3-27b-it:free",
+  "nvidia/nemotron-nano-12b-v2-vl:free",
+  "google/gemma-3-12b-it:free",
 ];
 
 const systemPrompt = `You are an expert forex/trading chart analyzer. Given a trading chart screenshot, extract as much trade data as possible.
 
-Return a JSON object using the tool provided. Extract these fields from the chart:
+You MUST respond with ONLY a valid JSON object (no markdown, no explanation). Extract these fields:
 - pair: The currency pair or instrument (e.g. "USD/JPY", "EUR/USD", "XAU/USD")
 - timeframe: Chart timeframe (e.g. "1M", "5M", "15M", "1H", "4H", "D", "W")
 - direction: "LONG" or "SHORT" based on the trade direction visible
@@ -27,36 +28,7 @@ Return a JSON object using the tool provided. Extract these fields from the char
 - session: Estimate the trading session based on time axis ("Asian", "London", "New York", "London Close")
 - pips: Number of pips gained/lost (if calculable)
 
-Only include fields you can confidently extract. Use null for fields you cannot determine.`;
-
-const tools = [
-  {
-    type: "function",
-    function: {
-      name: "extract_trade_data",
-      description: "Extract structured trade data from a chart screenshot",
-      parameters: {
-        type: "object",
-        properties: {
-          pair: { type: "string", description: "Currency pair e.g. USD/JPY" },
-          timeframe: { type: "string", enum: ["1M", "5M", "15M", "1H", "4H", "D", "W"] },
-          direction: { type: "string", enum: ["LONG", "SHORT"] },
-          entryPrice: { type: "number" },
-          exitPrice: { type: "number" },
-          stopLoss: { type: "number" },
-          takeProfit: { type: "number" },
-          lotSize: { type: "number" },
-          riskAmount: { type: "number" },
-          profitAmount: { type: "number" },
-          session: { type: "string", enum: ["Asian", "London", "New York", "London Close"] },
-          pips: { type: "number" },
-        },
-        required: ["pair"],
-        additionalProperties: false,
-      },
-    },
-  },
-];
+Only include fields you can confidently extract. Omit fields you cannot determine. Response must be pure JSON only.`;
 
 async function callOpenRouter(apiKey: string, model: string, imageBase64: string) {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -74,13 +46,11 @@ async function callOpenRouter(apiKey: string, model: string, imageBase64: string
         {
           role: "user",
           content: [
-            { type: "text", text: "Analyze this trading chart screenshot and extract all trade data you can find." },
+            { type: "text", text: "Analyze this trading chart screenshot and extract all trade data you can find. Respond with JSON only." },
             { type: "image_url", image_url: { url: imageBase64 } },
           ],
         },
       ],
-      tools,
-      tool_choice: { type: "function", function: { name: "extract_trade_data" } },
     }),
   });
 
@@ -127,31 +97,35 @@ serve(async (req) => {
         }
 
         const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
         const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
 
-        if (!toolCall) {
-          // Try parsing content as JSON fallback
-          const content = data.choices?.[0]?.message?.content;
-          if (content) {
-            try {
-              const parsed = JSON.parse(content);
-              return new Response(JSON.stringify({ data: parsed }), {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              });
-            } catch {
-              console.warn(`No tool call and content not JSON from ${model}`);
-              lastError = `No structured response from ${model}`;
-              continue;
-            }
-          }
-          lastError = `No response from ${model}`;
-          continue;
+        // Try tool call first
+        if (toolCall) {
+          const extractedData = JSON.parse(toolCall.function.arguments);
+          return new Response(JSON.stringify({ data: extractedData }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
 
-        const extractedData = JSON.parse(toolCall.function.arguments);
-        return new Response(JSON.stringify({ data: extractedData }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        // Try parsing content as JSON
+        if (content) {
+          // Strip markdown code fences if present
+          const cleaned = content.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+          try {
+            const parsed = JSON.parse(cleaned);
+            return new Response(JSON.stringify({ data: parsed }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          } catch {
+            console.warn(`Content not valid JSON from ${model}:`, cleaned.substring(0, 200));
+            lastError = `No structured response from ${model}`;
+            continue;
+          }
+        }
+
+        lastError = `No response from ${model}`;
+        continue;
       } catch (e) {
         console.error(`Exception with ${model}:`, e);
         lastError = e instanceof Error ? e.message : "Unknown error";
