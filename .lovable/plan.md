@@ -1,73 +1,40 @@
 
 
-# MetaApi MT5 Integration — Implementation Plan
+# TradingView Chart Analysis Page
 
-## তোমাকে যা করতে হবে (Prerequisites)
+## কি তৈরি হবে
+একটা dedicated "Charts" page যেখানে TradingView Advanced Chart widget fullscreen-capable হবে, currency pair switcher থাকবে, এবং multiple timeframe সিলেক্ট করা যাবে।
 
-তোমার MetaApi Account ID পেয়ে গেছি: `f25644b9-1732-413d-9c64-c3dcd66259cc`
+## TradingView Account Sync সম্পর্কে
+TradingView এর embed widget দিয়ে account login/sync সরাসরি সম্ভব না — TradingView কোনো public API দেয় না user account sync এর জন্য। তবে একটা workaround আছে:
+- Widget এর `show_popup_button: true` enable করলে chart টা TradingView.com এ popup হিসেবে খুলবে — সেখানে তুমি logged in থাকলে তোমার saved drawings, indicators সব দেখতে পাবে।
+- এছাড়া widget এ `allow_symbol_change: true` করলে TradingView এর built-in symbol search ও ব্যবহার করা যাবে।
 
-**2টা secret Supabase dashboard এ add করতে হবে:**
-1. `METAAPI_TOKEN` — তুমি যে JWT token দিয়েছো সেটা
-2. `METAAPI_ACCOUNT_ID` — `f25644b9-1732-413d-9c64-c3dcd66259cc`
+## Features
 
-[Secrets যোগ করো এখানে →](https://supabase.com/dashboard/project/ejtnvpmshcqydndxxonq/settings/functions)
+### 1. Pair Selector (Top Bar)
+- Forex majors (EURUSD, GBPUSD, USDJPY, etc.), metals (XAUUSD, XAGUSD), oil, crypto — categorized tabs/dropdown
+- Custom pair input ও থাকবে
+- Recently viewed pairs list
 
-## Implementation
+### 2. Timeframe Bar
+- 1M, 3M, 5M, 15M, 30M, 1H, 4H, D, W, M — সব standard timeframe
 
-### Step 1: Database Migration
-2টা table তৈরি:
+### 3. Fullscreen Chart
+- Chart প্রায় পুরো viewport নেবে (header বাদে)
+- একটা Fullscreen toggle button — click করলে browser fullscreen API দিয়ে chart পুরো screen নেবে (Layout header ও hide হবে)
+- EMA 9, 15, 200 + RSI default indicators থাকবে
 
-**`mt5_account_info`** — balance, equity, margin, free_margin, leverage, server, broker, currency, synced_at
-- `account_id` column এ UNIQUE constraint — upsert এর জন্য
-- RLS: public read, service_role insert/update/delete
+### 4. "Open in TradingView" Button
+- `show_popup_button: true` দিয়ে TradingView.com এ chart খুলবে — সেখানে তোমার TradingView account এর সব কিছু synced থাকবে
 
-**`mt5_trades`** — ticket (unique), pair, direction, entry/exit price, sl, tp, lot_size, pnl, commission, swap, open/close time, imported_to_journal flag
-- RLS: public read, service_role insert/update/delete, anon/authenticated update (for import flag)
-
-### Step 2: Edge Function — `mt5-sync`
-MetaApi REST API endpoints:
-- `GET /users/current/accounts/{id}/account-information` → account data
-- `GET /users/current/accounts/{id}/history-deals/time/{start}/{end}` → closed trades
-- `GET /users/current/accounts/{id}/positions` → open positions
-
-POST body দিয়ে action control: `full`, `account`, `history`, `positions`।
-Base URL: `https://mt-client-api-v1.agiliumtrade.agiliumtrade.ai`
-
-### Step 3: Frontend Components
-
-**`src/components/mt5/AccountCard.tsx`**
-- Balance, Equity, Margin, Free Margin cards (4-col grid)
-- Server name, broker, leverage info
-- Last sync timestamp
-
-**`src/components/mt5/TradesList.tsx`**
-- Closed trades table: pair, direction, lot, P&L, entry/exit, time
-- "Import to Journal" button per trade
-- Open positions section with live data
-
-**`src/components/mt5/ConnectionStatus.tsx`**
-- Connected/disconnected badge
-- Last sync time (relative)
-
-**`src/pages/MT5Connection.tsx`**
-- "Sync Now" button → calls edge function
-- AccountCard, ConnectionStatus, TradesList render
-- Loading states
-
-### Step 4: Route ও Navigation
-- `App.tsx`: `/mt5` route → `MT5Connection`
-- `Layout.tsx`: nav items এ MT5 link (icon: `Cable` or `Link2`)
-
-## Files Summary
+## Changes
 
 | Action | File |
 |--------|------|
-| **Migration** | `mt5_account_info` ও `mt5_trades` tables |
-| **Create** | `supabase/functions/mt5-sync/index.ts` |
-| **Create** | `src/pages/MT5Connection.tsx` |
-| **Create** | `src/components/mt5/AccountCard.tsx` |
-| **Create** | `src/components/mt5/TradesList.tsx` |
-| **Create** | `src/components/mt5/ConnectionStatus.tsx` |
-| **Modify** | `src/App.tsx` — route add |
-| **Modify** | `src/components/Layout.tsx` — nav link add |
+| **Create** | `src/pages/ChartAnalysis.tsx` — Main page with pair selector, timeframe bar, fullscreen chart |
+| **Modify** | `src/App.tsx` — `/charts` route add |
+| **Modify** | `src/components/Layout.tsx` — nav এ "Charts" link add (LineChart icon) |
+
+3টা file change। কোনো backend/database change লাগবে না।
 
