@@ -11,13 +11,15 @@ import { Slider } from '@/components/ui/slider';
 import { pairOptions, strategyOptions, smcTagOptions, mistakeOptions } from '@/data/mockData';
 import { Direction, Session, Timeframe, PsychEmotion } from '@/types/trade';
 import { toast } from 'sonner';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, PlusCircle } from 'lucide-react';
 import ImageUpload from '@/components/journal/ImageUpload';
 import ScreenshotAnalyzer, { ExtractedTradeData } from '@/components/journal/ScreenshotAnalyzer';
 
 const sessions: Session[] = ['Asian', 'London', 'New York', 'London Close'];
 const timeframes: Timeframe[] = ['1M', '5M', '15M', '1H', '4H', 'D', 'W'];
 const emotions: PsychEmotion[] = ['Confident', 'Fearful', 'Greedy', 'Calm', 'Anxious', 'Revenge', 'FOMO', 'Patient', 'Frustrated'];
+
+const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 
 const NewTrade = () => {
   const [direction, setDirection] = useState<Direction>('LONG');
@@ -37,12 +39,10 @@ const NewTrade = () => {
   const [planAdherence, setPlanAdherence] = useState(true);
   const [partialCloses, setPartialCloses] = useState<{ lots: string; price: string }[]>([]);
 
-  // Screenshots - entry & exit
   const [entryScreenshots, setEntryScreenshots] = useState<string[]>([]);
   const [exitScreenshots, setExitScreenshots] = useState<string[]>([]);
   const [lastAddedImage, setLastAddedImage] = useState<string | null>(null);
 
-  // New structured fields
   const [reasonForEntry, setReasonForEntry] = useState('');
   const [confidenceLevel, setConfidenceLevel] = useState([7]);
   const [preSituation, setPreSituation] = useState('');
@@ -51,7 +51,6 @@ const NewTrade = () => {
   const [whatWentWell, setWhatWentWell] = useState('');
   const [improvementNotes, setImprovementNotes] = useState('');
 
-  // Auto-calculations
   const entry = parseFloat(entryPrice) || 0;
   const exit = parseFloat(exitPrice) || 0;
   const sl = parseFloat(stopLoss) || 0;
@@ -95,9 +94,15 @@ const NewTrade = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">নতুন Trade Entry</h1>
-        <p className="text-sm text-muted-foreground">তোমার trade এর সব details লেখো</p>
+      {/* Premium Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+          <PlusCircle className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">নতুন Trade Entry</h1>
+          <p className="text-sm text-muted-foreground">তোমার trade এর সব details লেখো</p>
+        </div>
       </div>
 
       {/* Direction Toggle */}
@@ -119,7 +124,7 @@ const NewTrade = () => {
       </div>
 
       {/* Entry Screenshots */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">📸 Entry Situation Screenshots</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <ImageUpload
@@ -138,7 +143,7 @@ const NewTrade = () => {
       </Card>
 
       {/* Core Trade Info */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">📊 Trade Details</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -175,7 +180,7 @@ const NewTrade = () => {
       </Card>
 
       {/* Prices */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">💰 Prices & Position</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -187,23 +192,23 @@ const NewTrade = () => {
           </div>
 
           <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div className="bg-secondary/50 rounded-lg p-3">
+            <div className="bg-gradient-to-r from-primary/10 to-transparent rounded-lg p-3 border border-border/20">
               <p className="text-[10px] text-muted-foreground uppercase">Risk Pips</p>
               <p className="font-bold">{riskPips.toFixed(1)}</p>
             </div>
-            <div className="bg-secondary/50 rounded-lg p-3">
+            <div className="bg-gradient-to-r from-red-500/10 to-transparent rounded-lg p-3 border border-border/20">
               <p className="text-[10px] text-muted-foreground uppercase">Risk $</p>
               <p className="font-bold">${riskDollars.toFixed(2)}</p>
             </div>
-            <div className="bg-secondary/50 rounded-lg p-3">
+            <div className="bg-gradient-to-r from-blue-500/10 to-transparent rounded-lg p-3 border border-border/20">
               <p className="text-[10px] text-muted-foreground uppercase">RRR</p>
               <p className="font-bold">{rrr.toFixed(2)}</p>
             </div>
-            <div className="bg-secondary/50 rounded-lg p-3">
+            <div className="bg-gradient-to-r from-emerald-500/10 to-transparent rounded-lg p-3 border border-border/20">
               <p className="text-[10px] text-muted-foreground uppercase">Pips</p>
               <p className={`font-bold ${pips >= 0 ? 'text-profit' : 'text-loss'}`}>{pips.toFixed(1)}</p>
             </div>
-            <div className="bg-secondary/50 rounded-lg p-3">
+            <div className="bg-gradient-to-r from-emerald-500/10 to-transparent rounded-lg p-3 border border-border/20">
               <p className="text-[10px] text-muted-foreground uppercase">P&L</p>
               <p className={`font-bold ${pnl >= 0 ? 'text-profit' : 'text-loss'}`}>{pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</p>
             </div>
@@ -212,107 +217,71 @@ const NewTrade = () => {
       </Card>
 
       {/* Reason for Entry */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">📝 Trade নেওয়ার কারণ (Reason for Entry)</CardTitle></CardHeader>
         <CardContent>
-          <Textarea
-            value={reasonForEntry}
-            onChange={e => setReasonForEntry(e.target.value)}
-            placeholder="কেন এই trade নিচ্ছো? Setup কি ছিল? বাংলায় বা English এ লেখো..."
-            rows={4}
-            className="text-base"
-          />
+          <Textarea value={reasonForEntry} onChange={e => setReasonForEntry(e.target.value)}
+            placeholder="কেন এই trade নিচ্ছো? Setup কি ছিল? বাংলায় বা English এ লেখো..." rows={4} className="text-base" />
         </CardContent>
       </Card>
 
       {/* Confidence Level */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">🎯 Confidence Level</CardTitle></CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
-            <Slider
-              value={confidenceLevel}
-              onValueChange={setConfidenceLevel}
-              min={1}
-              max={10}
-              step={1}
-              className="flex-1"
-            />
+            <Slider value={confidenceLevel} onValueChange={setConfidenceLevel} min={1} max={10} step={1} className="flex-1" />
             <span className="text-xl font-bold min-w-[3rem] text-center">{confidenceLevel[0]}/10</span>
           </div>
         </CardContent>
       </Card>
 
       {/* Pre-Trade Situation */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">📍 Entry এর আগে Situation (Pre-Trade)</CardTitle></CardHeader>
         <CardContent>
-          <Textarea
-            value={preSituation}
-            onChange={e => setPreSituation(e.target.value)}
-            placeholder="Entry নেওয়ার আগে market এ কি situation ছিল? কি দেখেছিলে?"
-            rows={4}
-            className="text-base"
-          />
+          <Textarea value={preSituation} onChange={e => setPreSituation(e.target.value)}
+            placeholder="Entry নেওয়ার আগে market এ কি situation ছিল? কি দেখেছিলে?" rows={4} className="text-base" />
         </CardContent>
       </Card>
 
       {/* During Trade Situation */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">⏳ Trade চলাকালীন Situation (During Trade)</CardTitle></CardHeader>
         <CardContent>
-          <Textarea
-            value={duringSituation}
-            onChange={e => setDuringSituation(e.target.value)}
-            placeholder="Trade চলাকালীন কি হয়েছিল? Price কিভাবে move করেছিল?"
-            rows={4}
-            className="text-base"
-          />
+          <Textarea value={duringSituation} onChange={e => setDuringSituation(e.target.value)}
+            placeholder="Trade চলাকালীন কি হয়েছিল? Price কিভাবে move করেছিল?" rows={4} className="text-base" />
         </CardContent>
       </Card>
 
       {/* Exit Screenshots */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">📸 Exit Situation Screenshots</CardTitle></CardHeader>
         <CardContent>
-          <ImageUpload
-            images={exitScreenshots}
-            onImagesChange={setExitScreenshots}
-            label="Exit এর পরের screenshot paste/upload করো"
-          />
+          <ImageUpload images={exitScreenshots} onImagesChange={setExitScreenshots} label="Exit এর পরের screenshot paste/upload করো" />
         </CardContent>
       </Card>
 
       {/* Post-Trade Situation */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">📍 Trade এর পরে Situation (Post-Trade)</CardTitle></CardHeader>
         <CardContent>
-          <Textarea
-            value={postSituation}
-            onChange={e => setPostSituation(e.target.value)}
-            placeholder="Trade close করার পরে কি হয়েছিল? Price কোথায় গেছে?"
-            rows={4}
-            className="text-base"
-          />
+          <Textarea value={postSituation} onChange={e => setPostSituation(e.target.value)}
+            placeholder="Trade close করার পরে কি হয়েছিল? Price কোথায় গেছে?" rows={4} className="text-base" />
         </CardContent>
       </Card>
 
       {/* What Went Well */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">✅ কি কি ভালো হয়েছে (What Went Well)</CardTitle></CardHeader>
         <CardContent>
-          <Textarea
-            value={whatWentWell}
-            onChange={e => setWhatWentWell(e.target.value)}
-            placeholder="এই trade এ কি কি সঠিক করেছো?"
-            rows={3}
-            className="text-base"
-          />
+          <Textarea value={whatWentWell} onChange={e => setWhatWentWell(e.target.value)}
+            placeholder="এই trade এ কি কি সঠিক করেছো?" rows={3} className="text-base" />
         </CardContent>
       </Card>
 
       {/* SMC Tags & Mistakes */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">🏷️ Tags & ❌ Mistakes</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div>
@@ -341,21 +310,16 @@ const NewTrade = () => {
       </Card>
 
       {/* Improvement Notes */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">🔧 Improvement Notes</CardTitle></CardHeader>
         <CardContent>
-          <Textarea
-            value={improvementNotes}
-            onChange={e => setImprovementNotes(e.target.value)}
-            placeholder="কোথায় আরো ভালো করতে পারতে? পরবর্তী বার কি করবে?"
-            rows={3}
-            className="text-base"
-          />
+          <Textarea value={improvementNotes} onChange={e => setImprovementNotes(e.target.value)}
+            placeholder="কোথায় আরো ভালো করতে পারতে? পরবর্তী বার কি করবে?" rows={3} className="text-base" />
         </CardContent>
       </Card>
 
       {/* Psychology */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">🧠 Psychology</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -379,7 +343,7 @@ const NewTrade = () => {
       </Card>
 
       {/* Partial Closes */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm">📊 Partial Closes</CardTitle>
@@ -399,7 +363,7 @@ const NewTrade = () => {
         )}
       </Card>
 
-      <Button onClick={handleSubmit} className="w-full" size="lg">
+      <Button onClick={handleSubmit} className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-[0_0_20px_hsla(145,63%,49%,0.2)]" size="lg">
         Trade Log করো
       </Button>
     </div>

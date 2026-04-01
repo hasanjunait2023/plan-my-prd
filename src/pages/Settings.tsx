@@ -10,6 +10,8 @@ import { mockAccountSettings, mockRules } from '@/data/mockData';
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, Shield, Plus, Trash2 } from 'lucide-react';
 
+const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
+
 const Settings = () => {
   const [balance, setBalance] = useState(mockAccountSettings.startingBalance.toString());
   const [currency, setCurrency] = useState(mockAccountSettings.currency);
@@ -30,15 +32,26 @@ const Settings = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">Configure your trading account and rules</p>
+      {/* Premium Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+          <SettingsIcon className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+          <p className="text-sm text-muted-foreground">Configure your trading account and rules</p>
+        </div>
       </div>
 
       {/* Account Setup */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2"><SettingsIcon className="w-4 h-4" /> Account Setup</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+              <SettingsIcon className="w-3 h-3 text-primary" />
+            </div>
+            Account Setup
+          </CardTitle>
           <CardDescription>Your trading account configuration</CardDescription>
         </CardHeader>
         <CardContent>
@@ -61,7 +74,7 @@ const Settings = () => {
             </div>
             <div>
               <Label>Current Balance</Label>
-              <div className="h-10 flex items-center px-3 bg-accent/50 rounded-md text-sm font-medium">
+              <div className="h-10 flex items-center px-3 bg-gradient-to-r from-primary/10 to-transparent rounded-md text-sm font-medium border border-primary/20">
                 ${mockAccountSettings.currentBalance.toLocaleString()}
               </div>
             </div>
@@ -70,9 +83,14 @@ const Settings = () => {
       </Card>
 
       {/* Risk Rules */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2"><Shield className="w-4 h-4 text-primary" /> Risk Management</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-red-500/10 flex items-center justify-center">
+              <Shield className="w-3 h-3 text-red-400" />
+            </div>
+            Risk Management
+          </CardTitle>
           <CardDescription>Set your risk parameters</CardDescription>
         </CardHeader>
         <CardContent>
@@ -94,9 +112,14 @@ const Settings = () => {
       </Card>
 
       {/* Trading Rules */}
-      <Card>
+      <Card className={glassCard}>
         <CardHeader>
-          <CardTitle className="text-sm">Rules I Never Break</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center">
+              <Shield className="w-3 h-3 text-emerald-400" />
+            </div>
+            Rules I Never Break
+          </CardTitle>
           <CardDescription>Your personal trading commandments</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -118,7 +141,7 @@ const Settings = () => {
         </CardContent>
       </Card>
 
-      <Button onClick={() => toast.success('Settings saved! (Mock — no backend yet)')} className="w-full" size="lg">
+      <Button onClick={() => toast.success('Settings saved! (Mock — no backend yet)')} className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-[0_0_20px_hsla(145,63%,49%,0.2)]" size="lg">
         Save Settings
       </Button>
     </div>

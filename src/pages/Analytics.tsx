@@ -3,6 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mockTrades, mockDailyPnL, mockAccountSettings } from '@/data/mockData';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
+import { BarChart3, TrendingUp, Activity } from 'lucide-react';
+
+const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
+const tooltipStyle = { backgroundColor: 'hsl(0, 0%, 8%)', border: '1px solid hsla(0,0%,100%,0.1)', borderRadius: '8px', color: 'hsl(0, 0%, 95%)' };
+
+const gradientAccents = [
+  'from-emerald-500/15', 'from-blue-500/15', 'from-violet-500/15', 'from-emerald-500/15',
+  'from-red-500/15', 'from-emerald-500/15', 'from-red-500/15', 'from-orange-500/15',
+  'from-blue-500/15', 'from-violet-500/15',
+];
 
 const Analytics = () => {
   const [period, setPeriod] = useState('all');
@@ -44,17 +54,20 @@ const Analytics = () => {
     { label: 'Avg RRR', value: avgRRR.toFixed(2), color: avgRRR >= 1.5 ? 'text-profit' : 'text-warning' },
   ];
 
-  const tooltipStyle = { backgroundColor: 'hsl(210, 38%, 17%)', border: 'none', borderRadius: '8px', color: 'hsl(192, 15%, 94%)' };
-
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
-          <p className="text-sm text-muted-foreground">Performance overview & statistics</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center border border-blue-500/20">
+            <BarChart3 className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
+            <p className="text-sm text-muted-foreground">Performance overview & statistics</p>
+          </div>
         </div>
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-36 bg-card/50 backdrop-blur-sm border-border/40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="week">This Week</SelectItem>
             <SelectItem value="month">This Month</SelectItem>
@@ -66,8 +79,8 @@ const Analytics = () => {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {metrics.map(m => (
-          <Card key={m.label}>
+        {metrics.map((m, i) => (
+          <Card key={m.label} className={`${glassCard} bg-gradient-to-br ${gradientAccents[i]} to-transparent`}>
             <CardContent className="pt-4 pb-3">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{m.label}</p>
               <p className={`text-xl font-bold ${m.color}`}>{m.value}</p>
@@ -77,17 +90,24 @@ const Analytics = () => {
       </div>
 
       {/* Equity Curve */}
-      <Card>
-        <CardHeader><CardTitle className="text-sm">Equity Curve</CardTitle></CardHeader>
+      <Card className={glassCard}>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+              <TrendingUp className="w-3 h-3 text-primary" />
+            </div>
+            Equity Curve
+          </CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={equityCurve}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(210, 25%, 20%)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(213, 16%, 50%)' }} />
-                <YAxis tick={{ fontSize: 11, fill: 'hsl(213, 16%, 50%)' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsla(0,0%,100%,0.06)" />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(0, 0%, 45%)' }} />
+                <YAxis tick={{ fontSize: 11, fill: 'hsl(0, 0%, 45%)' }} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v.toFixed(0)}`, 'Balance']} />
-                <Line type="monotone" dataKey="balance" stroke="hsl(170, 100%, 39%)" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="balance" stroke="hsl(145, 63%, 49%)" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -95,15 +115,22 @@ const Analytics = () => {
       </Card>
 
       {/* Daily P&L Bar Chart */}
-      <Card>
-        <CardHeader><CardTitle className="text-sm">Daily P&L</CardTitle></CardHeader>
+      <Card className={glassCard}>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+              <Activity className="w-3 h-3 text-primary" />
+            </div>
+            Daily P&L
+          </CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyPnL}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(210, 25%, 20%)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(213, 16%, 50%)' }} />
-                <YAxis tick={{ fontSize: 11, fill: 'hsl(213, 16%, 50%)' }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsla(0,0%,100%,0.06)" />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(0, 0%, 45%)' }} />
+                <YAxis tick={{ fontSize: 11, fill: 'hsl(0, 0%, 45%)' }} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v.toFixed(0)}`, 'P&L']} />
                 <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
                   {monthlyPnL.map((entry, i) => (
