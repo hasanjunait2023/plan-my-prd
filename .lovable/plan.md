@@ -1,21 +1,34 @@
 
 
-# TradingView.com সরাসরি Embed করা
+# Chart Analysis Page — Redesign Plan (Updated)
 
-## সমস্যা
-তুমি চাইছো `https://www.tradingview.com/chart/` সরাসরি site এ খুলুক যেন তোমার TradingView account এর সব drawings, indicators, watchlist সব synced থাকে।
+## কি হবে
 
-## বাস্তবতা
-TradingView তাদের main chart page (`tradingview.com/chart/`) iframe এ embed করতে দেয় না — তারা `X-Frame-Options: SAMEORIGIN` header দেয়, মানে অন্য কোনো site থেকে iframe এ load হবে না। এটা TradingView এর security restriction, bypass করার উপায় নেই।
+### 1. Layout System (1-4 charts, no scroll)
+- **1 chart**: full screen — timeframe 1H
+- **2 charts**: 2 columns, 50/50 — 15m, 1H
+- **3 charts**: 3 columns equal — 15m, 1H, 4H
+- **4 charts**: 2x2 grid — 15m, 1H, 4H, D
+- সব chart **viewport height এ fit** হবে, scroll লাগবে না — `h-[calc(100vh-<header>)]` ব্যবহার হবে
+- Panel এর মধ্যে gap কমিয়ে `gap-0.5` বা `gap-1` রাখবো
 
-## যা করা সম্ভব
+### 2. Single Symbol, Independent Timeframe
+- **Top bar এ symbol selector** — সব panel এ একই symbol
+- প্রতিটা panel এ **নিজের timeframe selector** থাকবে — তুমি যেকোনো panel এর timeframe আলাদাভাবে change করতে পারবে
+- Default timeframe auto-assign হবে (15m, 1H, 4H, D) কিন্তু তুমি change করলে **তোমার সেটাই থাকবে** — state persist হবে
 
-### Option A: "Open TradingView" Button (সবচেয়ে সহজ)
-Chart page এ একটা prominent button যেটা click করলে `https://www.tradingview.com/chart/` নতুন tab এ খুলবে। তুমি সেখানে fully logged in অবস্থায় কাজ করতে পারবে।
+### 3. Chart বড় করা
+- Panel toolbar শুধু timeframe buttons (একটা thin row) — বাকি সব top bar এ
+- TradingView widget `flex-1 min-h-0` দিয়ে maximum space নেবে
+- Panel border/padding কমিয়ে chart area maximize
 
-### Option B: Current Setup রাখো + Popup ব্যবহার করো (Already আছে)
-এখন যে TradingView widget আছে সেখানে popup icon (↗️) click করলে TradingView.com এ chart খোলে — সেখানে তোমার account synced থাকে।
+### 4. forwardRef Warning Fix
 
-## Recommendation
-তোমার current setup এ popup button already কাজ করছে। আমি চাইলে chart page এর top এ একটা বড় "Open in TradingView" button যোগ করতে পারি যেটা সরাসরি `https://www.tradingview.com/chart/` নতুন tab এ খুলবে — এটা কি চাও?
+## Files
+
+| Action | File |
+|--------|------|
+| **Modify** | `src/pages/ChartAnalysis.tsx` — Layout 1-4, single symbol top bar, full viewport height |
+| **Modify** | `src/components/charts/ChartPanel.tsx` — Symbol prop receive, নিজের timeframe selector রাখবে |
+| **Modify** | `src/components/charts/TradingViewWidget.tsx` — forwardRef fix if needed |
 
