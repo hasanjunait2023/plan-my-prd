@@ -1,75 +1,84 @@
+# MetaApi দিয়ে MT5 Integration
 
-# MetaApi.cloud দিয়ে MT5 Integration
+## Overview
+MetaApi REST API ব্যবহার করে তোমার Exness MT5 account এর data (balance, equity, trade history, open positions) auto-sync করবো। কোনো EA install লাগবে না।
 
-## Approach
-
-হ্যাঁ, আরেকটা way আছে — **MetaApi.cloud** নামে একটা third-party service আছে যেটা MT5 এর জন্য REST API provide করে। তুমি শুধু MT5 login, password, আর broker server name দিবে — বাকি সব MetaApi handle করবে। কোনো EA install করা লাগবে না।
-
-```text
-┌─────────────────┐     REST API      ┌──────────────┐     HTTP      ┌─────────────┐
-│  MetaApi Cloud  │ ←───────────────→ │  Edge Func   │ ←──────────→ │  Web App    │
-│ (connects MT5)  │   trade data      │  (Supabase)  │              │ Fx Junait   │
-└─────────────────┘                   └──────────────┘              └─────────────┘
-```
-
-## কি কি পাবে
-
-| Feature | Detail |
-|---------|--------|
-| **Account Info** | Balance, Equity, Margin, Free Margin — real-time |
-| **Trade History** | সব closed trades auto fetch — pair, lot, P&L, entry/exit |
-| **Open Positions** | বর্তমান open trades live দেখা যাবে |
-| **Auto Journal Import** | MT5 trade → Journal এ one-click import |
-
-## Setup যা লাগবে (তোমাকে করতে হবে)
-
-1. **MetaApi.cloud এ free account** খুলতে হবে → [metaapi.cloud](https://metaapi.cloud)
-2. MetaApi dashboard থেকে **API Token** copy করতে হবে
-3. MetaApi dashboard এ তোমার Exness MT5 account add করতে হবে:
-   - MT5 Login number
-   - MT5 Password (investor password দিলেও চলবে — read-only access)
-   - Broker server name (e.g., `Exness-MT5Real`)
-4. MetaApi থেকে **Account ID** পাবে — সেটাও দিতে হবে
-
-> **Note**: MetaApi free tier এ 1টা account connect করা যায়। Paid plan এ unlimited।
-
-## Implementation Steps
+## Steps
 
 ### 1. Secrets যোগ করা
-- `METAAPI_TOKEN` — MetaApi API token
-- `METAAPI_ACCOUNT_ID` — connected MT5 account ID
+- `METAAPI_TOKEN` — তোমার MetaApi API token
+- `METAAPI_ACCOUNT_ID` — `f25644b9-1732-413d-9c64-c3dcd66259cc`
 
-### 2. Edge Function — `mt5-sync`
-- MetaApi REST API call করে account info + trade history fetch করবে
-- Data Supabase table এ save করবে
-- Endpoint: `GET https://mt-client-api-v1.agiliumtrade.agiliumtrade.ai/users/current/accounts/{accountId}/...`
+### 2. Database Tables (Migration)
 
-### 3. Database Tables
-- `mt5_account_info` — balance, equity, margin, last_synced
-- `mt5_trades` — ticket, pair, direction, lot, entry/exit price, pnl, open/close time
+**`mt5_account_info`** — Account balance, equity, margin, sync status
+| Column | Type |
+|--------|------|
+| id | uuid PK |
+| account_id | text |
+| balance | numeric |
+| equity | numeric |
+| margin | numeric |
+| free_margin | numeric |
+| leverage | integer |
+| server | text |
+| synced_at | timestamptz |
 
-### 4. Frontend — MT5 Connection Page
-- Account status card (connected/disconnected, last sync time)
-- Balance/Equity/Margin display
-- Trade history list with "Import to Journal" button
-- Manual "Sync Now" button
+**`mt5_trades`** — Trade history from MT5
+| Column | Type |
+|--------|------|
+| id | uuid PK |
+| ticket | text (unique) |
+| pair | text |
+| direction | text (BUY/SELL) |
+| entry_price | numeric |
+| exit_price | numeric |
+| sl | numeric |
+| tp | numeric |
+| lot_size | numeric |
+| pnl | numeric |
+| pips | numeric |
+| commission | numeric |
+| swap | numeric |
+| open_time | timestamptz |
+| close_time | timestamptz |
+| imported_to_journal | boolean (default false) |
 
-### 5. Navigation ও Route যোগ
+RLS: Public read, service_role insert/update/delete।
+
+### 3. Edge Function — `mt5-sync`
+- MetaApi REST API call করে:
+  - `GET /accounts/{accountId}/account-information` → balance, equity, margin
+  - `GET /accounts/{accountId}/history-deals` → closed trades
+  - `GET /accounts/{accountId}/positions` → open positions
+- Data upsert করবে Supabase tables এ
+- CORS headers সহ
+
+### 4. Frontend — `MT5Connection.tsx` Page
+- **Account Status Card** — Balance, Equity, Margin, Free Margin, last sync time
+- **Open Positions List** — বর্তমান open trades
+- **Trade History List** — closed trades with "Import to Journal" button
+- **Sync Now Button** — manual sync trigger
+
+### 5. Components
+- `src/components/mt5/AccountCard.tsx` — balance/equity display
+- `src/components/mt5/TradesList.tsx` — trade history + open positions
+- `src/components/mt5/ConnectionStatus.tsx` — sync status indicator
+
+### 6. Route ও Navigation
+- `/mt5` route যোগ in `App.tsx`
+- Layout nav এ MT5 link যোগ
 
 ## Files
 
 | Action | File |
 |--------|------|
+| **Secret** | `METAAPI_TOKEN`, `METAAPI_ACCOUNT_ID` |
 | **Migration** | `mt5_account_info` ও `mt5_trades` tables |
 | **Create** | `supabase/functions/mt5-sync/index.ts` |
 | **Create** | `src/pages/MT5Connection.tsx` |
 | **Create** | `src/components/mt5/AccountCard.tsx` |
 | **Create** | `src/components/mt5/TradesList.tsx` |
-| **Modify** | `src/App.tsx` — route যোগ |
-| **Modify** | `src/components/Layout.tsx` — nav link যোগ |
-
-## Important
-- MetaApi **paid service** — free tier limited (1 account, limited requests)
-- Investor password দিলে **read-only** access হবে (safer — trade execute করতে পারবে না)
-- Master password দিলে trade execute ও করা যাবে (future feature)
-- PC তে MT5 open না থাকলেও কাজ করবে — MetaApi cloud এ terminal চালায়
+| **Create** | `src/components/mt5/ConnectionStatus.tsx` |
+| **Modify** | `src/App.tsx` — route |
+| **Modify** | `src/components/Layout.tsx` — nav link |
