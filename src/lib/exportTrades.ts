@@ -377,11 +377,41 @@ export async function exportToDocx({ trades, dateLabel, outcomeFilters, includeS
       addNote('Improvement', trade.improvementNotes);
 
       children.push(new Paragraph({
-        spacing: { before: 80, after: 200 },
+        spacing: { before: 80, after: 100 },
         children: [
           new TextRun({ text: `Psychology: ${trade.psychologyEmotion} (${trade.psychologyState}/10)  |  Confidence: ${trade.confidenceLevel}/10  |  Plan Followed: ${trade.planAdherence ? 'Yes' : 'No'}`, size: 16, color: '888888' }),
         ],
       }));
+
+      // Screenshots
+      if (includeScreenshots) {
+        const shots = getAllScreenshots(trade);
+        for (const shot of shots) {
+          const imgData = await fetchImageAsArrayBuffer(shot.url);
+          if (!imgData) continue;
+          children.push(new Paragraph({
+            spacing: { before: 80 },
+            children: [new TextRun({ text: shot.label, bold: true, size: 16, color: '888888' })],
+          }));
+          try {
+            children.push(new Paragraph({
+              spacing: { after: 100 },
+              children: [new ImageRun({
+                type: imgData.type,
+                data: imgData.buffer,
+                transformation: { width: 400, height: 250 },
+                altText: { title: shot.label, description: shot.label, name: shot.label },
+              })],
+            }));
+          } catch {
+            children.push(new Paragraph({
+              children: [new TextRun({ text: '[Image could not be loaded]', size: 16, italics: true, color: 'AAAAAA' })],
+            }));
+          }
+        }
+      }
+
+      children.push(new Paragraph({ spacing: { after: 200 } }));
     }
   }
 
