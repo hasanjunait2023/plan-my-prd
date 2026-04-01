@@ -10,6 +10,7 @@ import NewTrade from "./pages/NewTrade.tsx";
 import Analytics from "./pages/Analytics.tsx";
 import Psychology from "./pages/Psychology.tsx";
 import Settings from "./pages/Settings.tsx";
+import CurrencyStrength from "./pages/CurrencyStrength.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
