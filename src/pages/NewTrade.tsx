@@ -142,7 +142,7 @@ const NewTrade = () => {
         starred: false,
         status: 'PENDING',
       });
-      toast.success('Trade সফলভাবে log হয়েছে!');
+      toast.success('Trade entry সফল! Pending হিসেবে Journal এ দেখা যাবে।');
       navigate('/journal');
     } catch {
       toast.error('Trade save করতে সমস্যা হয়েছে');
