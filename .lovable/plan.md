@@ -1,52 +1,31 @@
 
 
-## Plan: Pair Suggestions — শুধু 28 Tradeable Pairs থেকে Best Opportunities দেখানো
+## Plan: Pair Suggestions — ৩টা করে Pair + Chart সহ
 
-### সমস্যা
+### পরিবর্তন
 
-বর্তমান `generatePairSuggestions()` function যেকোনো strong/weak currency combination তৈরি করে — যেমন `JPY/NZD`, `EUR/NZD` — যেগুলো real forex market এ exist করে না বা standard pair নয়। এটা দুইটা সমস্যা তৈরি করে:
+#### 1. `src/types/correlation.ts` — ৪ থেকে ৩ করা
+- `slice(0, 4)` → `slice(0, 3)` — BUY ও SELL দুই দিকেই top 3 pair দেখাবে
 
-1. **Invalid pairs**: `JPY/NZD` বলে কিছু নেই, standard pair হলো `NZD/JPY`
-2. **No filtering**: 28টা tradeable pair এর বাইরেও pair suggest করছে
-3. **Direction logic wrong**: pair এর base/quote order ঠিক না হলে direction ও উল্টো হয়ে যায়
+#### 2. `src/components/correlation/PairSuggestions.tsx` — Chart যোগ করা
+- প্রতিটা suggested pair এর নিচে TradingView MiniChart embed করব
+- Pair name (যেমন `EUR/USD`) কে TradingView symbol format এ convert করব (`FX:EURUSD`)
+- Layout:
+  - BUY section: top 3 BUY pairs list + তাদের 3টা chart (stacked)
+  - SELL section: top 3 SELL pairs list + তাদের 3টা chart (stacked)
+  - Grid: 2 columns (BUY left, SELL right) — existing layout রাখব
+- Chart height: 300px per chart (compact কিন্তু readable)
+- Existing `MiniChart` component reuse করব (already has expand dialog)
+- Interval: `"60"` (1H) default
 
-### সমাধান
+#### 3. Pair → TradingView Symbol Mapping
+`EUR/USD` → `FX:EURUSD` — simple string replace: `"FX:" + pair.replace("/", "")`
 
-#### Step 1: 28 Tradeable Pairs List তৈরি করা (`src/types/correlation.ts`)
-
-8টা major currency (EUR, USD, GBP, JPY, AUD, NZD, CAD, CHF) থেকে 28টা standard forex pair define করব:
-
-```text
-EUR/USD, EUR/GBP, EUR/JPY, EUR/AUD, EUR/NZD, EUR/CAD, EUR/CHF,
-GBP/USD, GBP/JPY, GBP/AUD, GBP/NZD, GBP/CAD, GBP/CHF,
-AUD/USD, AUD/JPY, AUD/NZD, AUD/CAD, AUD/CHF,
-NZD/USD, NZD/JPY, NZD/CAD, NZD/CHF,
-USD/JPY, USD/CAD, USD/CHF,
-CAD/JPY, CAD/CHF,
-CHF/JPY
-```
-
-#### Step 2: `generatePairSuggestions()` Logic সম্পূর্ণ নতুন করা
-
-নতুন approach:
-1. সব 28 pair iterate করব
-2. প্রতিটা pair এর base ও quote currency এর strength বের করব
-3. **Strength difference** calculate করব: `base_strength - quote_strength`
-4. যদি diff **positive** এবং বড় → **BUY** (base strong, quote weak)
-5. যদি diff **negative** এবং বড় → **SELL** (base weak, quote strong)
-6. **Absolute diff দিয়ে sort** করে top 4 BUY ও top 4 SELL return করব
-7. Minimum threshold রাখব (diff >= 3) যেন weak signals না আসে
-
-এতে:
-- শুধু real tradeable pairs দেখাবে
-- Direction সঠিক থাকবে (pair এর standard order অনুযায়ী)
-- সবচেয়ে বড় strength gap ওয়ালা pairs আগে আসবে = best opportunities
-
-### Technical Changes
+### Technical Summary
 
 | File | Change |
 |------|--------|
-| `src/types/correlation.ts` | Add `TRADEABLE_PAIRS` array (28 pairs), rewrite `generatePairSuggestions()` |
+| `src/components/correlation/PairSuggestions.tsx` | Slice 3 instead of 4, add MiniChart for each suggested pair |
 
-UI component (`PairSuggestions.tsx`) এ কোনো পরিবর্তন লাগবে না — same interface return করবে।
+মোট ১টা ফাইল পরিবর্তন।
 
