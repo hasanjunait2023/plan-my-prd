@@ -4,6 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Star, CheckCircle, XCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import ImageUpload from './ImageUpload';
+import PostAnalysisSection from './PostAnalysisSection';
+import RevisionSection from './RevisionSection';
 import { format, parseISO } from 'date-fns';
 import { PairWithFlags } from '@/lib/pairFlags';
 
