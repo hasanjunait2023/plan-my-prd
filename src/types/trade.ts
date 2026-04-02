@@ -49,6 +49,7 @@ export interface Trade {
   exitScreenshots: string[];
   screenshots: string[];
   partialCloses: PartialClose[];
+  status: TradeStatus;
   starred: boolean;
   createdAt: string;
 }

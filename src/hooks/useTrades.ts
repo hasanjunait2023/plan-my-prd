@@ -100,7 +100,32 @@ export const useInsertTrade = () => {
         screenshots: trade.screenshots,
         partial_closes: JSON.parse(JSON.stringify(trade.partialCloses)),
         starred: trade.starred,
+        status: trade.status || 'PENDING',
       });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trades'] }),
+  });
+};
+
+export const useUpdateTrade = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...fields }: { id: string } & Record<string, any>) => {
+      const dbFields: Record<string, any> = {};
+      const map: Record<string, string> = {
+        exitPrice: 'exit_price', pnl: 'pnl', pips: 'pips', outcome: 'outcome', status: 'status',
+        exitScreenshots: 'exit_screenshots', duringSituation: 'during_situation',
+        postSituation: 'post_situation', whatWentWell: 'what_went_well',
+        improvementNotes: 'improvement_notes', mistakes: 'mistakes',
+        partialCloses: 'partial_closes', postTradeNotes: 'post_trade_notes',
+        rrr: 'rrr', riskDollars: 'risk_dollars',
+      };
+      Object.entries(fields).forEach(([k, v]) => {
+        const dbKey = map[k] || k;
+        dbFields[dbKey] = k === 'partialCloses' ? JSON.parse(JSON.stringify(v)) : v;
+      });
+      const { error } = await supabase.from('trades').update(dbFields).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trades'] }),
