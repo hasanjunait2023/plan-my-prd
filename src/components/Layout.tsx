@@ -286,7 +286,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50">
                   <Avatar className="w-8 h-8 border border-border/50 cursor-pointer hover:border-primary/50 transition-colors">
                     <AvatarFallback className="bg-card text-xs font-semibold text-foreground">
-                      TV
+                      {user?.email?.charAt(0).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                 </button>
