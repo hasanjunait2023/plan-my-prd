@@ -221,24 +221,7 @@ const TradeJournal = () => {
           </div>
          <div>
             <h1 className="text-lg font-bold">Trade Journal</h1>
-            <span className="text-xs text-muted-foreground">
-              {filteredTrades.length} trades
-              {filteredTrades.filter(t => t.status === 'PENDING').length > 0 && (
-                <span className="ml-2 text-warning font-medium">
-                  · {filteredTrades.filter(t => t.status === 'PENDING').length} Pending
-                </span>
-              )}
-              {(() => {
-                const needsAnalysis = filteredTrades.filter(t => t.status === 'CLOSED' && (!t.ruleChecklist?.length || t.ruleScore === 0)).length;
-                const needsRevision = filteredTrades.filter(t => t.status === 'CLOSED' && !t.revisedAt && differenceInDays(new Date(), parseISO(t.date)) >= 7).length;
-                return (needsAnalysis > 0 || needsRevision > 0) ? (
-                  <span className="ml-2 text-amber-400 font-medium">
-                    {needsAnalysis > 0 && `· 📋 ${needsAnalysis} Analysis`}
-                    {needsRevision > 0 && ` · 📝 ${needsRevision} Revision`}
-                  </span>
-                ) : null;
-              })()}
-            </span>
+            <span className="text-xs text-muted-foreground">{filteredTrades.length} trades</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -249,6 +232,29 @@ const TradeJournal = () => {
             <Plus className="w-4 h-4 mr-1" /> New Trade
           </Button>
         </div>
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-1.5 px-1 pb-2 overflow-x-auto">
+        {filters.map(f => (
+          <button
+            key={f.key}
+            onClick={() => { setActiveFilter(f.key); setSelectedDate(null); }}
+            className={cn(
+              'px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap',
+              activeFilter === f.key
+                ? 'bg-primary/15 text-primary border border-primary/30'
+                : 'bg-secondary/40 text-muted-foreground hover:bg-secondary/70 border border-transparent'
+            )}
+          >
+            {f.label}
+            {filterCounts[f.key] > 0 && (
+              <span className={cn('ml-1 tabular-nums', f.color || '')}>
+                {filterCounts[f.key]}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       <div className="flex-1 overflow-hidden rounded-lg border border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
