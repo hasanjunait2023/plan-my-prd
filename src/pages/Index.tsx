@@ -253,6 +253,22 @@ const Dashboard = () => {
 
       <SessionPanel />
 
+      {/* Pending Trades Alert */}
+      {allTrades.filter(t => t.status === 'PENDING').length > 0 && (
+        <Card className={`${glassCard} bg-gradient-to-br from-warning/10 to-transparent border-warning/30`}>
+          <CardContent className="pt-5 pb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-warning" />
+              <div>
+                <p className="text-sm font-medium">{allTrades.filter(t => t.status === 'PENDING').length} টি trade pending আছে</p>
+                <p className="text-xs text-muted-foreground">Trade close হলে Journal এ গিয়ে finalize করো</p>
+              </div>
+            </div>
+            <a href="/journal" className="text-xs text-primary hover:underline font-medium">Journal →</a>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Top row: P&L + Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className={`${glassCard} bg-gradient-to-br from-emerald-500/10 to-transparent`}>

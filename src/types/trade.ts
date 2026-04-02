@@ -1,5 +1,6 @@
 export type Direction = 'LONG' | 'SHORT';
 export type TradeOutcome = 'WIN' | 'LOSS' | 'BREAKEVEN';
+export type TradeStatus = 'PENDING' | 'CLOSED';
 export type Session = 'Asian' | 'London' | 'New York' | 'London Close';
 export type Timeframe = '1M' | '5M' | '15M' | '1H' | '4H' | 'D' | 'W';
 export type PsychEmotion = 'Confident' | 'Fearful' | 'Greedy' | 'Calm' | 'Anxious' | 'Revenge' | 'FOMO' | 'Patient' | 'Frustrated';
@@ -48,6 +49,7 @@ export interface Trade {
   exitScreenshots: string[];
   screenshots: string[];
   partialCloses: PartialClose[];
+  status: TradeStatus;
   starred: boolean;
   createdAt: string;
 }

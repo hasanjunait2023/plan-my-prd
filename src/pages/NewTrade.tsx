@@ -35,7 +35,7 @@ const NewTrade = () => {
   const [timeframe, setTimeframe] = useState<string>('');
   const [strategy, setStrategy] = useState('');
   const [entryPrice, setEntryPrice] = useState('');
-  const [exitPrice, setExitPrice] = useState('');
+  const [exitPrice, setExitPrice] = useState('0');
   const [stopLoss, setStopLoss] = useState('');
   const [takeProfit, setTakeProfit] = useState('');
   const [lotSize, setLotSize] = useState('');
@@ -92,11 +92,11 @@ const NewTrade = () => {
   };
 
   const handleSubmit = async () => {
-    if (!pair || !entryPrice || !exitPrice || !stopLoss) {
-      toast.error('Required fields পূরণ করো: Pair, Entry, Exit, Stop Loss');
+    if (!pair || !entryPrice || !stopLoss) {
+      toast.error('Required fields পূরণ করো: Pair, Entry Price, Stop Loss');
       return;
     }
-    const outcome = pnl > 0 ? 'WIN' : pnl < 0 ? 'LOSS' : 'BREAKEVEN';
+    const outcome = 'BREAKEVEN' as const;
     try {
       await insertTrade.mutateAsync({
         date: format(new Date(), 'yyyy-MM-dd'),
@@ -106,15 +106,15 @@ const NewTrade = () => {
         timeframe: (timeframe || '15M') as any,
         strategy: strategy || '',
         entryPrice: entry,
-        exitPrice: exit,
+        exitPrice: 0,
         stopLoss: sl,
         takeProfit: tp,
         lotSize: lots,
         riskPercent: 0,
         riskDollars: riskDollars,
-        rrr,
-        pnl,
-        pips,
+        rrr: 0,
+        pnl: 0,
+        pips: 0,
         outcome,
         smcTags: selectedSmcTags,
         mistakes: selectedMistakes,
@@ -126,12 +126,12 @@ const NewTrade = () => {
         reasonForEntry,
         confidenceLevel: confidenceLevel[0],
         preSituation,
-        duringSituation,
-        postSituation,
-        whatWentWell,
-        improvementNotes,
+        duringSituation: '',
+        postSituation: '',
+        whatWentWell: '',
+        improvementNotes: '',
         entryScreenshots,
-        exitScreenshots,
+        exitScreenshots: [],
         screenshots: [],
         partialCloses: partialCloses.map((pc, i) => ({
           id: `p${i}`,
@@ -140,8 +140,9 @@ const NewTrade = () => {
           pnl: 0,
         })),
         starred: false,
+        status: 'PENDING',
       });
-      toast.success('Trade সফলভাবে log হয়েছে!');
+      toast.success('Trade entry সফল! Pending হিসেবে Journal এ দেখা যাবে।');
       navigate('/journal');
     } catch {
       toast.error('Trade save করতে সমস্যা হয়েছে');
@@ -241,15 +242,14 @@ const NewTrade = () => {
       <Card className={glassCard}>
         <CardHeader><CardTitle className="text-sm">💰 Prices & Position</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div><Label>Entry Price *</Label><Input type="number" value={entryPrice} onChange={e => setEntryPrice(e.target.value)} placeholder="0.00" /></div>
-            <div><Label>Exit Price *</Label><Input type="number" value={exitPrice} onChange={e => setExitPrice(e.target.value)} placeholder="0.00" /></div>
             <div><Label>Stop Loss *</Label><Input type="number" value={stopLoss} onChange={e => setStopLoss(e.target.value)} placeholder="0.00" /></div>
             <div><Label>Take Profit</Label><Input type="number" value={takeProfit} onChange={e => setTakeProfit(e.target.value)} placeholder="0.00" /></div>
             <div><Label>Lot Size</Label><Input type="number" value={lotSize} onChange={e => setLotSize(e.target.value)} placeholder="0.01" /></div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
             <div className="bg-gradient-to-r from-primary/10 to-transparent rounded-lg p-3 border border-border/20">
               <p className="text-[10px] text-muted-foreground uppercase">Risk Pips</p>
               <p className="font-bold">{riskPips.toFixed(1)}</p>
@@ -259,16 +259,8 @@ const NewTrade = () => {
               <p className="font-bold">${riskDollars.toFixed(2)}</p>
             </div>
             <div className="bg-gradient-to-r from-blue-500/10 to-transparent rounded-lg p-3 border border-border/20">
-              <p className="text-[10px] text-muted-foreground uppercase">RRR</p>
+              <p className="text-[10px] text-muted-foreground uppercase">Potential RRR</p>
               <p className="font-bold">{rrr.toFixed(2)}</p>
-            </div>
-            <div className="bg-gradient-to-r from-emerald-500/10 to-transparent rounded-lg p-3 border border-border/20">
-              <p className="text-[10px] text-muted-foreground uppercase">Pips</p>
-              <p className={`font-bold ${pips >= 0 ? 'text-profit' : 'text-loss'}`}>{pips.toFixed(1)}</p>
-            </div>
-            <div className="bg-gradient-to-r from-emerald-500/10 to-transparent rounded-lg p-3 border border-border/20">
-              <p className="text-[10px] text-muted-foreground uppercase">P&L</p>
-              <p className={`font-bold ${pnl >= 0 ? 'text-profit' : 'text-loss'}`}>{pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</p>
             </div>
           </div>
         </CardContent>
@@ -303,82 +295,24 @@ const NewTrade = () => {
         </CardContent>
       </Card>
 
-      {/* During Trade Situation */}
+      {/* SMC Tags */}
       <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">⏳ Trade চলাকালীন Situation (During Trade)</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm">🏷️ SMC Tags</CardTitle></CardHeader>
         <CardContent>
-          <Textarea value={duringSituation} onChange={e => setDuringSituation(e.target.value)}
-            placeholder="Trade চলাকালীন কি হয়েছিল? Price কিভাবে move করেছিল?" rows={4} className="text-base" />
-        </CardContent>
-      </Card>
-
-      {/* Exit Screenshots */}
-      <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">📸 Exit Situation Screenshots</CardTitle></CardHeader>
-        <CardContent>
-          <ImageUpload images={exitScreenshots} onImagesChange={setExitScreenshots} label="Exit এর পরের screenshot paste/upload করো" />
-        </CardContent>
-      </Card>
-
-      {/* Post-Trade Situation */}
-      <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">📍 Trade এর পরে Situation (Post-Trade)</CardTitle></CardHeader>
-        <CardContent>
-          <Textarea value={postSituation} onChange={e => setPostSituation(e.target.value)}
-            placeholder="Trade close করার পরে কি হয়েছিল? Price কোথায় গেছে?" rows={4} className="text-base" />
-        </CardContent>
-      </Card>
-
-      {/* What Went Well */}
-      <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">✅ কি কি ভালো হয়েছে (What Went Well)</CardTitle></CardHeader>
-        <CardContent>
-          <Textarea value={whatWentWell} onChange={e => setWhatWentWell(e.target.value)}
-            placeholder="এই trade এ কি কি সঠিক করেছো?" rows={3} className="text-base" />
-        </CardContent>
-      </Card>
-
-      {/* SMC Tags & Mistakes */}
-      <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">🏷️ Tags & ❌ Mistakes</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label className="mb-2 block">SMC Tags</Label>
-            <div className="flex flex-wrap gap-2">
-              {smcTagOptions.map(tag => (
-                <Badge key={tag} variant={selectedSmcTags.includes(tag) ? 'default' : 'outline'}
-                  className="cursor-pointer" onClick={() => toggleTag(tag, selectedSmcTags, setSelectedSmcTags)}>
-                  {tag}
-                </Badge>
-              ))}
-            </div>
+          <div className="flex flex-wrap gap-2">
+            {smcTagOptions.map(tag => (
+              <Badge key={tag} variant={selectedSmcTags.includes(tag) ? 'default' : 'outline'}
+                className="cursor-pointer" onClick={() => toggleTag(tag, selectedSmcTags, setSelectedSmcTags)}>
+                {tag}
+              </Badge>
+            ))}
           </div>
-          <div>
-            <Label className="mb-2 block">Mistakes</Label>
-            <div className="flex flex-wrap gap-2">
-              {mistakeOptions.map(m => (
-                <Badge key={m} variant={selectedMistakes.includes(m) ? 'destructive' : 'outline'}
-                  className="cursor-pointer" onClick={() => toggleTag(m, selectedMistakes, setSelectedMistakes)}>
-                  {m}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Improvement Notes */}
-      <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">🔧 Improvement Notes</CardTitle></CardHeader>
-        <CardContent>
-          <Textarea value={improvementNotes} onChange={e => setImprovementNotes(e.target.value)}
-            placeholder="কোথায় আরো ভালো করতে পারতে? পরবর্তী বার কি করবে?" rows={3} className="text-base" />
         </CardContent>
       </Card>
 
       {/* Psychology */}
       <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">🧠 Psychology</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm">🧠 Entry Psychology</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -400,29 +334,8 @@ const NewTrade = () => {
         </CardContent>
       </Card>
 
-      {/* Partial Closes */}
-      <Card className={glassCard}>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">📊 Partial Closes</CardTitle>
-            <Button variant="outline" size="sm" onClick={addPartialClose}><Plus className="w-3 h-3 mr-1" />Add</Button>
-          </div>
-        </CardHeader>
-        {partialCloses.length > 0 && (
-          <CardContent>
-            {partialCloses.map((pc, i) => (
-              <div key={i} className="flex gap-3 items-end mb-2">
-                <div className="flex-1"><Label>Lots</Label><Input type="number" value={pc.lots} onChange={e => { const c = [...partialCloses]; c[i].lots = e.target.value; setPartialCloses(c); }} /></div>
-                <div className="flex-1"><Label>Exit Price</Label><Input type="number" value={pc.price} onChange={e => { const c = [...partialCloses]; c[i].price = e.target.value; setPartialCloses(c); }} /></div>
-                <Button variant="ghost" size="icon" onClick={() => removePartialClose(i)}><Trash2 className="w-4 h-4 text-loss" /></Button>
-              </div>
-            ))}
-          </CardContent>
-        )}
-      </Card>
-
       <Button onClick={handleSubmit} disabled={insertTrade.isPending} className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-[0_0_20px_hsla(145,63%,49%,0.2)]" size="lg">
-        {insertTrade.isPending ? 'Saving...' : 'Trade Log করো'}
+        {insertTrade.isPending ? 'Saving...' : '📥 Trade Entry করো (Pending)'}
       </Button>
     </div>
   );
