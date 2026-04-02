@@ -291,7 +291,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </Avatar>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 bg-card border-border/40">
+              <DropdownMenuContent align="end" className="w-52 bg-card border-border/40">
+                <div className="px-3 py-2 border-b border-border/30">
+                  <p className="text-xs font-medium text-foreground truncate">{user?.email}</p>
+                </div>
                 {profileMenuItems.map((item) => (
                   <DropdownMenuItem
                     key={item.title}
