@@ -2,7 +2,7 @@ import { Trade } from '@/types/trade';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowUp, ArrowDown, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 
 interface TradePageListProps {
   trades: Trade[];
