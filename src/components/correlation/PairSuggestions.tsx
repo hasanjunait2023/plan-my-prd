@@ -62,7 +62,7 @@ function InlineChart({ symbol, interval }: { symbol: string; interval: string })
     containerRef.current.appendChild(widgetContainer);
   }, [symbol, interval]);
 
-  return <div ref={containerRef} className="w-full" style={{ height: '300px' }} />;
+  return <div ref={containerRef} className="w-full" style={{ height: '380px' }} />;
 }
 
 function SuggestionCard({
