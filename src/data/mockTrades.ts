@@ -237,6 +237,7 @@ export const mockTrades: Trade[] = [
     status: 'CLOSED',
     starred: true,
     createdAt: '2026-03-28T09:45:00Z',
+    ruleChecklist: [], ruleScore: 0, revisionNotes: 'MSS + inducement combo শুক্রবারেও কাজ করেছে। তবে Friday spread সচেতন থাকতে হবে।', revisionTakeaway: 'MSS trade সবসময় inducement confirm হলে নিতে হবে', revisionWouldTakeAgain: true, revisionRating: 9, revisedAt: '2026-03-30T10:00:00Z',
   },
   {
     id: 'mock-6',
