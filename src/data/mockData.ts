@@ -7,6 +7,14 @@ export const defaultAccountSettings: AccountSettings = {
   maxRiskPercent: 1,
   dailyLossLimit: 500,
   maxTradesPerDay: 3,
+  allowedSessions: ['Asian', 'London', 'New York', 'London Close'],
+  maxWinningTrades: 3,
+  maxLosingTrades: 2,
+  maxLotSize: 1.0,
+  maxDrawdownPercent: 5,
+  minConfidence: 5,
+  minRrr: 1.5,
+  minSmcTags: 1,
 };
 
 export const smcTagOptions = ['Order Block', 'FVG', 'BOS', 'CHoCH', 'Liquidity Sweep', 'Breaker Block', 'Mitigation Block', 'Premium/Discount', 'EQL', 'EQH', 'Inducement'];

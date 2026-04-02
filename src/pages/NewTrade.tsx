@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,8 @@ import ImageUpload from '@/components/journal/ImageUpload';
 import ScreenshotAnalyzer, { ExtractedTradeData } from '@/components/journal/ScreenshotAnalyzer';
 import { formatPairWithFlags } from '@/lib/pairFlags';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
-import { useInsertTrade } from '@/hooks/useTrades';
+import { useInsertTrade, useTrades } from '@/hooks/useTrades';
+import { useAccountSettings } from '@/hooks/useAccountSettings';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
@@ -73,6 +74,8 @@ function loadDraft(): Partial<DraftData> {
 
 const NewTrade = () => {
   const insertTrade = useInsertTrade();
+  const { data: allTrades = [] } = useTrades();
+  const { data: accountSettings } = useAccountSettings();
   const navigate = useNavigate();
   const draft = loadDraft();
 
@@ -187,6 +190,44 @@ const NewTrade = () => {
       toast.error('Required fields পূরণ করো: Pair, Entry Price, Stop Loss');
       return;
     }
+    // ═══ Trading limits validation warnings ═══
+    if (accountSettings) {
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const todayTrades = allTrades.filter(t => t.status === 'CLOSED' && t.date === todayStr);
+      const todayWins = todayTrades.filter(t => t.outcome === 'WIN').length;
+      const todayLosses = todayTrades.filter(t => t.outcome === 'LOSS').length;
+      const todayTotal = todayTrades.length;
+
+      const warnings: string[] = [];
+
+      if (!accountSettings.allowedSessions.includes(session)) {
+        warnings.push(`"${session}" তোমার allowed sessions এ নেই!`);
+      }
+      if (todayTotal >= accountSettings.maxTradesPerDay) {
+        warnings.push(`আজকে ${todayTotal}টা trade হয়ে গেছে, daily limit ${accountSettings.maxTradesPerDay}`);
+      }
+      if (todayLosses >= accountSettings.maxLosingTrades) {
+        warnings.push(`আজকে ${todayLosses}টা losing trade, limit ${accountSettings.maxLosingTrades}`);
+      }
+      if (todayWins >= accountSettings.maxWinningTrades) {
+        warnings.push(`আজকে ${todayWins}টা winning trade, limit ${accountSettings.maxWinningTrades}`);
+      }
+      if (confidenceLevel[0] < accountSettings.minConfidence) {
+        warnings.push(`Confidence ${confidenceLevel[0]} — minimum ${accountSettings.minConfidence} দরকার`);
+      }
+      if (parseFloat(lotSize) > accountSettings.maxLotSize) {
+        warnings.push(`Lot size ${lotSize} — max lot ${accountSettings.maxLotSize}`);
+      }
+      if (selectedSmcTags.length < accountSettings.minSmcTags) {
+        warnings.push(`SMC Tags ${selectedSmcTags.length}টা — minimum ${accountSettings.minSmcTags}টা দরকার`);
+      }
+
+      if (warnings.length > 0) {
+        const proceed = window.confirm(`⚠️ Trading Limits Warning:\n\n${warnings.join('\n')}\n\nতবুও trade submit করতে চাও?`);
+        if (!proceed) return;
+      }
+    }
+
     const outcome = 'BREAKEVEN' as const;
     try {
       await insertTrade.mutateAsync({

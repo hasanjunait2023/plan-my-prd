@@ -20,6 +20,14 @@ export const useAccountSettings = () => {
         maxRiskPercent: Number(data.max_risk_percent),
         dailyLossLimit: Number(data.daily_loss_limit),
         maxTradesPerDay: data.max_trades_per_day,
+        allowedSessions: (data as any).allowed_sessions || ['Asian', 'London', 'New York', 'London Close'],
+        maxWinningTrades: (data as any).max_winning_trades ?? 3,
+        maxLosingTrades: (data as any).max_losing_trades ?? 2,
+        maxLotSize: Number((data as any).max_lot_size ?? 1),
+        maxDrawdownPercent: Number((data as any).max_drawdown_percent ?? 5),
+        minConfidence: (data as any).min_confidence ?? 5,
+        minRrr: Number((data as any).min_rrr ?? 1.5),
+        minSmcTags: (data as any).min_smc_tags ?? 1,
       } as AccountSettings;
     },
   });
@@ -47,8 +55,16 @@ export const useSaveAccountSettings = () => {
             max_risk_percent: settings.maxRiskPercent,
             daily_loss_limit: settings.dailyLossLimit,
             max_trades_per_day: settings.maxTradesPerDay,
+            allowed_sessions: settings.allowedSessions,
+            max_winning_trades: settings.maxWinningTrades,
+            max_losing_trades: settings.maxLosingTrades,
+            max_lot_size: settings.maxLotSize,
+            max_drawdown_percent: settings.maxDrawdownPercent,
+            min_confidence: settings.minConfidence,
+            min_rrr: settings.minRrr,
+            min_smc_tags: settings.minSmcTags,
             updated_at: new Date().toISOString(),
-          })
+          } as any)
           .eq('id', existing.id);
         if (error) throw error;
       } else {
@@ -62,7 +78,15 @@ export const useSaveAccountSettings = () => {
             max_risk_percent: settings.maxRiskPercent,
             daily_loss_limit: settings.dailyLossLimit,
             max_trades_per_day: settings.maxTradesPerDay,
-          });
+            allowed_sessions: settings.allowedSessions,
+            max_winning_trades: settings.maxWinningTrades,
+            max_losing_trades: settings.maxLosingTrades,
+            max_lot_size: settings.maxLotSize,
+            max_drawdown_percent: settings.maxDrawdownPercent,
+            min_confidence: settings.minConfidence,
+            min_rrr: settings.minRrr,
+            min_smc_tags: settings.minSmcTags,
+          } as any);
         if (error) throw error;
       }
     },
