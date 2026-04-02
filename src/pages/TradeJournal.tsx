@@ -147,7 +147,11 @@ const TradeJournal = () => {
               <button onClick={() => setMobileView('trades')} className="text-xs text-primary">← Trades</button>
             </div>
             <div className="px-3 py-4">
-              <TradeDocument trade={selectedTrade} />
+              {selectedTrade.status === 'PENDING' ? (
+                <TradeCompleteForm trade={selectedTrade} />
+              ) : (
+                <TradeDocument trade={selectedTrade} />
+              )}
             </div>
           </div>
         )}
