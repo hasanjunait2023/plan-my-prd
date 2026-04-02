@@ -140,6 +140,7 @@ const NewTrade = () => {
           pnl: 0,
         })),
         starred: false,
+        status: 'PENDING',
       });
       toast.success('Trade সফলভাবে log হয়েছে!');
       navigate('/journal');
