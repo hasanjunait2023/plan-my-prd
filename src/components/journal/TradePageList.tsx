@@ -58,11 +58,12 @@ const TradePageList = ({ trades, selectedDate, selectedTradeId, onSelectTrade }:
                 </div>
                 <span className={cn(
                   'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded',
-                  trade.outcome === 'WIN' && 'text-profit bg-profit/10',
-                  trade.outcome === 'LOSS' && 'text-loss bg-loss/10',
-                  trade.outcome === 'BREAKEVEN' && 'text-muted-foreground bg-muted/50'
+                  trade.status === 'PENDING' && 'text-warning bg-warning/10',
+                  trade.status !== 'PENDING' && trade.outcome === 'WIN' && 'text-profit bg-profit/10',
+                  trade.status !== 'PENDING' && trade.outcome === 'LOSS' && 'text-loss bg-loss/10',
+                  trade.status !== 'PENDING' && trade.outcome === 'BREAKEVEN' && 'text-muted-foreground bg-muted/50'
                 )}>
-                  {trade.outcome}
+                  {trade.status === 'PENDING' ? '🟡 PENDING' : trade.outcome}
                 </span>
               </div>
               <div className="flex items-center justify-between mt-1.5">

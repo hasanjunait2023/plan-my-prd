@@ -206,7 +206,13 @@ const TradeJournal = () => {
           <ResizablePanel defaultSize={60}>
             {selectedTrade ? (
               <ScrollArea className="h-full">
-                <div className="p-6"><TradeDocument trade={selectedTrade} /></div>
+                <div className="p-6">
+                  {selectedTrade.status === 'PENDING' ? (
+                    <TradeCompleteForm trade={selectedTrade} />
+                  ) : (
+                    <TradeDocument trade={selectedTrade} />
+                  )}
+                </div>
               </ScrollArea>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3">
