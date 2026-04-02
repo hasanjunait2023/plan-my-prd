@@ -1,0 +1,1 @@
+DELETE FROM public.currency_strength WHERE recorded_at = '2026-04-02T13:00:00+00:00';
