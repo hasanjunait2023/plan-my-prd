@@ -295,76 +295,18 @@ const NewTrade = () => {
         </CardContent>
       </Card>
 
-      {/* During Trade Situation */}
+      {/* SMC Tags */}
       <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">⏳ Trade চলাকালীন Situation (During Trade)</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm">🏷️ SMC Tags</CardTitle></CardHeader>
         <CardContent>
-          <Textarea value={duringSituation} onChange={e => setDuringSituation(e.target.value)}
-            placeholder="Trade চলাকালীন কি হয়েছিল? Price কিভাবে move করেছিল?" rows={4} className="text-base" />
-        </CardContent>
-      </Card>
-
-      {/* Exit Screenshots */}
-      <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">📸 Exit Situation Screenshots</CardTitle></CardHeader>
-        <CardContent>
-          <ImageUpload images={exitScreenshots} onImagesChange={setExitScreenshots} label="Exit এর পরের screenshot paste/upload করো" />
-        </CardContent>
-      </Card>
-
-      {/* Post-Trade Situation */}
-      <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">📍 Trade এর পরে Situation (Post-Trade)</CardTitle></CardHeader>
-        <CardContent>
-          <Textarea value={postSituation} onChange={e => setPostSituation(e.target.value)}
-            placeholder="Trade close করার পরে কি হয়েছিল? Price কোথায় গেছে?" rows={4} className="text-base" />
-        </CardContent>
-      </Card>
-
-      {/* What Went Well */}
-      <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">✅ কি কি ভালো হয়েছে (What Went Well)</CardTitle></CardHeader>
-        <CardContent>
-          <Textarea value={whatWentWell} onChange={e => setWhatWentWell(e.target.value)}
-            placeholder="এই trade এ কি কি সঠিক করেছো?" rows={3} className="text-base" />
-        </CardContent>
-      </Card>
-
-      {/* SMC Tags & Mistakes */}
-      <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">🏷️ Tags & ❌ Mistakes</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label className="mb-2 block">SMC Tags</Label>
-            <div className="flex flex-wrap gap-2">
-              {smcTagOptions.map(tag => (
-                <Badge key={tag} variant={selectedSmcTags.includes(tag) ? 'default' : 'outline'}
-                  className="cursor-pointer" onClick={() => toggleTag(tag, selectedSmcTags, setSelectedSmcTags)}>
-                  {tag}
-                </Badge>
-              ))}
-            </div>
+          <div className="flex flex-wrap gap-2">
+            {smcTagOptions.map(tag => (
+              <Badge key={tag} variant={selectedSmcTags.includes(tag) ? 'default' : 'outline'}
+                className="cursor-pointer" onClick={() => toggleTag(tag, selectedSmcTags, setSelectedSmcTags)}>
+                {tag}
+              </Badge>
+            ))}
           </div>
-          <div>
-            <Label className="mb-2 block">Mistakes</Label>
-            <div className="flex flex-wrap gap-2">
-              {mistakeOptions.map(m => (
-                <Badge key={m} variant={selectedMistakes.includes(m) ? 'destructive' : 'outline'}
-                  className="cursor-pointer" onClick={() => toggleTag(m, selectedMistakes, setSelectedMistakes)}>
-                  {m}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Improvement Notes */}
-      <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">🔧 Improvement Notes</CardTitle></CardHeader>
-        <CardContent>
-          <Textarea value={improvementNotes} onChange={e => setImprovementNotes(e.target.value)}
-            placeholder="কোথায় আরো ভালো করতে পারতে? পরবর্তী বার কি করবে?" rows={3} className="text-base" />
         </CardContent>
       </Card>
 
