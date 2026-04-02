@@ -1,53 +1,77 @@
 
 
-# Mock Data Remove ও Real Data Ready করার Plan
+# Two-Phase Trade Journal — Entry → Pending → Finalize
 
-## বর্তমান অবস্থা
+## সমস্যা
 
-সবকিছু `src/data/mockData.ts` এর hardcoded data থেকে আসছে। Database এ trades, psychology, settings এর কোনো table নেই। তাই শুধু mock data মুছলেই হবে না — real data save/load এর জন্য **Supabase tables** ও তৈরি করতে হবে।
+এখন NewTrade page এ একসাথে Entry ও Exit দুইটাই দিতে হয়। কিন্তু real trading এ প্রথমে trade entry হয়, তারপর কিছুক্ষণ/ঘণ্টা পরে trade close হয়। তাই দুই ধাপে ভাগ করতে হবে।
 
-## কি কি করবো
+## কিভাবে কাজ করবে
 
-### 1. Supabase Tables তৈরি (Migration)
+```text
+Phase 1: Trade Entry (NewTrade page)
+  → Pair, Direction, Entry Price, SL, TP, Lot, Session, TF, Strategy
+  → Entry Screenshots, Reason for Entry, Pre-Situation, Confidence
+  → Psychology (entry time emotion)
+  → Save → status = "PENDING" (exit_price = 0, pnl = 0)
 
-| Table | Purpose |
-|-------|---------|
-| `trades` | সকল trade data — pair, direction, entry/exit, P&L, SMC tags, psychology, notes, screenshots |
-| `psychology_logs` | Daily psychology journal — mental state, sleep, emotions, reflection |
-| `account_settings` | Starting balance, currency, risk limits, max trades |
-| `trading_rules` | Custom trading rules list |
+Phase 2: Trade Finalize (Journal page / Pending list)
+  → PENDING trade select করলে "Complete Trade" form আসবে
+  → Exit Price, Exit Screenshots, During Situation, Post Situation
+  → What Went Well, Improvement Notes, Mistakes, Partial Closes
+  → Submit → status = "CLOSED", pnl/pips/outcome calculated
+```
 
-### 2. Mock Data Empty করা
+## Implementation
 
-`mockData.ts` থেকে fake trades, psychology logs, daily PnL, account settings, rules সব **empty array/default values** দিয়ে replace হবে। শুধু `smcTagOptions`, `mistakeOptions`, `pairOptions`, `strategyOptions` থাকবে (এগুলো dropdown options, data না)।
+### Step 1: DB — `status` column যোগ
 
-### 3. Pages Update — Supabase থেকে Data Load/Save
+`trades` table এ নতুন column:
+- `status text NOT NULL DEFAULT 'CLOSED'` — values: `PENDING` / `CLOSED`
+- Existing trades সব `CLOSED` থাকবে (default)
 
-| Page | পরিবর্তন |
-|------|----------|
-| **Index.tsx** (Dashboard) | Supabase থেকে trades, dailyPnL, psychLogs, settings fetch |
-| **TradeJournal.tsx** | Supabase থেকে trades fetch |
-| **Analytics.tsx** | Supabase থেকে trades ও dailyPnL fetch |
-| **Psychology.tsx** | Supabase থেকে psychology_logs fetch, নতুন log save |
-| **Settings.tsx** | Supabase থেকে settings ও rules load/save |
-| **NewTrade.tsx** | Trade save করবে Supabase `trades` table এ (এখন কোথাও save হয় না) |
+### Step 2: NewTrade page split — শুধু Entry fields
 
-### 4. Empty State UI
+- Exit Price field **remove** (Phase 1 এ দরকার নেই)
+- Exit Screenshots, Post-Situation, During-Situation, What Went Well, Improvement Notes, Mistakes — এগুলো **remove**
+- Submit করলে `status: 'PENDING'`, `exit_price: 0`, `pnl: 0`, `outcome: 'BREAKEVEN'` দিয়ে save হবে
+- Button text: "Trade Entry করো" (আগে ছিল "Trade Log করো")
+- Save এর পরে Journal page এ redirect
 
-Data না থাকলে প্রতিটা page এ সুন্দর empty state message দেখাবে — "No trades yet. Add your first trade!" ইত্যাদি।
+### Step 3: Journal page — Pending indicator ও Complete flow
+
+- **TradePageList** এ PENDING trades এ 🟡 badge দেখাবে (CLOSED trades এ WIN/LOSS/BE badge)
+- **Pending trade select** করলে TradeDocument এর বদলে **TradeCompleteForm** component দেখাবে:
+  - Exit Price (required)
+  - Exit Screenshots
+  - During Situation, Post Situation
+  - What Went Well, Improvement Notes
+  - Mistakes selection
+  - Partial Closes
+  - "Finalize Trade" button
+- Finalize করলে: exit price থেকে pnl/pips/outcome calculate → `status: 'CLOSED'` এ update
+- **CLOSED trade** select করলে আগের মতোই TradeDocument দেখাবে
+
+### Step 4: Pending count notification
+
+- Journal header এ pending count badge: "3 Pending" 
+- NotebookSidebar এ date এর পাশে pending count দেখাবে
+- Dashboard (Index.tsx) এ "X trades pending" alert card
+
+### Step 5: useTrades hook — update mutation যোগ
+
+- `useUpdateTrade` mutation তৈরি — partial update support (exit price, status, post-trade fields)
 
 ## Files
 
 | Action | File |
 |--------|------|
-| **Migration** | `trades`, `psychology_logs`, `account_settings`, `trading_rules` tables create with RLS |
-| **Modify** | `src/data/mockData.ts` — empty arrays, শুধু dropdown options রাখবে |
-| **Modify** | `src/pages/Index.tsx` — Supabase fetch |
-| **Modify** | `src/pages/TradeJournal.tsx` — Supabase fetch |
-| **Modify** | `src/pages/Analytics.tsx` — Supabase fetch |
-| **Modify** | `src/pages/Psychology.tsx` — Supabase fetch + save |
-| **Modify** | `src/pages/Settings.tsx` — Supabase load/save |
-| **Modify** | `src/pages/NewTrade.tsx` — Supabase এ trade save |
-| **Create** | `src/hooks/useTrades.ts` — shared hook for trades CRUD |
-| **Create** | `src/hooks/useAccountSettings.ts` — settings load/save hook |
+| **Migration** | `trades` table এ `status` column যোগ |
+| **Modify** | `src/types/trade.ts` — `status: 'PENDING' \| 'CLOSED'` field যোগ |
+| **Modify** | `src/pages/NewTrade.tsx` — শুধু entry fields রাখা, exit fields remove |
+| **Create** | `src/components/journal/TradeCompleteForm.tsx` — Phase 2 form (exit details) |
+| **Modify** | `src/pages/TradeJournal.tsx` — pending trade এ TradeCompleteForm দেখানো |
+| **Modify** | `src/components/journal/TradePageList.tsx` — PENDING badge |
+| **Modify** | `src/hooks/useTrades.ts` — `useUpdateTrade` mutation যোগ, mapRow এ status |
+| **Modify** | `src/pages/Index.tsx` — pending trades alert |
 
