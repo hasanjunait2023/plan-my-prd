@@ -111,13 +111,35 @@ Deno.serve(async (req) => {
     let recorded_at: string;
     let currencies: { currency: string; strength: number; category: string }[];
 
-    // Check if it's raw Telegram text or structured JSON
-    if (body.text && typeof body.text === "string") {
-      // Raw Telegram text format
-      const parsed = parseTelegramText(body.text);
+    // Try to find text from various n8n/Telegram output formats
+    function findText(obj: any): string | null {
+      if (!obj || typeof obj !== "object") return null;
+      // Direct text field
+      if (typeof obj.text === "string" && obj.text.length > 10) return obj.text;
+      // Telegram API response: result.text
+      if (obj.result && typeof obj.result.text === "string") return obj.result.text;
+      // message.text
+      if (obj.message && typeof obj.message.text === "string") return obj.message.text;
+      // Nested in data
+      if (obj.data && typeof obj.data.text === "string") return obj.data.text;
+      // Search all string values for currency pattern
+      for (const val of Object.values(obj)) {
+        if (typeof val === "string" && val.includes("→") && val.match(/[A-Z]{3}/)) return val;
+        if (typeof val === "object" && val !== null) {
+          const found = findText(val);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    const rawText = findText(body);
+
+    if (rawText) {
+      const parsed = parseTelegramText(rawText);
       if (!parsed) {
         return new Response(
-          JSON.stringify({ error: "Could not parse Telegram text" }),
+          JSON.stringify({ error: "Found text but could not parse currency data", preview: rawText.substring(0, 200) }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -125,13 +147,12 @@ Deno.serve(async (req) => {
       recorded_at = parsed.recorded_at;
       currencies = parsed.currencies;
     } else if (body.timeframe && body.currencies && Array.isArray(body.currencies)) {
-      // Structured JSON format (existing)
       timeframe = body.timeframe;
       recorded_at = body.recorded_at || new Date().toISOString();
       currencies = body.currencies;
     } else {
       return new Response(
-        JSON.stringify({ error: "Send either { text: '...' } (Telegram format) or { timeframe, currencies: [...] } (structured)" }),
+        JSON.stringify({ error: "No parseable text found", receivedKeys: Object.keys(body) }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
