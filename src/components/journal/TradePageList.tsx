@@ -2,7 +2,7 @@ import { Trade } from '@/types/trade';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowUp, ArrowDown, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 
 interface TradePageListProps {
   trades: Trade[];
@@ -56,15 +56,23 @@ const TradePageList = ({ trades, selectedDate, selectedTradeId, onSelectTrade }:
                   <span className="text-sm font-medium">{trade.pair}</span>
                   {trade.starred && <Star className="w-3 h-3 text-warning fill-current" />}
                 </div>
-                <span className={cn(
-                  'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded',
-                  trade.status === 'PENDING' && 'text-warning bg-warning/10',
-                  trade.status !== 'PENDING' && trade.outcome === 'WIN' && 'text-profit bg-profit/10',
-                  trade.status !== 'PENDING' && trade.outcome === 'LOSS' && 'text-loss bg-loss/10',
-                  trade.status !== 'PENDING' && trade.outcome === 'BREAKEVEN' && 'text-muted-foreground bg-muted/50'
-                )}>
-                  {trade.status === 'PENDING' ? '🟡 PENDING' : trade.outcome}
-                </span>
+                <div className="flex items-center gap-1">
+                  {trade.status === 'CLOSED' && (!trade.ruleChecklist?.length || trade.ruleScore === 0) && (
+                    <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">📋</span>
+                  )}
+                  {trade.status === 'CLOSED' && !trade.revisedAt && differenceInDays(new Date(), parseISO(trade.date)) >= 7 && (
+                    <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">📝</span>
+                  )}
+                  <span className={cn(
+                    'text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded',
+                    trade.status === 'PENDING' && 'text-warning bg-warning/10',
+                    trade.status !== 'PENDING' && trade.outcome === 'WIN' && 'text-profit bg-profit/10',
+                    trade.status !== 'PENDING' && trade.outcome === 'LOSS' && 'text-loss bg-loss/10',
+                    trade.status !== 'PENDING' && trade.outcome === 'BREAKEVEN' && 'text-muted-foreground bg-muted/50'
+                  )}>
+                    {trade.status === 'PENDING' ? '🟡 PENDING' : trade.outcome}
+                  </span>
+                </div>
               </div>
               <div className="flex items-center justify-between mt-1.5">
                 <span className="text-[10px] text-muted-foreground/60">

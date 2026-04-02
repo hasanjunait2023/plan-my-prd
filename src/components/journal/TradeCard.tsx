@@ -2,6 +2,7 @@ import { Trade } from '@/types/trade';
 import { Badge } from '@/components/ui/badge';
 import { Star, ArrowUp, ArrowDown, ChevronRight } from 'lucide-react';
 import { PairWithFlags } from '@/lib/pairFlags';
+import { differenceInDays, parseISO } from 'date-fns';
 
 interface TradeCardProps {
   trade: Trade;
@@ -35,6 +36,12 @@ const TradeCard = ({ trade, onClick }: TradeCardProps) => {
                 className={`text-[10px] px-1.5 py-0 ${isWin ? 'bg-profit text-primary-foreground' : ''}`}>
                 {trade.outcome}
               </Badge>
+              {trade.status === 'CLOSED' && (!trade.ruleChecklist?.length || trade.ruleScore === 0) && (
+                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">📋 Analysis</span>
+              )}
+              {trade.status === 'CLOSED' && !trade.revisedAt && differenceInDays(new Date(), parseISO(trade.date)) >= 7 && (
+                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">📝 Revision</span>
+              )}
               {trade.starred && <Star className="w-3.5 h-3.5 text-warning fill-current" />}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">

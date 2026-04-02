@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Trade } from '@/types/trade';
+import { differenceInDays, parseISO } from 'date-fns';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import NotebookSidebar from '@/components/journal/NotebookSidebar';
 import TradePageList from '@/components/journal/TradePageList';
@@ -176,6 +177,16 @@ const TradeJournal = () => {
                   · {filteredTrades.filter(t => t.status === 'PENDING').length} Pending
                 </span>
               )}
+              {(() => {
+                const needsAnalysis = filteredTrades.filter(t => t.status === 'CLOSED' && (!t.ruleChecklist?.length || t.ruleScore === 0)).length;
+                const needsRevision = filteredTrades.filter(t => t.status === 'CLOSED' && !t.revisedAt && differenceInDays(new Date(), parseISO(t.date)) >= 7).length;
+                return (needsAnalysis > 0 || needsRevision > 0) ? (
+                  <span className="ml-2 text-amber-400 font-medium">
+                    {needsAnalysis > 0 && `· 📋 ${needsAnalysis} Analysis`}
+                    {needsRevision > 0 && ` · 📝 ${needsRevision} Revision`}
+                  </span>
+                ) : null;
+              })()}
             </span>
           </div>
         </div>
