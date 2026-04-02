@@ -74,6 +74,8 @@ function loadDraft(): Partial<DraftData> {
 
 const NewTrade = () => {
   const insertTrade = useInsertTrade();
+  const { data: allTrades = [] } = useTrades();
+  const { data: accountSettings } = useAccountSettings();
   const navigate = useNavigate();
   const draft = loadDraft();
 
