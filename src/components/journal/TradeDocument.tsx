@@ -192,6 +192,12 @@ const TradeDocument = ({ trade }: TradeDocumentProps) => {
           </div>
         </div>
       </Section>
+
+      {/* Post Analysis — only for CLOSED trades */}
+      {isClosed && <PostAnalysisSection trade={trade} />}
+
+      {/* Revision — only for CLOSED trades */}
+      {isClosed && <RevisionSection trade={trade} />}
     </div>
   );
 };
