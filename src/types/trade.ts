@@ -59,6 +59,13 @@ export interface Trade {
   status: TradeStatus;
   starred: boolean;
   createdAt: string;
+  ruleChecklist: RuleCheck[];
+  ruleScore: number;
+  revisionNotes: string;
+  revisionTakeaway: string;
+  revisionWouldTakeAgain: boolean | null;
+  revisionRating: number | null;
+  revisedAt: string | null;
 }
 
 export interface PsychologyLog {
