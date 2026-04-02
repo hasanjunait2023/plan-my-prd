@@ -29,11 +29,12 @@ export const useSaveAccountSettings = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (settings: AccountSettings) => {
-      // Check if exists
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
       const { data: existing } = await supabase
         .from('account_settings')
         .select('id')
-        .limit(1)
         .maybeSingle();
 
       if (existing) {
