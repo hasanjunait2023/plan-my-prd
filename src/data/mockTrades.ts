@@ -44,6 +44,18 @@ export const mockTrades: Trade[] = [
     status: 'CLOSED',
     starred: true,
     createdAt: '2026-04-01T10:30:00Z',
+    ruleChecklist: [
+      { ruleId: 'r1', ruleText: 'HTF (4H/Daily) trend check করেছি', followed: true, explanation: '' },
+      { ruleId: 'r2', ruleText: 'Entry এ minimum 2টা confluence আছে', followed: true, explanation: '' },
+      { ruleId: 'r3', ruleText: 'Risk 1% এর বেশি নয়', followed: true, explanation: '' },
+      { ruleId: 'r4', ruleText: 'News event check করেছি', followed: true, explanation: '' },
+    ],
+    ruleScore: 100,
+    revisionNotes: 'পরে chart দেখে confirm করলাম — entry perfect ছিল। HTF-LTF alignment textbook। এই ধরনের setup repeat করতে হবে।',
+    revisionTakeaway: 'OB + FVG confluence London open এ best setup',
+    revisionWouldTakeAgain: true,
+    revisionRating: 9,
+    revisedAt: '2026-04-02T18:00:00Z',
   },
   {
     id: 'mock-2',
