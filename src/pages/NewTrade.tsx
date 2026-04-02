@@ -35,7 +35,7 @@ const NewTrade = () => {
   const [timeframe, setTimeframe] = useState<string>('');
   const [strategy, setStrategy] = useState('');
   const [entryPrice, setEntryPrice] = useState('');
-  const [exitPrice, setExitPrice] = useState('');
+  const [exitPrice, setExitPrice] = useState('0');
   const [stopLoss, setStopLoss] = useState('');
   const [takeProfit, setTakeProfit] = useState('');
   const [lotSize, setLotSize] = useState('');
