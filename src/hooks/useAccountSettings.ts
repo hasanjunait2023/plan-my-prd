@@ -55,8 +55,16 @@ export const useSaveAccountSettings = () => {
             max_risk_percent: settings.maxRiskPercent,
             daily_loss_limit: settings.dailyLossLimit,
             max_trades_per_day: settings.maxTradesPerDay,
+            allowed_sessions: settings.allowedSessions,
+            max_winning_trades: settings.maxWinningTrades,
+            max_losing_trades: settings.maxLosingTrades,
+            max_lot_size: settings.maxLotSize,
+            max_drawdown_percent: settings.maxDrawdownPercent,
+            min_confidence: settings.minConfidence,
+            min_rrr: settings.minRrr,
+            min_smc_tags: settings.minSmcTags,
             updated_at: new Date().toISOString(),
-          })
+          } as any)
           .eq('id', existing.id);
         if (error) throw error;
       } else {
@@ -70,7 +78,15 @@ export const useSaveAccountSettings = () => {
             max_risk_percent: settings.maxRiskPercent,
             daily_loss_limit: settings.dailyLossLimit,
             max_trades_per_day: settings.maxTradesPerDay,
-          });
+            allowed_sessions: settings.allowedSessions,
+            max_winning_trades: settings.maxWinningTrades,
+            max_losing_trades: settings.maxLosingTrades,
+            max_lot_size: settings.maxLotSize,
+            max_drawdown_percent: settings.maxDrawdownPercent,
+            min_confidence: settings.minConfidence,
+            min_rrr: settings.minRrr,
+            min_smc_tags: settings.minSmcTags,
+          } as any);
         if (error) throw error;
       }
     },
