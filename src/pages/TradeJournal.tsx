@@ -8,12 +8,15 @@ import TradeDocument from '@/components/journal/TradeDocument';
 import TradeCompleteForm from '@/components/journal/TradeCompleteForm';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Plus, BookOpen, Download } from 'lucide-react';
+import { Plus, BookOpen, Download, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ExportDialog from '@/components/journal/ExportDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTrades } from '@/hooks/useTrades';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+
+type TradeFilter = 'all' | 'pending' | 'closed' | 'win' | 'loss' | 'needs-analysis' | 'needs-revision';
 
 const TradeJournal = () => {
   const navigate = useNavigate();
@@ -24,18 +27,66 @@ const TradeJournal = () => {
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [mobileView, setMobileView] = useState<'dates' | 'trades' | 'document'>('dates');
   const [exportOpen, setExportOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<TradeFilter>('all');
 
   const filteredTrades = useMemo(() => {
-    if (!searchQuery) return allTrades;
-    const q = searchQuery.toLowerCase();
-    return allTrades.filter(t =>
-      t.pair.toLowerCase().includes(q) ||
-      t.strategy.toLowerCase().includes(q) ||
-      t.reasonForEntry?.toLowerCase().includes(q) ||
-      t.preTradeNotes.toLowerCase().includes(q) ||
-      t.postTradeNotes.toLowerCase().includes(q)
-    );
-  }, [searchQuery, allTrades]);
+    let trades = allTrades;
+    
+    // Search filter
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      trades = trades.filter(t =>
+        t.pair.toLowerCase().includes(q) ||
+        t.strategy.toLowerCase().includes(q) ||
+        t.reasonForEntry?.toLowerCase().includes(q) ||
+        t.preTradeNotes.toLowerCase().includes(q) ||
+        t.postTradeNotes.toLowerCase().includes(q)
+      );
+    }
+
+    // Status filter
+    switch (activeFilter) {
+      case 'pending':
+        trades = trades.filter(t => t.status === 'PENDING');
+        break;
+      case 'closed':
+        trades = trades.filter(t => t.status === 'CLOSED');
+        break;
+      case 'win':
+        trades = trades.filter(t => t.outcome === 'WIN');
+        break;
+      case 'loss':
+        trades = trades.filter(t => t.outcome === 'LOSS');
+        break;
+      case 'needs-analysis':
+        trades = trades.filter(t => t.status === 'CLOSED' && (!t.ruleChecklist?.length || t.ruleScore === 0));
+        break;
+      case 'needs-revision':
+        trades = trades.filter(t => t.status === 'CLOSED' && !t.revisedAt && differenceInDays(new Date(), parseISO(t.date)) >= 7);
+        break;
+    }
+
+    return trades;
+  }, [searchQuery, allTrades, activeFilter]);
+
+  const filterCounts = useMemo(() => ({
+    all: allTrades.length,
+    pending: allTrades.filter(t => t.status === 'PENDING').length,
+    closed: allTrades.filter(t => t.status === 'CLOSED').length,
+    win: allTrades.filter(t => t.outcome === 'WIN').length,
+    loss: allTrades.filter(t => t.outcome === 'LOSS').length,
+    'needs-analysis': allTrades.filter(t => t.status === 'CLOSED' && (!t.ruleChecklist?.length || t.ruleScore === 0)).length,
+    'needs-revision': allTrades.filter(t => t.status === 'CLOSED' && !t.revisedAt && differenceInDays(new Date(), parseISO(t.date)) >= 7).length,
+  }), [allTrades]);
+
+  const filters: { key: TradeFilter; label: string; color?: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'pending', label: 'Pending', color: 'text-warning' },
+    { key: 'win', label: 'Wins', color: 'text-profit' },
+    { key: 'loss', label: 'Losses', color: 'text-loss' },
+    { key: 'needs-analysis', label: '📋 Analysis' },
+    { key: 'needs-revision', label: '📝 Revision' },
+  ];
 
   const dateTrades = useMemo(() => {
     if (!selectedDate) return [];
@@ -170,24 +221,7 @@ const TradeJournal = () => {
           </div>
          <div>
             <h1 className="text-lg font-bold">Trade Journal</h1>
-            <span className="text-xs text-muted-foreground">
-              {filteredTrades.length} trades
-              {filteredTrades.filter(t => t.status === 'PENDING').length > 0 && (
-                <span className="ml-2 text-warning font-medium">
-                  · {filteredTrades.filter(t => t.status === 'PENDING').length} Pending
-                </span>
-              )}
-              {(() => {
-                const needsAnalysis = filteredTrades.filter(t => t.status === 'CLOSED' && (!t.ruleChecklist?.length || t.ruleScore === 0)).length;
-                const needsRevision = filteredTrades.filter(t => t.status === 'CLOSED' && !t.revisedAt && differenceInDays(new Date(), parseISO(t.date)) >= 7).length;
-                return (needsAnalysis > 0 || needsRevision > 0) ? (
-                  <span className="ml-2 text-amber-400 font-medium">
-                    {needsAnalysis > 0 && `· 📋 ${needsAnalysis} Analysis`}
-                    {needsRevision > 0 && ` · 📝 ${needsRevision} Revision`}
-                  </span>
-                ) : null;
-              })()}
-            </span>
+            <span className="text-xs text-muted-foreground">{filteredTrades.length} trades</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -198,6 +232,29 @@ const TradeJournal = () => {
             <Plus className="w-4 h-4 mr-1" /> New Trade
           </Button>
         </div>
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-1.5 px-1 pb-2 overflow-x-auto">
+        {filters.map(f => (
+          <button
+            key={f.key}
+            onClick={() => { setActiveFilter(f.key); setSelectedDate(null); }}
+            className={cn(
+              'px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap',
+              activeFilter === f.key
+                ? 'bg-primary/15 text-primary border border-primary/30'
+                : 'bg-secondary/40 text-muted-foreground hover:bg-secondary/70 border border-transparent'
+            )}
+          >
+            {f.label}
+            {filterCounts[f.key] > 0 && (
+              <span className={cn('ml-1 tabular-nums', f.color || '')}>
+                {filterCounts[f.key]}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       <div className="flex-1 overflow-hidden rounded-lg border border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
