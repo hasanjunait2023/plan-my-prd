@@ -12,8 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { RefreshCw, TrendingUp, CalendarIcon, Activity } from 'lucide-react';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { RefreshCw, TrendingUp, CalendarIcon, Activity, Clock } from 'lucide-react';
+import { format, startOfDay, endOfDay, formatDistanceToNow } from 'date-fns';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
@@ -56,11 +56,32 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
   });
 }
 
+function useSessionTimestamps() {
+  return useQuery({
+    queryKey: ['currency-strength-timestamps'],
+    queryFn: async () => {
+      const results: Record<string, string | null> = { '1H': null, 'New York': null };
+      for (const tf of ['1H', 'New York']) {
+        const { data } = await supabase
+          .from('currency_strength')
+          .select('recorded_at')
+          .eq('timeframe', tf)
+          .order('recorded_at', { ascending: false })
+          .limit(1);
+        results[tf] = data?.[0]?.recorded_at || null;
+      }
+      return results;
+    },
+    refetchInterval: 60000,
+  });
+}
+
 export default function CurrencyStrength() {
   const [activeTab, setActiveTab] = useState('1H');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const queryClient = useQueryClient();
   const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab, selectedDate);
+  const { data: timestamps } = useSessionTimestamps();
 
   // Realtime subscription — auto-refetch on new inserts
   useEffect(() => {
@@ -72,6 +93,7 @@ export default function CurrencyStrength() {
         table: 'currency_strength',
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['currency-strength'] });
+        queryClient.invalidateQueries({ queryKey: ['currency-strength-timestamps'] });
       })
       .subscribe();
 
@@ -138,6 +160,39 @@ export default function CurrencyStrength() {
       </div>
 
       <SessionPanel />
+
+      {/* Session-wise Last Updated */}
+      {timestamps && (
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { key: '1H', label: 'London Session', color: 'from-blue-500/20 to-blue-500/5 border-blue-500/20' },
+            { key: 'New York', label: 'New York Session', color: 'from-amber-500/20 to-amber-500/5 border-amber-500/20' },
+          ].map(({ key, label, color }) => (
+            <div
+              key={key}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-xl border bg-gradient-to-br backdrop-blur-sm",
+                color
+              )}
+            >
+              <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-foreground truncate">{label}</p>
+                {timestamps[key] ? (
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    {format(new Date(timestamps[key]!), 'dd MMM, hh:mm a')}
+                    <span className="ml-1.5 opacity-70">
+                      ({formatDistanceToNow(new Date(timestamps[key]!), { addSuffix: true })})
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground/50 font-medium">কোনো ডেটা নেই</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Summary Cards */}
       {!isLoading && data && data.length > 0 && <SummaryCards data={data} />}
