@@ -249,7 +249,7 @@ const NewTrade = () => {
             <div><Label>Lot Size</Label><Input type="number" value={lotSize} onChange={e => setLotSize(e.target.value)} placeholder="0.01" /></div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
             <div className="bg-gradient-to-r from-primary/10 to-transparent rounded-lg p-3 border border-border/20">
               <p className="text-[10px] text-muted-foreground uppercase">Risk Pips</p>
               <p className="font-bold">{riskPips.toFixed(1)}</p>
@@ -259,16 +259,8 @@ const NewTrade = () => {
               <p className="font-bold">${riskDollars.toFixed(2)}</p>
             </div>
             <div className="bg-gradient-to-r from-blue-500/10 to-transparent rounded-lg p-3 border border-border/20">
-              <p className="text-[10px] text-muted-foreground uppercase">RRR</p>
+              <p className="text-[10px] text-muted-foreground uppercase">Potential RRR</p>
               <p className="font-bold">{rrr.toFixed(2)}</p>
-            </div>
-            <div className="bg-gradient-to-r from-emerald-500/10 to-transparent rounded-lg p-3 border border-border/20">
-              <p className="text-[10px] text-muted-foreground uppercase">Pips</p>
-              <p className={`font-bold ${pips >= 0 ? 'text-profit' : 'text-loss'}`}>{pips.toFixed(1)}</p>
-            </div>
-            <div className="bg-gradient-to-r from-emerald-500/10 to-transparent rounded-lg p-3 border border-border/20">
-              <p className="text-[10px] text-muted-foreground uppercase">P&L</p>
-              <p className={`font-bold ${pnl >= 0 ? 'text-profit' : 'text-loss'}`}>{pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</p>
             </div>
           </div>
         </CardContent>
