@@ -42,6 +42,12 @@ const TradeDocument = ({ trade }: TradeDocumentProps) => {
                 {trade.outcome}
               </Badge>
               {trade.starred && <Star className="w-5 h-5 text-warning fill-current" />}
+              {trade.ruleScore > 0 && (
+                <Badge variant="secondary" className="text-[10px]">Rule: {trade.ruleScore}%</Badge>
+              )}
+              {trade.revisionRating && (
+                <Badge variant="secondary" className="text-[10px]">Rev: {trade.revisionRating}/10</Badge>
+              )}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               {trade.session} Session &middot; {trade.timeframe} &middot; {trade.strategy}
