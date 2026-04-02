@@ -178,6 +178,29 @@ const TradeJournal = () => {
           </div>
         </div>
 
+        {/* Mobile filter bar */}
+        <div className="flex items-center gap-1.5 px-1 pb-2 overflow-x-auto no-scrollbar">
+          {filters.map(f => (
+            <button
+              key={f.key}
+              onClick={() => { setActiveFilter(f.key); setSelectedDate(null); setMobileView('dates'); }}
+              className={cn(
+                'px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap shrink-0',
+                activeFilter === f.key
+                  ? 'bg-primary/15 text-primary border border-primary/30'
+                  : 'bg-secondary/40 text-muted-foreground hover:bg-secondary/70 border border-transparent'
+              )}
+            >
+              {f.label}
+              {filterCounts[f.key] > 0 && (
+                <span className={cn('ml-1 tabular-nums', f.color || '')}>
+                  {filterCounts[f.key]}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
         {mobileView === 'dates' && (
           <div className="flex-1 overflow-hidden rounded-lg border border-border/30 bg-card/50 backdrop-blur-sm">
             <NotebookSidebar trades={filteredTrades} selectedDate={selectedDate} onSelectDate={handleSelectDate} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
