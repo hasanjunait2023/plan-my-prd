@@ -17,17 +17,11 @@ const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24
 const Settings = () => {
   const { data: accountSettings = defaultAccountSettings } = useAccountSettings();
   const saveSettings = useSaveAccountSettings();
-  const { data: rules = [] } = useTradingRules();
-  const insertRule = useInsertRule();
-  const deleteRule = useDeleteRule();
-  const toggleRule = useToggleRule();
-
   const [balance, setBalance] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [maxRisk, setMaxRisk] = useState('');
   const [dailyLoss, setDailyLoss] = useState('');
   const [maxTrades, setMaxTrades] = useState('');
-  const [newRule, setNewRule] = useState('');
 
   // Telegram alert settings
   const [chatId, setChatId] = useState('');
