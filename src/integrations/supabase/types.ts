@@ -16,37 +16,61 @@ export type Database = {
     Tables: {
       account_settings: {
         Row: {
+          allowed_sessions: string[]
           created_at: string
           currency: string
           current_balance: number
           daily_loss_limit: number
           id: string
+          max_drawdown_percent: number
+          max_losing_trades: number
+          max_lot_size: number
           max_risk_percent: number
           max_trades_per_day: number
+          max_winning_trades: number
+          min_confidence: number
+          min_rrr: number
+          min_smc_tags: number
           starting_balance: number
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          allowed_sessions?: string[]
           created_at?: string
           currency?: string
           current_balance?: number
           daily_loss_limit?: number
           id?: string
+          max_drawdown_percent?: number
+          max_losing_trades?: number
+          max_lot_size?: number
           max_risk_percent?: number
           max_trades_per_day?: number
+          max_winning_trades?: number
+          min_confidence?: number
+          min_rrr?: number
+          min_smc_tags?: number
           starting_balance?: number
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          allowed_sessions?: string[]
           created_at?: string
           currency?: string
           current_balance?: number
           daily_loss_limit?: number
           id?: string
+          max_drawdown_percent?: number
+          max_losing_trades?: number
+          max_lot_size?: number
           max_risk_percent?: number
           max_trades_per_day?: number
+          max_winning_trades?: number
+          min_confidence?: number
+          min_rrr?: number
+          min_smc_tags?: number
           starting_balance?: number
           updated_at?: string
           user_id?: string | null
