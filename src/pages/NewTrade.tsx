@@ -16,7 +16,8 @@ import ImageUpload from '@/components/journal/ImageUpload';
 import ScreenshotAnalyzer, { ExtractedTradeData } from '@/components/journal/ScreenshotAnalyzer';
 import { formatPairWithFlags } from '@/lib/pairFlags';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
-import { useInsertTrade } from '@/hooks/useTrades';
+import { useInsertTrade, useTrades } from '@/hooks/useTrades';
+import { useAccountSettings } from '@/hooks/useAccountSettings';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
