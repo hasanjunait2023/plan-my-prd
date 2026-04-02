@@ -1,57 +1,52 @@
 
 
-## Plan: দুই Session এর Data আলাদা করে Realtime Update
+## Plan: Pair Suggestions — শুধু 28 Tradeable Pairs থেকে Best Opportunities দেখানো
 
 ### সমস্যা
 
-1. **Edge function parser bug** (line 34): "Strength On New York" থেকে শুধু "York" নেয়, "New York" নেয় না
-2. **New York workflow এ HTTP Request node নেই**: London workflow এ আছে (`Send a text message3 → HTTP Request`), কিন্তু New York workflow এ Telegram send এর পর শেষ হয়ে যায়
+বর্তমান `generatePairSuggestions()` function যেকোনো strong/weak currency combination তৈরি করে — যেমন `JPY/NZD`, `EUR/NZD` — যেগুলো real forex market এ exist করে না বা standard pair নয়। এটা দুইটা সমস্যা তৈরি করে:
 
-### যা করতে হবে
+1. **Invalid pairs**: `JPY/NZD` বলে কিছু নেই, standard pair হলো `NZD/JPY`
+2. **No filtering**: 28টা tradeable pair এর বাইরেও pair suggest করছে
+3. **Direction logic wrong**: pair এর base/quote order ঠিক না হলে direction ও উল্টো হয়ে যায়
 
-#### Step 1: Edge Function Fix
-`supabase/functions/store-currency-strength/index.ts` — line 31-35 এর timeframe parser ঠিক করব:
+### সমাধান
+
+#### Step 1: 28 Tradeable Pairs List তৈরি করা (`src/types/correlation.ts`)
+
+8টা major currency (EUR, USD, GBP, JPY, AUD, NZD, CAD, CHF) থেকে 28টা standard forex pair define করব:
 
 ```text
-Current (bug):
-  const tokens = raw.split(/\s+/);
-  timeframe = tokens[tokens.length - 1];  // "New York" → "York" ❌
-
-Fixed:
-  timeframe = raw;  // "New York" → "New York" ✅
+EUR/USD, EUR/GBP, EUR/JPY, EUR/AUD, EUR/NZD, EUR/CAD, EUR/CHF,
+GBP/USD, GBP/JPY, GBP/AUD, GBP/NZD, GBP/CAD, GBP/CHF,
+AUD/USD, AUD/JPY, AUD/NZD, AUD/CAD, AUD/CHF,
+NZD/USD, NZD/JPY, NZD/CAD, NZD/CHF,
+USD/JPY, USD/CAD, USD/CHF,
+CAD/JPY, CAD/CHF,
+CHF/JPY
 ```
 
-এতে London workflow "1H" পাঠাবে → timeframe = "1H", আর New York workflow "New York" পাঠাবে → timeframe = "New York"
+#### Step 2: `generatePairSuggestions()` Logic সম্পূর্ণ নতুন করা
 
-#### Step 2: Edge Function Deploy
-Fix করার পর deploy করব এবং test করব edge function ঠিকমতো "New York" timeframe parse করছে কিনা।
+নতুন approach:
+1. সব 28 pair iterate করব
+2. প্রতিটা pair এর base ও quote currency এর strength বের করব
+3. **Strength difference** calculate করব: `base_strength - quote_strength`
+4. যদি diff **positive** এবং বড় → **BUY** (base strong, quote weak)
+5. যদি diff **negative** এবং বড় → **SELL** (base weak, quote strong)
+6. **Absolute diff দিয়ে sort** করে top 4 BUY ও top 4 SELL return করব
+7. Minimum threshold রাখব (diff >= 3) যেন weak signals না আসে
 
-#### Step 3: n8n — New York Workflow এ HTTP Request Node (Manual)
-n8n MCP দিয়ে node add করা যায় না, তাই আপনাকে manually করতে হবে:
+এতে:
+- শুধু real tradeable pairs দেখাবে
+- Direction সঠিক থাকবে (pair এর standard order অনুযায়ী)
+- সবচেয়ে বড় strength gap ওয়ালা pairs আগে আসবে = best opportunities
 
-1. **New York Session Co-relation** workflow open করুন
-2. `Send a text message3` node এর **পরে** একটা **HTTP Request** node add করুন
-3. Settings:
-   - **Method**: `POST`
-   - **URL**: `https://ejtnvpmshcqydndxxonq.supabase.co/functions/v1/store-currency-strength`
-   - **Authentication**: None
-   - **Headers**: 
-     - `Authorization` = `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqdG52cG1zaGNxeWRuZHh4b25xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMzI0NTksImV4cCI6MjA5MDYwODQ1OX0.5iXpJuyIAKCKilGNzdaR635eVK43bw9khWyH1TnVwHo`
-     - `Content-Type` = `application/json`
-   - **Body**: JSON → `{ "text": "{{ $json.result.text }}" }`
+### Technical Changes
 
-#### UI — কিছু পরিবর্তন লাগবে না
-- Currency Strength page এ ইতিমধ্যে "London" (`1H`) এবং "New York" tabs আছে
-- Realtime subscription active — নতুন data insert হলেই auto-refetch হবে
-- দুই workflow আলাদা timeframe দিয়ে data পাঠাবে, UI সেই অনুযায়ী সঠিক tab এ দেখাবে
+| File | Change |
+|------|--------|
+| `src/types/correlation.ts` | Add `TRADEABLE_PAIRS` array (28 pairs), rewrite `generatePairSuggestions()` |
 
----
-
-### Technical Summary
-
-| Change | File |
-|--------|------|
-| Fix timeframe parser — use full string after "On" | `supabase/functions/store-currency-strength/index.ts` |
-| Deploy edge function | Auto |
-| Add HTTP Request node | n8n (manual by user) |
+UI component (`PairSuggestions.tsx`) এ কোনো পরিবর্তন লাগবে না — same interface return করবে।
 
