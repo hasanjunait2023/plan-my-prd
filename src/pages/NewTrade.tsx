@@ -105,21 +105,22 @@ const NewTrade = () => {
 
     if (data.direction) setDirection(data.direction);
 
-    // Fuzzy timeframe matching
+    // Timeframe matching with common format conversions
     if (data.timeframe) {
-      const tfNorm = data.timeframe.toUpperCase().replace(/\s/g, '');
-      const tfMatch = timeframes.find(t => t === tfNorm) || 
-                      timeframes.find(t => t.toLowerCase() === tfNorm.toLowerCase());
+      const tf = data.timeframe.toUpperCase().replace(/\s/g, '');
+      const tfMap: Record<string, string> = {
+        '1MIN': '1M', '5MIN': '5M', '15MIN': '15M', '30MIN': '30M',
+        '1HOUR': '1H', '4HOUR': '4H', '1HOURS': '1H', '4HOURS': '4H',
+        'DAILY': 'D', 'WEEKLY': 'W', 'H1': '1H', 'H4': '4H',
+        'M1': '1M', 'M5': '5M', 'M15': '15M', 'M30': '30M',
+        'D1': 'D', 'W1': 'W',
+      };
+      const mapped = tfMap[tf] || tf;
+      const tfMatch = timeframes.find(t => t === mapped);
       if (tfMatch) setTimeframe(tfMatch);
     }
 
-    // Fuzzy session matching
-    if (data.session) {
-      const sessNorm = data.session.toLowerCase().trim();
-      const sessMatch = sessions.find(s => s.toLowerCase() === sessNorm) ||
-                        sessions.find(s => sessNorm.includes(s.toLowerCase()));
-      if (sessMatch) setSession(sessMatch);
-    }
+    // Session is NOT set from AI — always use auto-detected current session
 
     if (data.entryPrice) setEntryPrice(String(data.entryPrice));
     if (data.exitPrice) setExitPrice(String(data.exitPrice));
