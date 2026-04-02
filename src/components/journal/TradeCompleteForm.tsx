@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Trade } from '@/types/trade';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,16 +19,49 @@ interface TradeCompleteFormProps {
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 
+function getDraftKey(tradeId: string) {
+  return `tradevault-complete-draft-${tradeId}`;
+}
+
+interface CompleteDraft {
+  exitPrice: string;
+  duringSituation: string;
+  postSituation: string;
+  whatWentWell: string;
+  improvementNotes: string;
+  selectedMistakes: string[];
+  partialCloses: { lots: string; price: string }[];
+}
+
+function loadCompleteDraft(tradeId: string): Partial<CompleteDraft> {
+  try {
+    const saved = localStorage.getItem(getDraftKey(tradeId));
+    return saved ? JSON.parse(saved) : {};
+  } catch { return {}; }
+}
+
 const TradeCompleteForm = ({ trade }: TradeCompleteFormProps) => {
   const updateTrade = useUpdateTrade();
-  const [exitPrice, setExitPrice] = useState('');
+  const draft = loadCompleteDraft(trade.id);
+
+  const [exitPrice, setExitPrice] = useState(draft.exitPrice || '');
   const [exitScreenshots, setExitScreenshots] = useState<string[]>(trade.exitScreenshots || []);
-  const [duringSituation, setDuringSituation] = useState(trade.duringSituation || '');
-  const [postSituation, setPostSituation] = useState(trade.postSituation || '');
-  const [whatWentWell, setWhatWentWell] = useState(trade.whatWentWell || '');
-  const [improvementNotes, setImprovementNotes] = useState(trade.improvementNotes || '');
-  const [selectedMistakes, setSelectedMistakes] = useState<string[]>(trade.mistakes || []);
-  const [partialCloses, setPartialCloses] = useState<{ lots: string; price: string }[]>([]);
+  const [duringSituation, setDuringSituation] = useState(draft.duringSituation || trade.duringSituation || '');
+  const [postSituation, setPostSituation] = useState(draft.postSituation || trade.postSituation || '');
+  const [whatWentWell, setWhatWentWell] = useState(draft.whatWentWell || trade.whatWentWell || '');
+  const [improvementNotes, setImprovementNotes] = useState(draft.improvementNotes || trade.improvementNotes || '');
+  const [selectedMistakes, setSelectedMistakes] = useState<string[]>(draft.selectedMistakes || trade.mistakes || []);
+  const [partialCloses, setPartialCloses] = useState<{ lots: string; price: string }[]>(draft.partialCloses || []);
+
+  // Auto-save draft
+  useEffect(() => {
+    const draftData: CompleteDraft = {
+      exitPrice, duringSituation, postSituation, whatWentWell,
+      improvementNotes, selectedMistakes, partialCloses,
+    };
+    localStorage.setItem(getDraftKey(trade.id), JSON.stringify(draftData));
+  }, [exitPrice, duringSituation, postSituation, whatWentWell,
+    improvementNotes, selectedMistakes, partialCloses, trade.id]);
 
   const toggleMistake = (m: string) => {
     setSelectedMistakes(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
