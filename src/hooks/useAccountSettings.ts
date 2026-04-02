@@ -10,7 +10,6 @@ export const useAccountSettings = () => {
       const { data, error } = await supabase
         .from('account_settings')
         .select('*')
-        .limit(1)
         .maybeSingle();
       if (error) throw error;
       if (!data) return defaultAccountSettings;
