@@ -93,6 +93,7 @@ export default function CurrencyStrength() {
         table: 'currency_strength',
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['currency-strength'] });
+        queryClient.invalidateQueries({ queryKey: ['currency-strength-timestamps'] });
       })
       .subscribe();
 
