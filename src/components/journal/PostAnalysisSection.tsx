@@ -78,6 +78,7 @@ const PostAnalysisSection = ({ trade }: PostAnalysisSectionProps) => {
       { id: trade.id, ruleChecklist: checklist, ruleScore: score },
       {
         onSuccess: () => {
+          localStorage.removeItem(draftKey);
           toast.success('Post Analysis সেভ হয়েছে!');
           setSaved(true);
         },
