@@ -26,12 +26,9 @@ function parseTelegramText(text: string): {
   const headerLine = lines.find((l) => l.includes("Strength On") || l.includes("Co-Relation"));
   if (headerLine) {
     // Match common timeframes: 1H, 15M, 3M, 4H, 1D, "New York", "London" etc.
-    const tfMatch = headerLine.match(/On\s+(.+?)$/i);
+    const tfMatch = headerLine.match(/\bOn\s+(.+?)$/i);
     if (tfMatch) {
-      const raw = tfMatch[1].trim();
-      // Extract just the timeframe part (last word/token)
-      const tokens = raw.split(/\s+/);
-      timeframe = tokens[tokens.length - 1];
+      timeframe = tfMatch[1].trim();
     }
   }
 
