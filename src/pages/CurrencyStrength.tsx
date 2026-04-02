@@ -24,7 +24,8 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
       const dayStart = startOfDay(selectedDate).toISOString();
       const dayEnd = endOfDay(selectedDate).toISOString();
 
-      const { data, error } = await supabase
+      // First try: get data for the selected date
+      let { data, error } = await supabase
         .from('currency_strength')
         .select('*')
         .eq('timeframe', timeframe)
@@ -34,7 +35,19 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
 
       if (error) throw error;
 
-      if (!data || data.length === 0) return [];
+      // If no data for today, get the latest available data for this timeframe
+      if (!data || data.length === 0) {
+        const { data: latestData, error: latestError } = await supabase
+          .from('currency_strength')
+          .select('*')
+          .eq('timeframe', timeframe)
+          .order('recorded_at', { ascending: false })
+          .limit(8);
+
+        if (latestError) throw latestError;
+        return (latestData || []) as CurrencyStrengthRecord[];
+      }
+
       const latestTime = data[0].recorded_at;
       return data.filter(d => d.recorded_at === latestTime) as CurrencyStrengthRecord[];
     },
