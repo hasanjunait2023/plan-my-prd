@@ -26,13 +26,23 @@ const emotions: PsychEmotion[] = ['Confident', 'Fearful', 'Greedy', 'Calm', 'Anx
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 
+function detectCurrentSession(): Session {
+  const now = new Date();
+  const h = now.getUTCHours();
+  // London: 07-16 UTC, New York: 13-22 UTC, Asian: 00-09 UTC, London Close: 15-17 UTC
+  if (h >= 15 && h < 17) return 'London Close';
+  if (h >= 13 && h < 22) return 'New York';
+  if (h >= 7 && h < 16) return 'London';
+  return 'Asian';
+}
+
 const NewTrade = () => {
   const insertTrade = useInsertTrade();
   const navigate = useNavigate();
   const [direction, setDirection] = useState<Direction>('LONG');
   const [pair, setPair] = useState('');
-  const [session, setSession] = useState<string>('');
-  const [timeframe, setTimeframe] = useState<string>('');
+  const [session, setSession] = useState<string>(detectCurrentSession());
+  const [timeframe, setTimeframe] = useState<string>('15M');
   const [strategy, setStrategy] = useState('');
   const [entryPrice, setEntryPrice] = useState('');
   const [exitPrice, setExitPrice] = useState('0');
