@@ -312,7 +312,7 @@ const NewTrade = () => {
 
       {/* Psychology */}
       <Card className={glassCard}>
-        <CardHeader><CardTitle className="text-sm">🧠 Psychology</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-sm">🧠 Entry Psychology</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -334,29 +334,8 @@ const NewTrade = () => {
         </CardContent>
       </Card>
 
-      {/* Partial Closes */}
-      <Card className={glassCard}>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">📊 Partial Closes</CardTitle>
-            <Button variant="outline" size="sm" onClick={addPartialClose}><Plus className="w-3 h-3 mr-1" />Add</Button>
-          </div>
-        </CardHeader>
-        {partialCloses.length > 0 && (
-          <CardContent>
-            {partialCloses.map((pc, i) => (
-              <div key={i} className="flex gap-3 items-end mb-2">
-                <div className="flex-1"><Label>Lots</Label><Input type="number" value={pc.lots} onChange={e => { const c = [...partialCloses]; c[i].lots = e.target.value; setPartialCloses(c); }} /></div>
-                <div className="flex-1"><Label>Exit Price</Label><Input type="number" value={pc.price} onChange={e => { const c = [...partialCloses]; c[i].price = e.target.value; setPartialCloses(c); }} /></div>
-                <Button variant="ghost" size="icon" onClick={() => removePartialClose(i)}><Trash2 className="w-4 h-4 text-loss" /></Button>
-              </div>
-            ))}
-          </CardContent>
-        )}
-      </Card>
-
       <Button onClick={handleSubmit} disabled={insertTrade.isPending} className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-[0_0_20px_hsla(145,63%,49%,0.2)]" size="lg">
-        {insertTrade.isPending ? 'Saving...' : 'Trade Log করো'}
+        {insertTrade.isPending ? 'Saving...' : '📥 Trade Entry করো (Pending)'}
       </Button>
     </div>
   );
