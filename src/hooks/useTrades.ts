@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Trade } from '@/types/trade';
+import { mockTrades } from '@/data/mockTrades';
 
 // Map DB row to Trade type
 const mapRow = (r: any): Trade => ({
