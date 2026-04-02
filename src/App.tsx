@@ -22,6 +22,7 @@ import Install from "./pages/Install.tsx";
 import MT5Connection from "./pages/MT5Connection.tsx";
 import ChartAnalysis from "./pages/ChartAnalysis.tsx";
 import Auth from "./pages/Auth.tsx";
+import TradingRules from "./pages/TradingRules.tsx";
 
 const queryClient = new QueryClient();
 
