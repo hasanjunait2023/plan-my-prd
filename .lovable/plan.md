@@ -1,77 +1,67 @@
 
 
-# Two-Phase Trade Journal — Entry → Pending → Finalize
+# Authentication — সব Route এ Login বাধ্যতামূলক
 
-## সমস্যা
+## পরিবর্তন (আগের plan থেকে)
 
-এখন NewTrade page এ একসাথে Entry ও Exit দুইটাই দিতে হয়। কিন্তু real trading এ প্রথমে trade entry হয়, তারপর কিছুক্ষণ/ঘণ্টা পরে trade close হয়। তাই দুই ধাপে ভাগ করতে হবে।
+আগের plan এ কিছু route public ছিল (Currency Strength, EMA Scanner, Charts, etc.)। এখন **সব route এই login বাধ্যতামূলক**। Login ছাড়া কিছুই access করা যাবে না। Login করার পরে shared data (currency strength, EMA, charts) সবাই একই দেখবে, আর personal data (trades, journal, analytics, psychology, settings) user-specific থাকবে।
 
-## কিভাবে কাজ করবে
+## Architecture
 
 ```text
-Phase 1: Trade Entry (NewTrade page)
-  → Pair, Direction, Entry Price, SL, TP, Lot, Session, TF, Strategy
-  → Entry Screenshots, Reason for Entry, Pre-Situation, Confidence
-  → Psychology (entry time emotion)
-  → Save → status = "PENDING" (exit_price = 0, pnl = 0)
-
-Phase 2: Trade Finalize (Journal page / Pending list)
-  → PENDING trade select করলে "Complete Trade" form আসবে
-  → Exit Price, Exit Screenshots, During Situation, Post Situation
-  → What Went Well, Improvement Notes, Mistakes, Partial Closes
-  → Submit → status = "CLOSED", pnl/pips/outcome calculated
+Login না করলে → /auth page (Login/Signup)
+Login করলে → সব কিছু access:
+  ├── Shared data (সবার একই): Currency Strength, EMA, Charts, Commodities, Crypto, Correlation, Trade Intelligence, MT5
+  └── Personal data (user-specific): Dashboard, Journal, New Trade, Analytics, Psychology, Settings
 ```
 
 ## Implementation
 
-### Step 1: DB — `status` column যোগ
+### Step 1: DB Migration — `user_id` column যোগ
 
-`trades` table এ নতুন column:
-- `status text NOT NULL DEFAULT 'CLOSED'` — values: `PENDING` / `CLOSED`
-- Existing trades সব `CLOSED` থাকবে (default)
+Personal tables এ `user_id uuid REFERENCES auth.users(id)` যোগ:
+- `trades`, `psychology_logs`, `account_settings`, `trading_rules`
 
-### Step 2: NewTrade page split — শুধু Entry fields
+পুরাতন RLS policies drop → নতুন policies:
+- Personal tables: `auth.uid() = user_id` (নিজের data only)
+- Shared tables (currency_strength, ema_alignments, etc.): `auth.uid() IS NOT NULL` (logged in হলেই দেখবে)
 
-- Exit Price field **remove** (Phase 1 এ দরকার নেই)
-- Exit Screenshots, Post-Situation, During-Situation, What Went Well, Improvement Notes, Mistakes — এগুলো **remove**
-- Submit করলে `status: 'PENDING'`, `exit_price: 0`, `pnl: 0`, `outcome: 'BREAKEVEN'` দিয়ে save হবে
-- Button text: "Trade Entry করো" (আগে ছিল "Trade Log করো")
-- Save এর পরে Journal page এ redirect
+### Step 2: Auth Page — `/auth`
 
-### Step 3: Journal page — Pending indicator ও Complete flow
+- `src/pages/Auth.tsx` — Email + Password login/signup form
+- Dark theme, project branding
 
-- **TradePageList** এ PENDING trades এ 🟡 badge দেখাবে (CLOSED trades এ WIN/LOSS/BE badge)
-- **Pending trade select** করলে TradeDocument এর বদলে **TradeCompleteForm** component দেখাবে:
-  - Exit Price (required)
-  - Exit Screenshots
-  - During Situation, Post Situation
-  - What Went Well, Improvement Notes
-  - Mistakes selection
-  - Partial Closes
-  - "Finalize Trade" button
-- Finalize করলে: exit price থেকে pnl/pips/outcome calculate → `status: 'CLOSED'` এ update
-- **CLOSED trade** select করলে আগের মতোই TradeDocument দেখাবে
+### Step 3: Auth Hook
 
-### Step 4: Pending count notification
+- `src/hooks/useAuth.ts` — `onAuthStateChange` + `getSession`, login/signup/logout functions
 
-- Journal header এ pending count badge: "3 Pending" 
-- NotebookSidebar এ date এর পাশে pending count দেখাবে
-- Dashboard (Index.tsx) এ "X trades pending" alert card
+### Step 4: সব Route Protect করা
 
-### Step 5: useTrades hook — update mutation যোগ
+- `src/components/ProtectedRoute.tsx` — logged in না থাকলে `/auth` redirect
+- `App.tsx` এ **সব route** (Dashboard, Journal, Strength, EMA, Charts — সব) `ProtectedRoute` দিয়ে wrap হবে
+- শুধু `/auth` route unprotected থাকবে
 
-- `useUpdateTrade` mutation তৈরি — partial update support (exit price, status, post-trade fields)
+### Step 5: Hooks Update — `user_id` filter
+
+- `useTrades.ts`, `usePsychologyLogs.ts`, `useAccountSettings.ts`, `useTradingRules.ts` — insert এ `user_id: session.user.id` পাঠাবে
+
+### Step 6: Layout Update
+
+- User avatar/email দেখাবে
+- Logout button functional
 
 ## Files
 
 | Action | File |
 |--------|------|
-| **Migration** | `trades` table এ `status` column যোগ |
-| **Modify** | `src/types/trade.ts` — `status: 'PENDING' \| 'CLOSED'` field যোগ |
-| **Modify** | `src/pages/NewTrade.tsx` — শুধু entry fields রাখা, exit fields remove |
-| **Create** | `src/components/journal/TradeCompleteForm.tsx` — Phase 2 form (exit details) |
-| **Modify** | `src/pages/TradeJournal.tsx` — pending trade এ TradeCompleteForm দেখানো |
-| **Modify** | `src/components/journal/TradePageList.tsx` — PENDING badge |
-| **Modify** | `src/hooks/useTrades.ts` — `useUpdateTrade` mutation যোগ, mapRow এ status |
-| **Modify** | `src/pages/Index.tsx` — pending trades alert |
+| **Migration** | `user_id` add to personal tables + RLS update (personal + shared) |
+| **Create** | `src/pages/Auth.tsx` |
+| **Create** | `src/hooks/useAuth.ts` |
+| **Create** | `src/components/ProtectedRoute.tsx` |
+| **Modify** | `src/App.tsx` — Auth route + সব route ProtectedRoute wrap |
+| **Modify** | `src/hooks/useTrades.ts` — `user_id` insert |
+| **Modify** | `src/hooks/usePsychologyLogs.ts` — `user_id` insert |
+| **Modify** | `src/hooks/useAccountSettings.ts` — `user_id` insert |
+| **Modify** | `src/hooks/useTradingRules.ts` — `user_id` insert |
+| **Modify** | `src/components/Layout.tsx` — user info, logout |
 
