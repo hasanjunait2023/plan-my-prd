@@ -1,67 +1,57 @@
 
 
-# Authentication — সব Route এ Login বাধ্যতামূলক
+## Plan: দুই Session এর Data আলাদা করে Realtime Update
 
-## পরিবর্তন (আগের plan থেকে)
+### সমস্যা
 
-আগের plan এ কিছু route public ছিল (Currency Strength, EMA Scanner, Charts, etc.)। এখন **সব route এই login বাধ্যতামূলক**। Login ছাড়া কিছুই access করা যাবে না। Login করার পরে shared data (currency strength, EMA, charts) সবাই একই দেখবে, আর personal data (trades, journal, analytics, psychology, settings) user-specific থাকবে।
+1. **Edge function parser bug** (line 34): "Strength On New York" থেকে শুধু "York" নেয়, "New York" নেয় না
+2. **New York workflow এ HTTP Request node নেই**: London workflow এ আছে (`Send a text message3 → HTTP Request`), কিন্তু New York workflow এ Telegram send এর পর শেষ হয়ে যায়
 
-## Architecture
+### যা করতে হবে
+
+#### Step 1: Edge Function Fix
+`supabase/functions/store-currency-strength/index.ts` — line 31-35 এর timeframe parser ঠিক করব:
 
 ```text
-Login না করলে → /auth page (Login/Signup)
-Login করলে → সব কিছু access:
-  ├── Shared data (সবার একই): Currency Strength, EMA, Charts, Commodities, Crypto, Correlation, Trade Intelligence, MT5
-  └── Personal data (user-specific): Dashboard, Journal, New Trade, Analytics, Psychology, Settings
+Current (bug):
+  const tokens = raw.split(/\s+/);
+  timeframe = tokens[tokens.length - 1];  // "New York" → "York" ❌
+
+Fixed:
+  timeframe = raw;  // "New York" → "New York" ✅
 ```
 
-## Implementation
+এতে London workflow "1H" পাঠাবে → timeframe = "1H", আর New York workflow "New York" পাঠাবে → timeframe = "New York"
 
-### Step 1: DB Migration — `user_id` column যোগ
+#### Step 2: Edge Function Deploy
+Fix করার পর deploy করব এবং test করব edge function ঠিকমতো "New York" timeframe parse করছে কিনা।
 
-Personal tables এ `user_id uuid REFERENCES auth.users(id)` যোগ:
-- `trades`, `psychology_logs`, `account_settings`, `trading_rules`
+#### Step 3: n8n — New York Workflow এ HTTP Request Node (Manual)
+n8n MCP দিয়ে node add করা যায় না, তাই আপনাকে manually করতে হবে:
 
-পুরাতন RLS policies drop → নতুন policies:
-- Personal tables: `auth.uid() = user_id` (নিজের data only)
-- Shared tables (currency_strength, ema_alignments, etc.): `auth.uid() IS NOT NULL` (logged in হলেই দেখবে)
+1. **New York Session Co-relation** workflow open করুন
+2. `Send a text message3` node এর **পরে** একটা **HTTP Request** node add করুন
+3. Settings:
+   - **Method**: `POST`
+   - **URL**: `https://ejtnvpmshcqydndxxonq.supabase.co/functions/v1/store-currency-strength`
+   - **Authentication**: None
+   - **Headers**: 
+     - `Authorization` = `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqdG52cG1zaGNxeWRuZHh4b25xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMzI0NTksImV4cCI6MjA5MDYwODQ1OX0.5iXpJuyIAKCKilGNzdaR635eVK43bw9khWyH1TnVwHo`
+     - `Content-Type` = `application/json`
+   - **Body**: JSON → `{ "text": "{{ $json.result.text }}" }`
 
-### Step 2: Auth Page — `/auth`
+#### UI — কিছু পরিবর্তন লাগবে না
+- Currency Strength page এ ইতিমধ্যে "London" (`1H`) এবং "New York" tabs আছে
+- Realtime subscription active — নতুন data insert হলেই auto-refetch হবে
+- দুই workflow আলাদা timeframe দিয়ে data পাঠাবে, UI সেই অনুযায়ী সঠিক tab এ দেখাবে
 
-- `src/pages/Auth.tsx` — Email + Password login/signup form
-- Dark theme, project branding
+---
 
-### Step 3: Auth Hook
+### Technical Summary
 
-- `src/hooks/useAuth.ts` — `onAuthStateChange` + `getSession`, login/signup/logout functions
-
-### Step 4: সব Route Protect করা
-
-- `src/components/ProtectedRoute.tsx` — logged in না থাকলে `/auth` redirect
-- `App.tsx` এ **সব route** (Dashboard, Journal, Strength, EMA, Charts — সব) `ProtectedRoute` দিয়ে wrap হবে
-- শুধু `/auth` route unprotected থাকবে
-
-### Step 5: Hooks Update — `user_id` filter
-
-- `useTrades.ts`, `usePsychologyLogs.ts`, `useAccountSettings.ts`, `useTradingRules.ts` — insert এ `user_id: session.user.id` পাঠাবে
-
-### Step 6: Layout Update
-
-- User avatar/email দেখাবে
-- Logout button functional
-
-## Files
-
-| Action | File |
+| Change | File |
 |--------|------|
-| **Migration** | `user_id` add to personal tables + RLS update (personal + shared) |
-| **Create** | `src/pages/Auth.tsx` |
-| **Create** | `src/hooks/useAuth.ts` |
-| **Create** | `src/components/ProtectedRoute.tsx` |
-| **Modify** | `src/App.tsx` — Auth route + সব route ProtectedRoute wrap |
-| **Modify** | `src/hooks/useTrades.ts` — `user_id` insert |
-| **Modify** | `src/hooks/usePsychologyLogs.ts` — `user_id` insert |
-| **Modify** | `src/hooks/useAccountSettings.ts` — `user_id` insert |
-| **Modify** | `src/hooks/useTradingRules.ts` — `user_id` insert |
-| **Modify** | `src/components/Layout.tsx` — user info, logout |
+| Fix timeframe parser — use full string after "On" | `supabase/functions/store-currency-strength/index.ts` |
+| Deploy edge function | Auto |
+| Add HTTP Request node | n8n (manual by user) |
 
