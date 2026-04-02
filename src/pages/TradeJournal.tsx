@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Trade } from '@/types/trade';
+import { differenceInDays, parseISO } from 'date-fns';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import NotebookSidebar from '@/components/journal/NotebookSidebar';
 import TradePageList from '@/components/journal/TradePageList';
