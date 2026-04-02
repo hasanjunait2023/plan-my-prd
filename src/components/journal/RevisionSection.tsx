@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Trade } from '@/types/trade';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,15 +17,25 @@ interface RevisionSectionProps {
   trade: Trade;
 }
 
+function getRevDraftKey(id: string) { return `tradevault-revision-draft-${id}`; }
+
 const RevisionSection = ({ trade }: RevisionSectionProps) => {
   const updateTrade = useUpdateTrade();
   const hasRevision = !!trade.revisedAt;
 
+  const revDraft = (() => { try { const s = localStorage.getItem(getRevDraftKey(trade.id)); return s ? JSON.parse(s) : {}; } catch { return {}; } })();
+
   const [open, setOpen] = useState(false);
-  const [notes, setNotes] = useState(trade.revisionNotes || '');
-  const [takeaway, setTakeaway] = useState(trade.revisionTakeaway || '');
-  const [wouldTakeAgain, setWouldTakeAgain] = useState<boolean>(trade.revisionWouldTakeAgain ?? true);
-  const [rating, setRating] = useState<number>(trade.revisionRating ?? 5);
+  const [notes, setNotes] = useState(revDraft.notes ?? trade.revisionNotes ?? '');
+  const [takeaway, setTakeaway] = useState(revDraft.takeaway ?? trade.revisionTakeaway ?? '');
+  const [wouldTakeAgain, setWouldTakeAgain] = useState<boolean>(revDraft.wouldTakeAgain ?? trade.revisionWouldTakeAgain ?? true);
+  const [rating, setRating] = useState<number>(revDraft.rating ?? trade.revisionRating ?? 5);
+
+  useEffect(() => {
+    if (!hasRevision) {
+      localStorage.setItem(getRevDraftKey(trade.id), JSON.stringify({ notes, takeaway, wouldTakeAgain, rating }));
+    }
+  }, [notes, takeaway, wouldTakeAgain, rating, trade.id, hasRevision]);
 
   const handleSave = () => {
     updateTrade.mutate(
