@@ -19,11 +19,22 @@ const PostAnalysisSection = ({ trade }: PostAnalysisSectionProps) => {
   const updateTrade = useUpdateTrade();
   const activeRules = rules.filter(r => r.active);
 
-  // Init checklist from saved data or from active rules
+  const draftKey = `tradevault-postanalysis-draft-${trade.id}`;
   const [checklist, setChecklist] = useState<RuleCheck[]>([]);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    // Try draft first, then saved trade data, then init from rules
+    const draftStr = localStorage.getItem(draftKey);
+    if (draftStr) {
+      try {
+        const parsed = JSON.parse(draftStr);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setChecklist(parsed);
+          return;
+        }
+      } catch {}
+    }
     if (trade.ruleChecklist && trade.ruleChecklist.length > 0) {
       setChecklist(trade.ruleChecklist);
       setSaved(true);
@@ -36,6 +47,13 @@ const PostAnalysisSection = ({ trade }: PostAnalysisSectionProps) => {
       })));
     }
   }, [activeRules.length, trade.ruleChecklist]);
+
+  // Auto-save draft when checklist changes
+  useEffect(() => {
+    if (checklist.length > 0 && !saved) {
+      localStorage.setItem(draftKey, JSON.stringify(checklist));
+    }
+  }, [checklist, saved, draftKey]);
 
   const toggleRule = (idx: number) => {
     setSaved(false);
