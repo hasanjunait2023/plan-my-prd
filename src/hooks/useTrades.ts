@@ -133,6 +133,10 @@ export const useUpdateTrade = () => {
         improvementNotes: 'improvement_notes', mistakes: 'mistakes',
         partialCloses: 'partial_closes', postTradeNotes: 'post_trade_notes',
         rrr: 'rrr', riskDollars: 'risk_dollars',
+        ruleChecklist: 'rule_checklist', ruleScore: 'rule_score',
+        revisionNotes: 'revision_notes', revisionTakeaway: 'revision_takeaway',
+        revisionWouldTakeAgain: 'revision_would_take_again',
+        revisionRating: 'revision_rating', revisedAt: 'revised_at',
       };
       Object.entries(fields).forEach(([k, v]) => {
         const dbKey = map[k] || k;
