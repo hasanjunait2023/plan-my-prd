@@ -94,6 +94,14 @@ export interface AccountSettings {
   maxRiskPercent: number;
   dailyLossLimit: number;
   maxTradesPerDay: number;
+  allowedSessions: string[];
+  maxWinningTrades: number;
+  maxLosingTrades: number;
+  maxLotSize: number;
+  maxDrawdownPercent: number;
+  minConfidence: number;
+  minRrr: number;
+  minSmcTags: number;
 }
 
 export interface DailyPnL {

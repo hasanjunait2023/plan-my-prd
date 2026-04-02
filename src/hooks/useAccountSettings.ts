@@ -20,6 +20,14 @@ export const useAccountSettings = () => {
         maxRiskPercent: Number(data.max_risk_percent),
         dailyLossLimit: Number(data.daily_loss_limit),
         maxTradesPerDay: data.max_trades_per_day,
+        allowedSessions: (data as any).allowed_sessions || ['Asian', 'London', 'New York', 'London Close'],
+        maxWinningTrades: (data as any).max_winning_trades ?? 3,
+        maxLosingTrades: (data as any).max_losing_trades ?? 2,
+        maxLotSize: Number((data as any).max_lot_size ?? 1),
+        maxDrawdownPercent: Number((data as any).max_drawdown_percent ?? 5),
+        minConfidence: (data as any).min_confidence ?? 5,
+        minRrr: Number((data as any).min_rrr ?? 1.5),
+        minSmcTags: (data as any).min_smc_tags ?? 1,
       } as AccountSettings;
     },
   });
