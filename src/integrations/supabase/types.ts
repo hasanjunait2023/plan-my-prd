@@ -528,9 +528,16 @@ export type Database = {
           psychology_emotion: string
           psychology_state: number
           reason_for_entry: string
+          revised_at: string | null
+          revision_notes: string
+          revision_rating: number | null
+          revision_takeaway: string
+          revision_would_take_again: boolean | null
           risk_dollars: number
           risk_percent: number
           rrr: number
+          rule_checklist: Json
+          rule_score: number
           screenshots: string[]
           session: string
           smc_tags: string[]
@@ -570,9 +577,16 @@ export type Database = {
           psychology_emotion?: string
           psychology_state?: number
           reason_for_entry?: string
+          revised_at?: string | null
+          revision_notes?: string
+          revision_rating?: number | null
+          revision_takeaway?: string
+          revision_would_take_again?: boolean | null
           risk_dollars?: number
           risk_percent?: number
           rrr?: number
+          rule_checklist?: Json
+          rule_score?: number
           screenshots?: string[]
           session?: string
           smc_tags?: string[]
@@ -612,9 +626,16 @@ export type Database = {
           psychology_emotion?: string
           psychology_state?: number
           reason_for_entry?: string
+          revised_at?: string | null
+          revision_notes?: string
+          revision_rating?: number | null
+          revision_takeaway?: string
+          revision_would_take_again?: boolean | null
           risk_dollars?: number
           risk_percent?: number
           rrr?: number
+          rule_checklist?: Json
+          rule_score?: number
           screenshots?: string[]
           session?: string
           smc_tags?: string[]

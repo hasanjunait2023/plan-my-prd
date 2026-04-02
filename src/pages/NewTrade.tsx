@@ -141,6 +141,13 @@ const NewTrade = () => {
         })),
         starred: false,
         status: 'PENDING',
+        ruleChecklist: [],
+        ruleScore: 0,
+        revisionNotes: '',
+        revisionTakeaway: '',
+        revisionWouldTakeAgain: null,
+        revisionRating: null,
+        revisedAt: null,
       });
       toast.success('Trade entry সফল! Pending হিসেবে Journal এ দেখা যাবে।');
       navigate('/journal');

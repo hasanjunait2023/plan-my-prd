@@ -4,6 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Star, CheckCircle, XCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import ImageUpload from './ImageUpload';
+import PostAnalysisSection from './PostAnalysisSection';
+import RevisionSection from './RevisionSection';
 import { format, parseISO } from 'date-fns';
 import { PairWithFlags } from '@/lib/pairFlags';
 
@@ -15,6 +17,7 @@ interface TradeDocumentProps {
 const TradeDocument = ({ trade }: TradeDocumentProps) => {
   const isWin = trade.outcome === 'WIN';
   const isLoss = trade.outcome === 'LOSS';
+  const isClosed = trade.status === 'CLOSED';
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-12 overflow-x-hidden">
@@ -39,6 +42,12 @@ const TradeDocument = ({ trade }: TradeDocumentProps) => {
                 {trade.outcome}
               </Badge>
               {trade.starred && <Star className="w-5 h-5 text-warning fill-current" />}
+              {trade.ruleScore > 0 && (
+                <Badge variant="secondary" className="text-[10px]">Rule: {trade.ruleScore}%</Badge>
+              )}
+              {trade.revisionRating && (
+                <Badge variant="secondary" className="text-[10px]">Rev: {trade.revisionRating}/10</Badge>
+              )}
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               {trade.session} Session &middot; {trade.timeframe} &middot; {trade.strategy}
@@ -183,6 +192,12 @@ const TradeDocument = ({ trade }: TradeDocumentProps) => {
           </div>
         </div>
       </Section>
+
+      {/* Post Analysis — only for CLOSED trades */}
+      {isClosed && <PostAnalysisSection trade={trade} />}
+
+      {/* Revision — only for CLOSED trades */}
+      {isClosed && <RevisionSection trade={trade} />}
     </div>
   );
 };
