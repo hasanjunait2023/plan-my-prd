@@ -135,8 +135,8 @@ const Settings = () => {
   const handleSaveSettings = async () => {
     try {
       await saveSettings.mutateAsync({
+        ...accountSettings,
         startingBalance: parseFloat(balance) || 10000,
-        currentBalance: accountSettings.currentBalance,
         currency,
         maxRiskPercent: parseFloat(maxRisk) || 1,
         dailyLossLimit: parseFloat(dailyLoss) || 500,
