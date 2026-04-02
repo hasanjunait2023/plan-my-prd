@@ -33,7 +33,10 @@ export const useInsertPsychologyLog = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (log: Omit<PsychologyLog, 'id'>) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
       const { error } = await supabase.from('psychology_logs').insert({
+        user_id: session.user.id,
         date: log.date,
         mental_state: log.mentalState,
         sleep_quality: log.sleepQuality,

@@ -55,6 +55,7 @@ export const useSaveAccountSettings = () => {
         const { error } = await supabase
           .from('account_settings')
           .insert({
+            user_id: session.user.id,
             starting_balance: settings.startingBalance,
             current_balance: settings.currentBalance,
             currency: settings.currency,
