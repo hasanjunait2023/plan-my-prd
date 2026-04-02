@@ -2,6 +2,7 @@ import { Trade } from '@/types/trade';
 import { Badge } from '@/components/ui/badge';
 import { Star, ArrowUp, ArrowDown, ChevronRight } from 'lucide-react';
 import { PairWithFlags } from '@/lib/pairFlags';
+import { differenceInDays, parseISO } from 'date-fns';
 
 interface TradeCardProps {
   trade: Trade;
