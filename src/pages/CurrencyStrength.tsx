@@ -136,9 +136,8 @@ export default function CurrencyStrength() {
             </div>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="bg-muted/20 border border-border/30">
-                <TabsTrigger value="1H" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">1H</TabsTrigger>
-                <TabsTrigger value="15M" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">15M</TabsTrigger>
-                <TabsTrigger value="3M" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">3M</TabsTrigger>
+                <TabsTrigger value="1H" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">London</TabsTrigger>
+                <TabsTrigger value="New York" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">New York</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
