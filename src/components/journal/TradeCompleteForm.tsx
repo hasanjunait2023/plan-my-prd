@@ -106,6 +106,7 @@ const TradeCompleteForm = ({ trade }: TradeCompleteFormProps) => {
           pnl: 0,
         })),
       });
+      localStorage.removeItem(getDraftKey(trade.id));
       toast.success('Trade finalize হয়েছে! ✅');
     } catch {
       toast.error('Trade update করতে সমস্যা হয়েছে');
