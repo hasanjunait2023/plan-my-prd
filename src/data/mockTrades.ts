@@ -150,6 +150,7 @@ export const mockTrades: Trade[] = [
     status: 'CLOSED',
     starred: true,
     createdAt: '2026-03-31T16:00:00Z',
+    ruleChecklist: [], ruleScore: 0, revisionNotes: '', revisionTakeaway: 'FVG rejection NY session এ high probability setup', revisionWouldTakeAgain: true, revisionRating: 10, revisedAt: '2026-04-01T19:00:00Z',
   },
   {
     id: 'mock-4',
