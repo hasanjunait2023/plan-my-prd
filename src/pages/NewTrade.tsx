@@ -80,10 +80,37 @@ const NewTrade = () => {
   const removePartialClose = (i: number) => setPartialCloses(partialCloses.filter((_, idx) => idx !== i));
 
   const handleDataExtracted = (data: ExtractedTradeData) => {
-    if (data.pair && pairOptions.includes(data.pair)) setPair(data.pair);
+    // Fuzzy pair matching: normalize and find closest match
+    if (data.pair) {
+      const normalized = data.pair.toUpperCase().replace(/\s/g, '');
+      // Try exact match first
+      let match = pairOptions.find(p => p === normalized);
+      // Try without slash: "EURUSD" → "EUR/USD"
+      if (!match) {
+        const noSlash = normalized.replace('/', '');
+        match = pairOptions.find(p => p.replace('/', '') === noSlash);
+      }
+      if (match) setPair(match);
+    }
+
     if (data.direction) setDirection(data.direction);
-    if (data.timeframe && timeframes.includes(data.timeframe as Timeframe)) setTimeframe(data.timeframe);
-    if (data.session && sessions.includes(data.session as Session)) setSession(data.session);
+
+    // Fuzzy timeframe matching
+    if (data.timeframe) {
+      const tfNorm = data.timeframe.toUpperCase().replace(/\s/g, '');
+      const tfMatch = timeframes.find(t => t === tfNorm) || 
+                      timeframes.find(t => t.toLowerCase() === tfNorm.toLowerCase());
+      if (tfMatch) setTimeframe(tfMatch);
+    }
+
+    // Fuzzy session matching
+    if (data.session) {
+      const sessNorm = data.session.toLowerCase().trim();
+      const sessMatch = sessions.find(s => s.toLowerCase() === sessNorm) ||
+                        sessions.find(s => sessNorm.includes(s.toLowerCase()));
+      if (sessMatch) setSession(sessMatch);
+    }
+
     if (data.entryPrice) setEntryPrice(String(data.entryPrice));
     if (data.exitPrice) setExitPrice(String(data.exitPrice));
     if (data.stopLoss) setStopLoss(String(data.stopLoss));
