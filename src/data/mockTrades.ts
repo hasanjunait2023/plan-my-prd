@@ -97,6 +97,18 @@ export const mockTrades: Trade[] = [
     status: 'CLOSED',
     starred: false,
     createdAt: '2026-04-01T13:00:00Z',
+    ruleChecklist: [
+      { ruleId: 'r1', ruleText: 'HTF (4H/Daily) trend check করেছি', followed: false, explanation: '4H check করিনি — তাড়াহুড়ো করেছি' },
+      { ruleId: 'r2', ruleText: 'Entry এ minimum 2টা confluence আছে', followed: true, explanation: '' },
+      { ruleId: 'r3', ruleText: 'Risk 1% এর বেশি নয়', followed: true, explanation: '' },
+      { ruleId: 'r4', ruleText: 'News event check করেছি', followed: false, explanation: 'JPY news miss করেছি' },
+    ],
+    ruleScore: 50,
+    revisionNotes: '',
+    revisionTakeaway: '',
+    revisionWouldTakeAgain: null,
+    revisionRating: null,
+    revisedAt: null,
   },
   {
     id: 'mock-3',
