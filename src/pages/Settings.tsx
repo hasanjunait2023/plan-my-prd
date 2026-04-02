@@ -129,15 +129,8 @@ const Settings = () => {
     setSendingTest(false);
   };
 
-  const handleAddRule = async () => {
-    if (!newRule.trim()) return;
-    try {
-      await insertRule.mutateAsync(newRule.trim());
-      setNewRule('');
-    } catch {
-      toast.error('Failed to add rule');
-    }
-  };
+
+
 
   const handleSaveSettings = async () => {
     try {
