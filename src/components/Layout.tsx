@@ -4,6 +4,7 @@ import {
   LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap, LogOut, Gem, Bitcoin, GitCompareArrows, Sun, Moon, Cable, LineChart
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -73,6 +74,7 @@ const ThemeToggleButton = () => {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>(staticNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
@@ -284,12 +286,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50">
                   <Avatar className="w-8 h-8 border border-border/50 cursor-pointer hover:border-primary/50 transition-colors">
                     <AvatarFallback className="bg-card text-xs font-semibold text-foreground">
-                      TV
+                      {user?.email?.charAt(0).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 bg-card border-border/40">
+              <DropdownMenuContent align="end" className="w-52 bg-card border-border/40">
+                <div className="px-3 py-2 border-b border-border/30">
+                  <p className="text-xs font-medium text-foreground truncate">{user?.email}</p>
+                </div>
                 {profileMenuItems.map((item) => (
                   <DropdownMenuItem
                     key={item.title}
@@ -301,7 +306,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator className="bg-border/30" />
-                <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground">
+                <DropdownMenuItem
+                  onClick={async () => { await signOut(); navigate('/auth'); }}
+                  className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground"
+                >
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>
                 </DropdownMenuItem>

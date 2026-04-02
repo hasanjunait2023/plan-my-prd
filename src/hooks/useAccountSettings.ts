@@ -10,7 +10,6 @@ export const useAccountSettings = () => {
       const { data, error } = await supabase
         .from('account_settings')
         .select('*')
-        .limit(1)
         .maybeSingle();
       if (error) throw error;
       if (!data) return defaultAccountSettings;
@@ -30,11 +29,12 @@ export const useSaveAccountSettings = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (settings: AccountSettings) => {
-      // Check if exists
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
       const { data: existing } = await supabase
         .from('account_settings')
         .select('id')
-        .limit(1)
         .maybeSingle();
 
       if (existing) {
@@ -55,6 +55,7 @@ export const useSaveAccountSettings = () => {
         const { error } = await supabase
           .from('account_settings')
           .insert({
+            user_id: session.user.id,
             starting_balance: settings.startingBalance,
             current_balance: settings.currentBalance,
             currency: settings.currency,

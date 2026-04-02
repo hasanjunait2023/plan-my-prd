@@ -20,7 +20,9 @@ export const useInsertRule = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (text: string) => {
-      const { error } = await supabase.from('trading_rules').insert({ text });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const { error } = await supabase.from('trading_rules').insert({ text, user_id: session.user.id });
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trading_rules'] }),

@@ -63,7 +63,10 @@ export const useInsertTrade = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (trade: Omit<Trade, 'id' | 'createdAt'>) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
       const { error } = await supabase.from('trades').insert({
+        user_id: session.user.id,
         date: trade.date,
         pair: trade.pair,
         direction: trade.direction,
