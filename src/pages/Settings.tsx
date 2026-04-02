@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Shield, Plus, Trash2, Bell, Send } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Plus, Trash2, Bell, Send, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccountSettings, useSaveAccountSettings } from '@/hooks/useAccountSettings';
-import { useTradingRules, useInsertRule, useDeleteRule, useToggleRule } from '@/hooks/useTradingRules';
+import { Link } from 'react-router-dom';
 import { defaultAccountSettings } from '@/data/mockData';
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
@@ -17,17 +17,11 @@ const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24
 const Settings = () => {
   const { data: accountSettings = defaultAccountSettings } = useAccountSettings();
   const saveSettings = useSaveAccountSettings();
-  const { data: rules = [] } = useTradingRules();
-  const insertRule = useInsertRule();
-  const deleteRule = useDeleteRule();
-  const toggleRule = useToggleRule();
-
   const [balance, setBalance] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [maxRisk, setMaxRisk] = useState('');
   const [dailyLoss, setDailyLoss] = useState('');
   const [maxTrades, setMaxTrades] = useState('');
-  const [newRule, setNewRule] = useState('');
 
   // Telegram alert settings
   const [chatId, setChatId] = useState('');
@@ -135,15 +129,8 @@ const Settings = () => {
     setSendingTest(false);
   };
 
-  const handleAddRule = async () => {
-    if (!newRule.trim()) return;
-    try {
-      await insertRule.mutateAsync(newRule.trim());
-      setNewRule('');
-    } catch {
-      toast.error('Failed to add rule');
-    }
-  };
+
+
 
   const handleSaveSettings = async () => {
     try {
@@ -293,33 +280,21 @@ const Settings = () => {
         </CardContent>
       </Card>
 
-      {/* Trading Rules */}
+      {/* Trading Rules Link */}
       <Card className={glassCard}>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center">
-              <Shield className="w-3 h-3 text-emerald-400" />
+        <CardContent className="p-4">
+          <Link to="/rules" className="flex items-center justify-between group hover:opacity-80 transition-opacity">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Trading Rules & Analytics</p>
+                <p className="text-xs text-muted-foreground">Manage rules, view adherence & violation analytics</p>
+              </div>
             </div>
-            Rules I Never Break
-          </CardTitle>
-          <CardDescription>Your personal trading commandments</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {rules.map(rule => (
-            <div key={rule.id} className="flex items-center gap-3 group">
-              <Switch checked={rule.active} onCheckedChange={() => toggleRule.mutate({ id: rule.id, active: !rule.active })} />
-              <span className={`flex-1 text-sm ${!rule.active ? 'text-muted-foreground line-through' : ''}`}>{rule.text}</span>
-              <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => deleteRule.mutate(rule.id)}>
-                <Trash2 className="w-3 h-3 text-loss" />
-              </Button>
-            </div>
-          ))}
-          <div className="flex gap-2 pt-2">
-            <Input placeholder="Add a new rule..." value={newRule} onChange={e => setNewRule(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddRule()} />
-            <Button variant="outline" onClick={handleAddRule}><Plus className="w-4 h-4" /></Button>
-          </div>
+            <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </Link>
         </CardContent>
       </Card>
 

@@ -22,6 +22,7 @@ import Install from "./pages/Install.tsx";
 import MT5Connection from "./pages/MT5Connection.tsx";
 import ChartAnalysis from "./pages/ChartAnalysis.tsx";
 import Auth from "./pages/Auth.tsx";
+import TradingRules from "./pages/TradingRules.tsx";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => (
                   <Route path="/install" element={<Install />} />
                   <Route path="/mt5" element={<MT5Connection />} />
                   <Route path="/charts" element={<ChartAnalysis />} />
+                  <Route path="/rules" element={<TradingRules />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>
