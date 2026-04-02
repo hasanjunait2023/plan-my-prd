@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,37 +36,90 @@ function detectCurrentSession(): Session {
   return 'Asian';
 }
 
+const DRAFT_KEY = 'tradevault-new-trade-draft';
+
+interface DraftData {
+  direction: Direction;
+  pair: string;
+  session: string;
+  timeframe: string;
+  strategy: string;
+  entryPrice: string;
+  exitPrice: string;
+  stopLoss: string;
+  takeProfit: string;
+  lotSize: string;
+  selectedSmcTags: string[];
+  selectedMistakes: string[];
+  psychState: string;
+  psychEmotion: string;
+  planAdherence: boolean;
+  partialCloses: { lots: string; price: string }[];
+  reasonForEntry: string;
+  confidenceLevel: number[];
+  preSituation: string;
+  duringSituation: string;
+  postSituation: string;
+  whatWentWell: string;
+  improvementNotes: string;
+}
+
+function loadDraft(): Partial<DraftData> {
+  try {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    return saved ? JSON.parse(saved) : {};
+  } catch { return {}; }
+}
+
 const NewTrade = () => {
   const insertTrade = useInsertTrade();
   const navigate = useNavigate();
-  const [direction, setDirection] = useState<Direction>('LONG');
-  const [pair, setPair] = useState('');
-  const [session, setSession] = useState<string>(detectCurrentSession());
-  const [timeframe, setTimeframe] = useState<string>('15M');
-  const [strategy, setStrategy] = useState('');
-  const [entryPrice, setEntryPrice] = useState('');
-  const [exitPrice, setExitPrice] = useState('0');
-  const [stopLoss, setStopLoss] = useState('');
-  const [takeProfit, setTakeProfit] = useState('');
-  const [lotSize, setLotSize] = useState('');
-  const [selectedSmcTags, setSelectedSmcTags] = useState<string[]>([]);
-  const [selectedMistakes, setSelectedMistakes] = useState<string[]>([]);
-  const [psychState, setPsychState] = useState('7');
-  const [psychEmotion, setPsychEmotion] = useState<string>('');
-  const [planAdherence, setPlanAdherence] = useState(true);
-  const [partialCloses, setPartialCloses] = useState<{ lots: string; price: string }[]>([]);
+  const draft = loadDraft();
+
+  const [direction, setDirection] = useState<Direction>(draft.direction || 'LONG');
+  const [pair, setPair] = useState(draft.pair || '');
+  const [session, setSession] = useState<string>(draft.session || detectCurrentSession());
+  const [timeframe, setTimeframe] = useState<string>(draft.timeframe || '15M');
+  const [strategy, setStrategy] = useState(draft.strategy || '');
+  const [entryPrice, setEntryPrice] = useState(draft.entryPrice || '');
+  const [exitPrice, setExitPrice] = useState(draft.exitPrice || '0');
+  const [stopLoss, setStopLoss] = useState(draft.stopLoss || '');
+  const [takeProfit, setTakeProfit] = useState(draft.takeProfit || '');
+  const [lotSize, setLotSize] = useState(draft.lotSize || '');
+  const [selectedSmcTags, setSelectedSmcTags] = useState<string[]>(draft.selectedSmcTags || []);
+  const [selectedMistakes, setSelectedMistakes] = useState<string[]>(draft.selectedMistakes || []);
+  const [psychState, setPsychState] = useState(draft.psychState || '7');
+  const [psychEmotion, setPsychEmotion] = useState<string>(draft.psychEmotion || '');
+  const [planAdherence, setPlanAdherence] = useState(draft.planAdherence ?? true);
+  const [partialCloses, setPartialCloses] = useState<{ lots: string; price: string }[]>(draft.partialCloses || []);
 
   const [entryScreenshots, setEntryScreenshots] = useState<string[]>([]);
   const [exitScreenshots, setExitScreenshots] = useState<string[]>([]);
   const [lastAddedImage, setLastAddedImage] = useState<string | null>(null);
 
-  const [reasonForEntry, setReasonForEntry] = useState('');
-  const [confidenceLevel, setConfidenceLevel] = useState([7]);
-  const [preSituation, setPreSituation] = useState('');
-  const [duringSituation, setDuringSituation] = useState('');
-  const [postSituation, setPostSituation] = useState('');
-  const [whatWentWell, setWhatWentWell] = useState('');
-  const [improvementNotes, setImprovementNotes] = useState('');
+  const [reasonForEntry, setReasonForEntry] = useState(draft.reasonForEntry || '');
+  const [confidenceLevel, setConfidenceLevel] = useState(draft.confidenceLevel || [7]);
+  const [preSituation, setPreSituation] = useState(draft.preSituation || '');
+  const [duringSituation, setDuringSituation] = useState(draft.duringSituation || '');
+  const [postSituation, setPostSituation] = useState(draft.postSituation || '');
+  const [whatWentWell, setWhatWentWell] = useState(draft.whatWentWell || '');
+  const [improvementNotes, setImprovementNotes] = useState(draft.improvementNotes || '');
+
+  // Auto-save draft on every change
+  useEffect(() => {
+    const draftData: DraftData = {
+      direction, pair, session, timeframe, strategy, entryPrice, exitPrice,
+      stopLoss, takeProfit, lotSize, selectedSmcTags, selectedMistakes,
+      psychState, psychEmotion, planAdherence, partialCloses,
+      reasonForEntry, confidenceLevel, preSituation, duringSituation,
+      postSituation, whatWentWell, improvementNotes,
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draftData));
+  }, [direction, pair, session, timeframe, strategy, entryPrice, exitPrice,
+    stopLoss, takeProfit, lotSize, selectedSmcTags, selectedMistakes,
+    psychState, psychEmotion, planAdherence, partialCloses,
+    reasonForEntry, confidenceLevel, preSituation, duringSituation,
+    postSituation, whatWentWell, improvementNotes]);
 
   const entry = parseFloat(entryPrice) || 0;
   const exit = parseFloat(exitPrice) || 0;
@@ -187,6 +240,7 @@ const NewTrade = () => {
         revisionRating: null,
         revisedAt: null,
       });
+      localStorage.removeItem(DRAFT_KEY);
       toast.success('Trade entry সফল! Pending হিসেবে Journal এ দেখা যাবে।');
       navigate('/journal');
     } catch {
