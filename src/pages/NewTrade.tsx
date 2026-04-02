@@ -96,7 +96,7 @@ const NewTrade = () => {
       toast.error('Required fields পূরণ করো: Pair, Entry Price, Stop Loss');
       return;
     }
-    const outcome = pnl > 0 ? 'WIN' : pnl < 0 ? 'LOSS' : 'BREAKEVEN';
+    const outcome = 'BREAKEVEN' as const;
     try {
       await insertTrade.mutateAsync({
         date: format(new Date(), 'yyyy-MM-dd'),
