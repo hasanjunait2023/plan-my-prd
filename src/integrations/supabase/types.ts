@@ -529,6 +529,7 @@ export type Database = {
           session: string
           smc_tags: string[]
           starred: boolean
+          status: string
           stop_loss: number
           strategy: string
           take_profit: number
@@ -569,6 +570,7 @@ export type Database = {
           session?: string
           smc_tags?: string[]
           starred?: boolean
+          status?: string
           stop_loss?: number
           strategy?: string
           take_profit?: number
@@ -609,6 +611,7 @@ export type Database = {
           session?: string
           smc_tags?: string[]
           starred?: boolean
+          status?: string
           stop_loss?: number
           strategy?: string
           take_profit?: number
