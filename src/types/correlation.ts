@@ -36,40 +36,56 @@ export const CATEGORY_COLORS: Record<string, string> = {
   'WEAK': 'hsl(0, 84%, 60%)',
 };
 
+export const TRADEABLE_PAIRS = [
+  'EUR/USD','EUR/GBP','EUR/JPY','EUR/AUD','EUR/NZD','EUR/CAD','EUR/CHF',
+  'GBP/USD','GBP/JPY','GBP/AUD','GBP/NZD','GBP/CAD','GBP/CHF',
+  'AUD/USD','AUD/JPY','AUD/NZD','AUD/CAD','AUD/CHF',
+  'NZD/USD','NZD/JPY','NZD/CAD','NZD/CHF',
+  'USD/JPY','USD/CAD','USD/CHF',
+  'CAD/JPY','CAD/CHF',
+  'CHF/JPY',
+];
+
 export function generatePairSuggestions(data: CurrencyStrengthRecord[]): PairSuggestion[] {
   if (data.length < 2) return [];
-  const sorted = [...data].sort((a, b) => b.strength - a.strength);
-  const strong = sorted.filter(c => c.strength > 0);
-  const weak = sorted.filter(c => c.strength < 0).reverse(); // weakest first
+
+  const strengthMap = new Map<string, number>();
+  for (const d of data) {
+    strengthMap.set(d.currency, d.strength);
+  }
 
   const suggestions: PairSuggestion[] = [];
 
-  // BUY pairs: strong base / weak quote
-  for (const s of strong.slice(0, 3)) {
-    for (const w of weak.slice(0, 2)) {
+  for (const pair of TRADEABLE_PAIRS) {
+    const [base, quote] = pair.split('/');
+    const baseStr = strengthMap.get(base);
+    const quoteStr = strengthMap.get(quote);
+    if (baseStr === undefined || quoteStr === undefined) continue;
+
+    const diff = baseStr - quoteStr;
+    const absDiff = Math.abs(diff);
+
+    // Skip weak signals
+    if (absDiff < 3) continue;
+
+    if (diff > 0) {
       suggestions.push({
-        pair: `${s.currency}/${w.currency}`,
+        pair,
         direction: 'BUY',
-        strongCurrency: s.currency,
-        weakCurrency: w.currency,
-        strengthDiff: s.strength - w.strength,
+        strongCurrency: base,
+        weakCurrency: quote,
+        strengthDiff: absDiff,
       });
-    }
-  }
-
-  // SELL pairs: weak base / strong quote
-  for (const w of weak.slice(0, 3)) {
-    for (const s of strong.slice(0, 2)) {
+    } else {
       suggestions.push({
-        pair: `${w.currency}/${s.currency}`,
+        pair,
         direction: 'SELL',
-        strongCurrency: s.currency,
-        weakCurrency: w.currency,
-        strengthDiff: s.strength - w.strength,
+        strongCurrency: quote,
+        weakCurrency: base,
+        strengthDiff: absDiff,
       });
     }
   }
 
-  // Sort by strength difference and take top suggestions
   return suggestions.sort((a, b) => b.strengthDiff - a.strengthDiff);
 }
