@@ -40,6 +40,7 @@ const mapRow = (r: any): Trade => ({
   exitScreenshots: r.exit_screenshots || [],
   screenshots: r.screenshots || [],
   partialCloses: r.partial_closes || [],
+  status: r.status || 'CLOSED',
   starred: r.starred,
   createdAt: r.created_at,
 });
