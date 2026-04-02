@@ -92,8 +92,8 @@ const NewTrade = () => {
   };
 
   const handleSubmit = async () => {
-    if (!pair || !entryPrice || !exitPrice || !stopLoss) {
-      toast.error('Required fields পূরণ করো: Pair, Entry, Exit, Stop Loss');
+    if (!pair || !entryPrice || !stopLoss) {
+      toast.error('Required fields পূরণ করো: Pair, Entry Price, Stop Loss');
       return;
     }
     const outcome = pnl > 0 ? 'WIN' : pnl < 0 ? 'LOSS' : 'BREAKEVEN';
