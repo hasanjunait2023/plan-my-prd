@@ -4,6 +4,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import NotebookSidebar from '@/components/journal/NotebookSidebar';
 import TradePageList from '@/components/journal/TradePageList';
 import TradeDocument from '@/components/journal/TradeDocument';
+import TradeCompleteForm from '@/components/journal/TradeCompleteForm';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Plus, BookOpen, Download } from 'lucide-react';
