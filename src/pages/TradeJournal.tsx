@@ -27,18 +27,66 @@ const TradeJournal = () => {
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [mobileView, setMobileView] = useState<'dates' | 'trades' | 'document'>('dates');
   const [exportOpen, setExportOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<TradeFilter>('all');
 
   const filteredTrades = useMemo(() => {
-    if (!searchQuery) return allTrades;
-    const q = searchQuery.toLowerCase();
-    return allTrades.filter(t =>
-      t.pair.toLowerCase().includes(q) ||
-      t.strategy.toLowerCase().includes(q) ||
-      t.reasonForEntry?.toLowerCase().includes(q) ||
-      t.preTradeNotes.toLowerCase().includes(q) ||
-      t.postTradeNotes.toLowerCase().includes(q)
-    );
-  }, [searchQuery, allTrades]);
+    let trades = allTrades;
+    
+    // Search filter
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      trades = trades.filter(t =>
+        t.pair.toLowerCase().includes(q) ||
+        t.strategy.toLowerCase().includes(q) ||
+        t.reasonForEntry?.toLowerCase().includes(q) ||
+        t.preTradeNotes.toLowerCase().includes(q) ||
+        t.postTradeNotes.toLowerCase().includes(q)
+      );
+    }
+
+    // Status filter
+    switch (activeFilter) {
+      case 'pending':
+        trades = trades.filter(t => t.status === 'PENDING');
+        break;
+      case 'closed':
+        trades = trades.filter(t => t.status === 'CLOSED');
+        break;
+      case 'win':
+        trades = trades.filter(t => t.outcome === 'WIN');
+        break;
+      case 'loss':
+        trades = trades.filter(t => t.outcome === 'LOSS');
+        break;
+      case 'needs-analysis':
+        trades = trades.filter(t => t.status === 'CLOSED' && (!t.ruleChecklist?.length || t.ruleScore === 0));
+        break;
+      case 'needs-revision':
+        trades = trades.filter(t => t.status === 'CLOSED' && !t.revisedAt && differenceInDays(new Date(), parseISO(t.date)) >= 7);
+        break;
+    }
+
+    return trades;
+  }, [searchQuery, allTrades, activeFilter]);
+
+  const filterCounts = useMemo(() => ({
+    all: allTrades.length,
+    pending: allTrades.filter(t => t.status === 'PENDING').length,
+    closed: allTrades.filter(t => t.status === 'CLOSED').length,
+    win: allTrades.filter(t => t.outcome === 'WIN').length,
+    loss: allTrades.filter(t => t.outcome === 'LOSS').length,
+    'needs-analysis': allTrades.filter(t => t.status === 'CLOSED' && (!t.ruleChecklist?.length || t.ruleScore === 0)).length,
+    'needs-revision': allTrades.filter(t => t.status === 'CLOSED' && !t.revisedAt && differenceInDays(new Date(), parseISO(t.date)) >= 7).length,
+  }), [allTrades]);
+
+  const filters: { key: TradeFilter; label: string; color?: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'pending', label: 'Pending', color: 'text-warning' },
+    { key: 'win', label: 'Wins', color: 'text-profit' },
+    { key: 'loss', label: 'Losses', color: 'text-loss' },
+    { key: 'needs-analysis', label: '📋 Analysis' },
+    { key: 'needs-revision', label: '📝 Revision' },
+  ];
 
   const dateTrades = useMemo(() => {
     if (!selectedDate) return [];
