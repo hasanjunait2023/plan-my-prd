@@ -56,11 +56,32 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
   });
 }
 
+function useSessionTimestamps() {
+  return useQuery({
+    queryKey: ['currency-strength-timestamps'],
+    queryFn: async () => {
+      const results: Record<string, string | null> = { '1H': null, 'New York': null };
+      for (const tf of ['1H', 'New York']) {
+        const { data } = await supabase
+          .from('currency_strength')
+          .select('recorded_at')
+          .eq('timeframe', tf)
+          .order('recorded_at', { ascending: false })
+          .limit(1);
+        results[tf] = data?.[0]?.recorded_at || null;
+      }
+      return results;
+    },
+    refetchInterval: 60000,
+  });
+}
+
 export default function CurrencyStrength() {
   const [activeTab, setActiveTab] = useState('1H');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const queryClient = useQueryClient();
   const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab, selectedDate);
+  const { data: timestamps } = useSessionTimestamps();
 
   // Realtime subscription — auto-refetch on new inserts
   useEffect(() => {
