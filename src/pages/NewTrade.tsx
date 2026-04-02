@@ -240,6 +240,7 @@ const NewTrade = () => {
         revisionRating: null,
         revisedAt: null,
       });
+      localStorage.removeItem(DRAFT_KEY);
       toast.success('Trade entry সফল! Pending হিসেবে Journal এ দেখা যাবে।');
       navigate('/journal');
     } catch {
