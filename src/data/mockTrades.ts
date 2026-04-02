@@ -363,5 +363,6 @@ export const mockTrades: Trade[] = [
     status: 'PENDING',
     starred: false,
     createdAt: '2026-04-02T04:30:00Z',
+    ruleChecklist: [], ruleScore: 0, revisionNotes: '', revisionTakeaway: '', revisionWouldTakeAgain: null, revisionRating: null, revisedAt: null,
   },
 ];
