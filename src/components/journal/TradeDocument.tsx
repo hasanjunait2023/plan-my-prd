@@ -17,6 +17,7 @@ interface TradeDocumentProps {
 const TradeDocument = ({ trade }: TradeDocumentProps) => {
   const isWin = trade.outcome === 'WIN';
   const isLoss = trade.outcome === 'LOSS';
+  const isClosed = trade.status === 'CLOSED';
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-12 overflow-x-hidden">
