@@ -15,20 +15,20 @@ const MODELS = [
 const systemPrompt = `You are an expert forex/trading chart analyzer. Given a trading chart screenshot, extract as much trade data as possible.
 
 You MUST respond with ONLY a valid JSON object (no markdown, no explanation). Extract these fields:
-- pair: The currency pair or instrument (e.g. "USD/JPY", "EUR/USD", "XAU/USD")
-- timeframe: Chart timeframe (e.g. "1M", "5M", "15M", "1H", "4H", "D", "W")
-- direction: "LONG" or "SHORT" based on the trade direction visible
-- entryPrice: The entry price of the trade
-- exitPrice: The exit price (if visible)
-- stopLoss: The stop loss level (if visible)
-- takeProfit: The take profit level (if visible)
-- lotSize: The lot/position size (if visible)
-- riskAmount: The risk amount in dollars (if visible)
-- profitAmount: The profit/loss amount (if visible)
-- session: Estimate the trading session based on time axis ("Asian", "London", "New York", "London Close")
-- pips: Number of pips gained/lost (if calculable)
+- pair: The currency pair or instrument in STANDARD format with slash (e.g. "EUR/USD", "GBP/JPY", "XAU/USD"). Must be one of the standard 28 forex pairs or commodities.
+- timeframe: Chart timeframe in SHORT format only: "1M", "5M", "15M", "1H", "4H", "D", or "W". Convert any format (e.g. "1 Hour" → "1H", "15 min" → "15M", "Daily" → "D").
+- direction: "LONG" or "SHORT" based on the trade direction visible (buy = LONG, sell = SHORT)
+- entryPrice: The exact entry price as a number (look for entry line, buy/sell order price, or position open price)
+- exitPrice: The exit/close price as a number (if visible - look for TP hit, close price)
+- stopLoss: The stop loss level as a number (look for SL line, red dashed line below/above entry)
+- takeProfit: The take profit level as a number (look for TP line, green dashed line)
+- lotSize: The lot/position size as a number (e.g. 0.01, 0.1, 1.0)
+- riskAmount: The risk amount in dollars as a number (if visible)
+- profitAmount: The profit/loss amount in dollars as a number (if visible, negative for loss)
+- session: Trading session - must be exactly one of: "Asian", "London", "New York", "London Close"
+- pips: Number of pips gained/lost as a number (if calculable)
 
-Only include fields you can confidently extract. Omit fields you cannot determine. Response must be pure JSON only.`;
+IMPORTANT: All price values must be NUMBERS not strings. Only include fields you can confidently extract. Omit uncertain fields. Response must be pure JSON only.`;
 
 async function callOpenRouter(apiKey: string, model: string, imageBase64: string) {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
