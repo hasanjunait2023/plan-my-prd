@@ -287,33 +287,21 @@ const Settings = () => {
         </CardContent>
       </Card>
 
-      {/* Trading Rules */}
+      {/* Trading Rules Link */}
       <Card className={glassCard}>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center">
-              <Shield className="w-3 h-3 text-emerald-400" />
+        <CardContent className="p-4">
+          <Link to="/rules" className="flex items-center justify-between group hover:opacity-80 transition-opacity">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Trading Rules & Analytics</p>
+                <p className="text-xs text-muted-foreground">Manage rules, view adherence & violation analytics</p>
+              </div>
             </div>
-            Rules I Never Break
-          </CardTitle>
-          <CardDescription>Your personal trading commandments</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {rules.map(rule => (
-            <div key={rule.id} className="flex items-center gap-3 group">
-              <Switch checked={rule.active} onCheckedChange={() => toggleRule.mutate({ id: rule.id, active: !rule.active })} />
-              <span className={`flex-1 text-sm ${!rule.active ? 'text-muted-foreground line-through' : ''}`}>{rule.text}</span>
-              <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => deleteRule.mutate(rule.id)}>
-                <Trash2 className="w-3 h-3 text-loss" />
-              </Button>
-            </div>
-          ))}
-          <div className="flex gap-2 pt-2">
-            <Input placeholder="Add a new rule..." value={newRule} onChange={e => setNewRule(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddRule()} />
-            <Button variant="outline" onClick={handleAddRule}><Plus className="w-4 h-4" /></Button>
-          </div>
+            <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </Link>
         </CardContent>
       </Card>
 

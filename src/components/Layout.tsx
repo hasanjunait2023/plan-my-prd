@@ -44,6 +44,7 @@ const profileMenuItems = [
   { title: 'Correlation', url: '/correlation-pairs', icon: GitCompareArrows },
   { title: 'Psychology', url: '/psychology', icon: Brain },
   { title: 'Intel', url: '/trade-intelligence', icon: Zap },
+  { title: 'Rules', url: '/rules', icon: Shield },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
 
