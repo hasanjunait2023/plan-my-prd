@@ -306,7 +306,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator className="bg-border/30" />
-                <DropdownMenuItem className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground">
+                <DropdownMenuItem
+                  onClick={async () => { await signOut(); navigate('/auth'); }}
+                  className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground"
+                >
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>
                 </DropdownMenuItem>
