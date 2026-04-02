@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useEffect } from 'react';
 import { CurrencyStrengthRecord } from '@/types/correlation';
 import { StrengthMeter } from '@/components/correlation/StrengthMeter';
 import { SummaryCards } from '@/components/correlation/SummaryCards';
@@ -58,7 +59,24 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
 export default function CurrencyStrength() {
   const [activeTab, setActiveTab] = useState('1H');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const queryClient = useQueryClient();
   const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab, selectedDate);
+
+  // Realtime subscription — auto-refetch on new inserts
+  useEffect(() => {
+    const channel = supabase
+      .channel('currency-strength-realtime')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'currency_strength',
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['currency-strength'] });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const lastUpdated = data?.[0]?.recorded_at;
 
