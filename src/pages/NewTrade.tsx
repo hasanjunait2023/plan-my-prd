@@ -106,7 +106,7 @@ const NewTrade = () => {
         timeframe: (timeframe || '15M') as any,
         strategy: strategy || '',
         entryPrice: entry,
-        exitPrice: exit,
+        exitPrice: 0,
         stopLoss: sl,
         takeProfit: tp,
         lotSize: lots,
