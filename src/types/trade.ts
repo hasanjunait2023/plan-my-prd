@@ -5,6 +5,13 @@ export type Session = 'Asian' | 'London' | 'New York' | 'London Close';
 export type Timeframe = '1M' | '5M' | '15M' | '1H' | '4H' | 'D' | 'W';
 export type PsychEmotion = 'Confident' | 'Fearful' | 'Greedy' | 'Calm' | 'Anxious' | 'Revenge' | 'FOMO' | 'Patient' | 'Frustrated';
 
+export interface RuleCheck {
+  ruleId: string;
+  ruleText: string;
+  followed: boolean;
+  explanation: string;
+}
+
 export interface PartialClose {
   id: string;
   lots: number;
