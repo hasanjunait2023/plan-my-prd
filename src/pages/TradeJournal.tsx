@@ -8,12 +8,15 @@ import TradeDocument from '@/components/journal/TradeDocument';
 import TradeCompleteForm from '@/components/journal/TradeCompleteForm';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Plus, BookOpen, Download } from 'lucide-react';
+import { Plus, BookOpen, Download, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ExportDialog from '@/components/journal/ExportDialog';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTrades } from '@/hooks/useTrades';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+
+type TradeFilter = 'all' | 'pending' | 'closed' | 'win' | 'loss' | 'needs-analysis' | 'needs-revision';
 
 const TradeJournal = () => {
   const navigate = useNavigate();
