@@ -44,6 +44,13 @@ const mapRow = (r: any): Trade => ({
   status: r.status || 'CLOSED',
   starred: r.starred,
   createdAt: r.created_at,
+  ruleChecklist: r.rule_checklist || [],
+  ruleScore: Number(r.rule_score || 0),
+  revisionNotes: r.revision_notes || '',
+  revisionTakeaway: r.revision_takeaway || '',
+  revisionWouldTakeAgain: r.revision_would_take_again ?? null,
+  revisionRating: r.revision_rating ?? null,
+  revisedAt: r.revised_at || null,
 });
 
 export const useTrades = () => {
