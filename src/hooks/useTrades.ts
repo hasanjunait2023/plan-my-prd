@@ -55,7 +55,9 @@ export const useTrades = () => {
         .select('*')
         .order('date', { ascending: false });
       if (error) throw error;
-      return (data || []).map(mapRow);
+      const mapped = (data || []).map(mapRow);
+      // Fallback to mock data when DB is empty
+      return mapped.length > 0 ? mapped : mockTrades;
     },
   });
 };
