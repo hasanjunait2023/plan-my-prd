@@ -48,7 +48,10 @@ const RevisionSection = ({ trade }: RevisionSectionProps) => {
         revisedAt: new Date().toISOString(),
       },
       {
-        onSuccess: () => toast.success('Revision সেভ হয়েছে!'),
+        onSuccess: () => {
+          localStorage.removeItem(getRevDraftKey(trade.id));
+          toast.success('Revision সেভ হয়েছে!');
+        },
       }
     );
   };
