@@ -161,6 +161,39 @@ export default function CurrencyStrength() {
 
       <SessionPanel />
 
+      {/* Session-wise Last Updated */}
+      {timestamps && (
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { key: '1H', label: 'London Session', color: 'from-blue-500/20 to-blue-500/5 border-blue-500/20' },
+            { key: 'New York', label: 'New York Session', color: 'from-amber-500/20 to-amber-500/5 border-amber-500/20' },
+          ].map(({ key, label, color }) => (
+            <div
+              key={key}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-xl border bg-gradient-to-br backdrop-blur-sm",
+                color
+              )}
+            >
+              <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-foreground truncate">{label}</p>
+                {timestamps[key] ? (
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    {format(new Date(timestamps[key]!), 'dd MMM, hh:mm a')}
+                    <span className="ml-1.5 opacity-70">
+                      ({formatDistanceToNow(new Date(timestamps[key]!), { addSuffix: true })})
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground/50 font-medium">কোনো ডেটা নেই</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Summary Cards */}
       {!isLoading && data && data.length > 0 && <SummaryCards data={data} />}
 
