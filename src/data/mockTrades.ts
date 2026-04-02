@@ -192,6 +192,7 @@ export const mockTrades: Trade[] = [
     status: 'CLOSED',
     starred: false,
     createdAt: '2026-03-31T17:30:00Z',
+    ruleChecklist: [], ruleScore: 0, revisionNotes: '', revisionTakeaway: '', revisionWouldTakeAgain: null, revisionRating: null, revisedAt: null,
   },
   {
     id: 'mock-5',
