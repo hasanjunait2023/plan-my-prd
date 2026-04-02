@@ -25,6 +25,7 @@ export type Database = {
           max_trades_per_day: number
           starting_balance: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -36,6 +37,7 @@ export type Database = {
           max_trades_per_day?: number
           starting_balance?: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -47,6 +49,7 @@ export type Database = {
           max_trades_per_day?: number
           starting_balance?: number
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -465,6 +468,7 @@ export type Database = {
           reflection: string
           rule_adherence: boolean
           sleep_quality: number
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -478,6 +482,7 @@ export type Database = {
           reflection?: string
           rule_adherence?: boolean
           sleep_quality?: number
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -491,6 +496,7 @@ export type Database = {
           reflection?: string
           rule_adherence?: boolean
           sleep_quality?: number
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -534,6 +540,7 @@ export type Database = {
           strategy: string
           take_profit: number
           timeframe: string
+          user_id: string | null
           what_went_well: string
         }
         Insert: {
@@ -575,6 +582,7 @@ export type Database = {
           strategy?: string
           take_profit?: number
           timeframe?: string
+          user_id?: string | null
           what_went_well?: string
         }
         Update: {
@@ -616,6 +624,7 @@ export type Database = {
           strategy?: string
           take_profit?: number
           timeframe?: string
+          user_id?: string | null
           what_went_well?: string
         }
         Relationships: []
@@ -626,18 +635,21 @@ export type Database = {
           created_at: string
           id: string
           text: string
+          user_id: string | null
         }
         Insert: {
           active?: boolean
           created_at?: string
           id?: string
           text: string
+          user_id?: string | null
         }
         Update: {
           active?: boolean
           created_at?: string
           id?: string
           text?: string
+          user_id?: string | null
         }
         Relationships: []
       }
