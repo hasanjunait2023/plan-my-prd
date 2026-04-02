@@ -1,0 +1,1 @@
+DELETE FROM public.currency_strength WHERE timeframe LIKE '%Strength%';
