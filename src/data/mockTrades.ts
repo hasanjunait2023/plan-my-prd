@@ -321,6 +321,7 @@ export const mockTrades: Trade[] = [
     status: 'CLOSED',
     starred: false,
     createdAt: '2026-03-27T10:00:00Z',
+    ruleChecklist: [], ruleScore: 0, revisionNotes: 'ঘুম কম হলে trade না করাই ভালো — এটা একটা বড় শিক্ষা', revisionTakeaway: 'ঘুম কম = no trade', revisionWouldTakeAgain: false, revisionRating: 3, revisedAt: '2026-03-30T10:30:00Z',
   },
   {
     id: 'mock-8',
