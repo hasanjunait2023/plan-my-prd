@@ -23,10 +23,15 @@ export function StrengthTrendChart({ timeframe }: StrengthTrendChartProps) {
   const { data, isLoading } = useQuery({
     queryKey: ['currency-strength-trend', timeframe],
     queryFn: async () => {
+      const now = new Date().toISOString();
+      const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
+
       const { data, error } = await supabase
         .from('currency_strength')
         .select('*')
         .eq('timeframe', timeframe)
+        .gte('recorded_at', thirtyDaysAgo)
+        .lte('recorded_at', now)
         .order('recorded_at', { ascending: true });
 
       if (error) throw error;

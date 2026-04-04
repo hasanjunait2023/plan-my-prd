@@ -110,6 +110,7 @@ export default function CurrencyStrength() {
                 mode="single"
                 selected={selectedDate}
                 onSelect={(d) => d && setSelectedDate(d)}
+                disabled={{ after: new Date() }}
                 initialFocus
                 className={cn("p-3 pointer-events-auto")}
               />
