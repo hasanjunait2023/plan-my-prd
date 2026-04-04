@@ -36,17 +36,9 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
 
       if (error) throw error;
 
-      // If no data for today, get the latest available data for this timeframe
+      // No fallback — if no data for selected date, return empty
       if (!data || data.length === 0) {
-        const { data: latestData, error: latestError } = await supabase
-          .from('currency_strength')
-          .select('*')
-          .eq('timeframe', timeframe)
-          .order('recorded_at', { ascending: false })
-          .limit(8);
-
-        if (latestError) throw latestError;
-        return (latestData || []) as CurrencyStrengthRecord[];
+        return [] as CurrencyStrengthRecord[];
       }
 
       const latestTime = data[0].recorded_at;
@@ -118,6 +110,7 @@ export default function CurrencyStrength() {
                 mode="single"
                 selected={selectedDate}
                 onSelect={(d) => d && setSelectedDate(d)}
+                disabled={{ after: new Date() }}
                 initialFocus
                 className={cn("p-3 pointer-events-auto")}
               />

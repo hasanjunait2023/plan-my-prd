@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CurrencyStrengthRecord, CURRENCY_FLAGS } from '@/types/correlation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 
 const CURRENCY_COLORS: Record<string, string> = {
   EUR: 'hsl(220, 70%, 60%)',
@@ -23,10 +23,15 @@ export function StrengthTrendChart({ timeframe }: StrengthTrendChartProps) {
   const { data, isLoading } = useQuery({
     queryKey: ['currency-strength-trend', timeframe],
     queryFn: async () => {
+      const now = new Date().toISOString();
+      const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
+
       const { data, error } = await supabase
         .from('currency_strength')
         .select('*')
         .eq('timeframe', timeframe)
+        .gte('recorded_at', thirtyDaysAgo)
+        .lte('recorded_at', now)
         .order('recorded_at', { ascending: true });
 
       if (error) throw error;
