@@ -1,27 +1,44 @@
 
 
-## Plan: Currency Strength — ভুল Date এ Data দেখানো Fix
+## Plan: Currency Strength Correlation Fix
 
-### সমস্যা
-1. **Fallback দিয়ে misleading data**: Selected date এ data না থাকলে latest data fetch করে দেখায় — future date বা empty date তেও পুরানো data আসে
-2. **Future dates selectable**: Calendar এ আগামীকালের date ও select করা যায়
-3. **Trend Chart unfiltered**: সব timeframe এর সব date এর data আনে, কোনো limit নেই
+### সমস্যা চিহ্নিত
+
+Database এ ৩টা সমস্যা পাওয়া গেছে:
+
+1. **Timeframe parsing inconsistency**: Edge function কখনো `"New York"` আবার কখনো `"Strength On New York"` হিসেবে timeframe save করছে। ফলে New York tab এ কিছু data missing হয়।
+
+2. **Duplicate/test data**: New York session এ অনেক entry তে সব currency 0 strength দেখাচ্ছে (test/debug data মনে হচ্ছে) — এগুলো correlation calculation বিভ্রান্ত করছে।
+
+3. **Tab label mismatch**: London session এর data `timeframe = "1H"` হিসেবে stored কিন্তু tab label "London" দেখায় — কিন্তু query ঠিকমতো `"1H"` পাঠাচ্ছে, এটা ঠিক আছে।
 
 ### সমাধান
 
-#### 1. `src/pages/CurrencyStrength.tsx` — Fallback সরানো + Calendar fix
-- **Fallback logic সরাও**: যদি selected date এ data না থাকে, empty state দেখাও — পুরানো data misleadingly দেখাবে না
-- **Calendar এ `disabled`**: `{ after: new Date() }` দিয়ে future dates disable করো
-- যেই date select করবে সেই date এর data-ই শুধু আসবে, না থাকলে "এই তারিখে data নেই" message
+#### 1. Edge Function Fix (`store-currency-strength/index.ts`)
+- Timeframe parser normalize করা — `"Strength On New York"` → `"New York"`, `"FX Co-Relation Strength On 1H"` → `"1H"`
+- Extra prefix strip: `"Strength On "` prefix থাকলে সরিয়ে দেবে
 
-#### 2. `src/components/correlation/StrengthTrendChart.tsx` — Date range limit
-- শুধু গত ৩০ দিনের data fetch করো (অথবা reasonable limit)
-- Future dates এর data আসবে না কারণ `.lte('recorded_at', new Date().toISOString())` filter যোগ হবে
+#### 2. Frontend Query Fix (`CurrencyStrength.tsx`)
+- New York tab select করলে দুটো timeframe-ই query করবে: `"New York"` এবং `"Strength On New York"` — যাতে পুরানো data-ও দেখায়
+- অথবা `.in('timeframe', ['New York', 'Strength On New York'])` ব্যবহার করা
+
+#### 3. Trend Chart Fix (`StrengthTrendChart.tsx`)
+- Same `.in()` filter যোগ করা New York timeframe এর জন্য
+
+#### 4. DB Cleanup Migration
+- Existing `"Strength On New York"` records গুলোকে `"New York"` এ update করা
 
 ### Technical Changes
 
 | File | Change |
 |------|--------|
-| `src/pages/CurrencyStrength.tsx` | Fallback query সরানো, Calendar `disabled={{ after: new Date() }}` যোগ |
-| `src/components/correlation/StrengthTrendChart.tsx` | `.lte('recorded_at', now)` + last 30 days filter যোগ |
+| `supabase/functions/store-currency-strength/index.ts` | Timeframe normalization — strip "Strength On " prefix |
+| `supabase/migrations/` | `UPDATE currency_strength SET timeframe = 'New York' WHERE timeframe = 'Strength On New York'` |
+| `src/pages/CurrencyStrength.tsx` | Fallback `.in()` query for NY variants (temporary safety) |
+| `src/components/correlation/StrengthTrendChart.tsx` | Same `.in()` query fix |
+
+### Result
+- New York tab এ সব NY data ঠিকমতো দেখাবে
+- Pair suggestions (correlation) সঠিক strength diff দিয়ে calculate হবে
+- ভবিষ্যতে edge function সবসময় clean timeframe value save করবে
 
