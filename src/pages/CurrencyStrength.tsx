@@ -13,24 +13,40 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RefreshCw, TrendingUp, CalendarIcon, Activity } from 'lucide-react';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { format } from 'date-fns';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
 
-function useCurrencyStrength(timeframe: string, selectedDate: Date) {
-  return useQuery({
-    queryKey: ['currency-strength', timeframe, selectedDate.toISOString()],
-    queryFn: async () => {
-      const dayStart = startOfDay(selectedDate).toISOString();
-      const dayEnd = endOfDay(selectedDate).toISOString();
+const UTC_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-      // Query with timeframe variants to handle legacy naming
+function formatUtcTimestamp(timestamp: string) {
+  const date = new Date(timestamp);
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = UTC_MONTHS[date.getUTCMonth()];
+  const year = date.getUTCFullYear();
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+  const hours24 = date.getUTCHours();
+  const hours12 = String(((hours24 + 11) % 12) + 1).padStart(2, '0');
+  const meridiem = hours24 >= 12 ? 'PM' : 'AM';
+
+  return `${day} ${month} ${year}, ${hours12}:${minutes} ${meridiem}`;
+}
+
+function useCurrencyStrength(timeframe: string, selectedDate: Date) {
+  const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
+
+  return useQuery({
+    queryKey: ['currency-strength', timeframe, selectedDateKey],
+    queryFn: async () => {
+      const dayStart = `${selectedDateKey}T00:00:00.000Z`;
+      const dayEnd = `${selectedDateKey}T23:59:59.999Z`;
+
       const timeframeVariants = timeframe === 'New York'
         ? ['New York', 'Strength On New York']
         : [timeframe];
 
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('currency_strength')
         .select('*')
         .in('timeframe', timeframeVariants)
@@ -39,14 +55,10 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
         .order('recorded_at', { ascending: false });
 
       if (error) throw error;
-
-      // No fallback — if no data for selected date, return empty
-      if (!data || data.length === 0) {
-        return [] as CurrencyStrengthRecord[];
-      }
+      if (!data || data.length === 0) return [] as CurrencyStrengthRecord[];
 
       const latestTime = data[0].recorded_at;
-      return data.filter(d => d.recorded_at === latestTime) as CurrencyStrengthRecord[];
+      return data.filter((row) => row.recorded_at === latestTime) as CurrencyStrengthRecord[];
     },
     refetchInterval: 60000,
   });
@@ -92,8 +104,8 @@ export default function CurrencyStrength() {
               {isLoading
                 ? 'ডেটা লোড হচ্ছে...'
                 : lastUpdated
-                  ? `আপডেট: ${format(new Date(lastUpdated), 'dd MMM yyyy, hh:mm a')}`
-                  : `${format(selectedDate, 'dd MMM yyyy')} — এই তারিখে কোনো ডেটা নেই`}
+                  ? `আপডেট (UTC): ${formatUtcTimestamp(lastUpdated)}`
+                  : `${format(selectedDate, 'dd MMM yyyy')} (UTC) — এই তারিখে কোনো ডেটা নেই`}
             </p>
           </div>
         </div>

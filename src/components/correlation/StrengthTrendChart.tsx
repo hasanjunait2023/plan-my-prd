@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CurrencyStrengthRecord, CURRENCY_FLAGS } from '@/types/correlation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { format, subDays } from 'date-fns';
+import { subDays } from 'date-fns';
 
 const CURRENCY_COLORS: Record<string, string> = {
   EUR: 'hsl(220, 70%, 60%)',
@@ -14,6 +14,16 @@ const CURRENCY_COLORS: Record<string, string> = {
   CAD: 'hsl(340, 70%, 60%)',
   CHF: 'hsl(180, 60%, 50%)',
 };
+
+const UTC_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatUtcDayLabel(timestamp: string) {
+  const date = new Date(timestamp);
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = UTC_MONTHS[date.getUTCMonth()];
+
+  return `${day} ${month}`;
+}
 
 interface StrengthTrendChartProps {
   timeframe: string;
@@ -66,7 +76,7 @@ export function StrengthTrendChart({ timeframe }: StrengthTrendChartProps) {
   for (const row of data) {
     const key = row.recorded_at;
     if (!timeMap.has(key)) {
-      timeMap.set(key, { date: format(new Date(key), 'dd MMM') });
+      timeMap.set(key, { date: formatUtcDayLabel(key) });
     }
     timeMap.get(key)![row.currency] = row.strength;
   }
