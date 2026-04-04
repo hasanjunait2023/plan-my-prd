@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CurrencyStrengthRecord, CURRENCY_FLAGS } from '@/types/correlation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 
 const CURRENCY_COLORS: Record<string, string> = {
   EUR: 'hsl(220, 70%, 60%)',
