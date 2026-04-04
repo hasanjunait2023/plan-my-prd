@@ -89,9 +89,11 @@ export default function CurrencyStrength() {
               Currency Strength
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5 font-medium">
-              {lastUpdated
-                ? `আপডেট: ${format(new Date(lastUpdated), 'dd MMM yyyy, hh:mm a')}`
-                : 'ডেটা লোড হচ্ছে...'}
+              {isLoading
+                ? 'ডেটা লোড হচ্ছে...'
+                : lastUpdated
+                  ? `আপডেট: ${format(new Date(lastUpdated), 'dd MMM yyyy, hh:mm a')}`
+                  : `${format(selectedDate, 'dd MMM yyyy')} — এই তারিখে কোনো ডেটা নেই`}
             </p>
           </div>
         </div>
