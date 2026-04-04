@@ -104,8 +104,8 @@ export default function CurrencyStrength() {
               {isLoading
                 ? 'ডেটা লোড হচ্ছে...'
                 : lastUpdated
-                  ? `আপডেট: ${format(new Date(lastUpdated), 'dd MMM yyyy, hh:mm a')}`
-                  : `${format(selectedDate, 'dd MMM yyyy')} — এই তারিখে কোনো ডেটা নেই`}
+                  ? `আপডেট (UTC): ${formatUtcTimestamp(lastUpdated)}`
+                  : `${format(selectedDate, 'dd MMM yyyy')} (UTC) — এই তারিখে কোনো ডেটা নেই`}
             </p>
           </div>
         </div>
