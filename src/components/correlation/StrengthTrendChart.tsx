@@ -26,10 +26,14 @@ export function StrengthTrendChart({ timeframe }: StrengthTrendChartProps) {
       const now = new Date().toISOString();
       const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
 
+      const timeframeVariants = timeframe === 'New York'
+        ? ['New York', 'Strength On New York']
+        : [timeframe];
+
       const { data, error } = await supabase
         .from('currency_strength')
         .select('*')
-        .eq('timeframe', timeframe)
+        .in('timeframe', timeframeVariants)
         .gte('recorded_at', thirtyDaysAgo)
         .lte('recorded_at', now)
         .order('recorded_at', { ascending: true });

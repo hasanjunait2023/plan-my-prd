@@ -25,11 +25,15 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
       const dayStart = startOfDay(selectedDate).toISOString();
       const dayEnd = endOfDay(selectedDate).toISOString();
 
-      // First try: get data for the selected date
+      // Query with timeframe variants to handle legacy naming
+      const timeframeVariants = timeframe === 'New York'
+        ? ['New York', 'Strength On New York']
+        : [timeframe];
+
       let { data, error } = await supabase
         .from('currency_strength')
         .select('*')
-        .eq('timeframe', timeframe)
+        .in('timeframe', timeframeVariants)
         .gte('recorded_at', dayStart)
         .lte('recorded_at', dayEnd)
         .order('recorded_at', { ascending: false });
