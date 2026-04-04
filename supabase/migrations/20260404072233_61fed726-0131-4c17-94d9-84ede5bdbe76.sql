@@ -1,0 +1,1 @@
+UPDATE public.currency_strength SET timeframe = 'New York' WHERE timeframe = 'Strength On New York';

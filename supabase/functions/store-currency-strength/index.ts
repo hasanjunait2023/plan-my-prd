@@ -32,6 +32,12 @@ function parseTelegramText(text: string): {
     }
   }
 
+  // Normalize timeframe — strip prefixes like "Strength On ", "FX Co-Relation Strength On "
+  timeframe = timeframe
+    .replace(/^FX\s+Co-?Relation\s+Strength\s+On\s+/i, '')
+    .replace(/^Strength\s+On\s+/i, '')
+    .trim();
+
   // Extract timestamp
   let recorded_at = new Date().toISOString();
   const timeLine = lines.find((l) => l.includes("⏰"));
