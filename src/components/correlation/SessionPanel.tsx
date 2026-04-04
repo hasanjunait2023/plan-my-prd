@@ -14,7 +14,7 @@ function formatUtc(h: number) {
 }
 
 const SESSIONS: Session[] = [
-  { name: 'New York', startUtc: 13, endUtc: 22, color: '#ff5d00', emoji: '🟠' },
+  { name: 'New York', startUtc: 12, endUtc: 21, color: '#ff5d00', emoji: '🟠' },
   { name: 'London', startUtc: 7, endUtc: 16, color: '#2157f3', emoji: '🔵' },
   { name: 'Tokyo', startUtc: 0, endUtc: 9, color: '#e91e63', emoji: '🔴' },
   { name: 'Sydney', startUtc: 21, endUtc: 6, color: '#ffeb3b', emoji: '🟡' },
