@@ -56,6 +56,7 @@ const App = () => (
                   <Route path="/mt5" element={<MT5Connection />} />
                   <Route path="/charts" element={<ChartAnalysis />} />
                   <Route path="/rules" element={<TradingRules />} />
+                  <Route path="/news" element={<MarketNews />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>

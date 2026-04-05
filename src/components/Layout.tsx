@@ -45,6 +45,7 @@ const profileMenuItems = [
   { title: 'Psychology', url: '/psychology', icon: Brain },
   { title: 'Intel', url: '/trade-intelligence', icon: Zap },
   { title: 'Rules', url: '/rules', icon: Shield },
+  { title: 'News', url: '/news', icon: Newspaper },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
 
