@@ -23,6 +23,7 @@ import MT5Connection from "./pages/MT5Connection.tsx";
 import ChartAnalysis from "./pages/ChartAnalysis.tsx";
 import Auth from "./pages/Auth.tsx";
 import TradingRules from "./pages/TradingRules.tsx";
+import MarketNews from "./pages/MarketNews.tsx";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const App = () => (
                   <Route path="/mt5" element={<MT5Connection />} />
                   <Route path="/charts" element={<ChartAnalysis />} />
                   <Route path="/rules" element={<TradingRules />} />
+                  <Route path="/news" element={<MarketNews />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>
