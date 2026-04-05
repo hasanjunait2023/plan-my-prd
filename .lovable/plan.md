@@ -1,44 +1,91 @@
 
 
-## Plan: Currency Strength Correlation Fix
+## Plan: Forex/Gold/Crypto News Page — ForexFactory Style
 
-### সমস্যা চিহ্নিত
+### উদ্দেশ্য
+একটা `/news` page তৈরি করা যেখানে ForexFactory Calendar এর মতো economic events + market news দেখাবে — forex pairs, gold, এবং bitcoin এর জন্য relevant news precisely filtered।
 
-Database এ ৩টা সমস্যা পাওয়া গেছে:
+### Page Structure
 
-1. **Timeframe parsing inconsistency**: Edge function কখনো `"New York"` আবার কখনো `"Strength On New York"` হিসেবে timeframe save করছে। ফলে New York tab এ কিছু data missing হয়।
+```text
+┌─────────────────────────────────────────────────┐
+│ 📰 Market News & Economic Calendar              │
+│ Forex, Gold & Crypto — আজকের important events   │
+├─────────────────────────────────────────────────┤
+│ [Today] [Tomorrow] [This Week]    [Filter ▼]    │
+├─────────────────────────────────────────────────┤
+│                                                  │
+│  ── Section 1: Economic Calendar ──              │
+│  ForexFactory-style table:                       │
+│  Time | Currency | Impact | Event | Actual |     │
+│       |          | 🔴🟠🟡 |       | Forecast |  │
+│  ─────────────────────────────────────────────   │
+│  9:00am  USD  🔴  ISM Services PMI  54.8  56.1  │
+│  2:00pm  USD  🟠  Consumer Credit   11.4B  8.0B │
+│  All Day EUR  🟡  French Bank Holiday            │
+│                                                  │
+│  ── Section 2: Market News Feed ──               │
+│  Tabs: [All] [Forex] [Gold] [Crypto]             │
+│  ┌──────────────────────────────────┐            │
+│  │ 🔴 FOMC Minutes Signal...       │            │
+│  │ USD • 2h ago • High Impact      │            │
+│  ├──────────────────────────────────┤            │
+│  │ 🥇 Gold Surges Past $2400...    │            │
+│  │ XAUUSD • 4h ago • Medium        │            │
+│  └──────────────────────────────────┘            │
+│                                                  │
+│  ── Section 3: Central Bank Rates ──             │
+│  Small cards: USD 3.75% | EUR 2.15% | GBP 3.75% │
+│              JPY 0.75% | AUD 4.10% | CHF 0.00%  │
+└─────────────────────────────────────────────────┘
+```
 
-2. **Duplicate/test data**: New York session এ অনেক entry তে সব currency 0 strength দেখাচ্ছে (test/debug data মনে হচ্ছে) — এগুলো correlation calculation বিভ্রান্ত করছে।
+### Data Sources
 
-3. **Tab label mismatch**: London session এর data `timeframe = "1H"` হিসেবে stored কিন্তু tab label "London" দেখায় — কিন্তু query ঠিকমতো `"1H"` পাঠাচ্ছে, এটা ঠিক আছে।
+**Option 1 — ForexFactory Scraping via Edge Function (recommended)**
+- Edge function `fetch-forex-news` যেটা ForexFactory calendar page scrape করবে
+- Economic calendar events parse করে JSON return করবে
+- Firecrawl connector ব্যবহার করা যাবে scraping এর জন্য (already available)
 
-### সমাধান
+**Option 2 — Free API alternatives**
+- [Forex Factory XML/JSON feed](https://nfs.faireconomy.media/ff_calendar_thisweek.json) — free unofficial JSON endpoint
+- এটা সবচেয়ে simple — কোনো scraping লাগবে না, direct JSON fetch
 
-#### 1. Edge Function Fix (`store-currency-strength/index.ts`)
-- Timeframe parser normalize করা — `"Strength On New York"` → `"New York"`, `"FX Co-Relation Strength On 1H"` → `"1H"`
-- Extra prefix strip: `"Strength On "` prefix থাকলে সরিয়ে দেবে
+**Recommendation**: Option 2 (free JSON endpoint) দিয়ে শুরু করা — simple, fast, reliable। পরে Firecrawl দিয়ে enhance করা যাবে।
 
-#### 2. Frontend Query Fix (`CurrencyStrength.tsx`)
-- New York tab select করলে দুটো timeframe-ই query করবে: `"New York"` এবং `"Strength On New York"` — যাতে পুরানো data-ও দেখায়
-- অথবা `.in('timeframe', ['New York', 'Strength On New York'])` ব্যবহার করা
+### Sections বিস্তারিত
 
-#### 3. Trend Chart Fix (`StrengthTrendChart.tsx`)
-- Same `.in()` filter যোগ করা New York timeframe এর জন্য
+#### 1. Economic Calendar (ForexFactory Style)
+- Date grouping (Today, Tomorrow, etc.)
+- Impact color coding: 🔴 High, 🟠 Medium, 🟡 Low
+- Currency flag + code
+- Event name, Actual vs Forecast vs Previous
+- Currency filter: শুধু USD, EUR, GBP, JPY, AUD, CHF, CAD, NZD — যেগুলো forex এ trade করো
+- Gold/Oil related events highlight করা (CPI, PPI, Interest Rate — gold mover)
 
-#### 4. DB Cleanup Migration
-- Existing `"Strength On New York"` records গুলোকে `"New York"` এ update করা
+#### 2. Market News Feed
+- Tabs: All | Forex | Gold | Crypto
+- প্রতিটা news card: headline, currency tag, time ago, impact level
+- Edge function দিয়ে news fetch (Perplexity API বা Firecrawl দিয়ে latest news search)
+
+#### 3. Central Bank Rates
+- ৮টা major currency এর current interest rates
+- Static data initially, later auto-update
 
 ### Technical Changes
 
 | File | Change |
 |------|--------|
-| `supabase/functions/store-currency-strength/index.ts` | Timeframe normalization — strip "Strength On " prefix |
-| `supabase/migrations/` | `UPDATE currency_strength SET timeframe = 'New York' WHERE timeframe = 'Strength On New York'` |
-| `src/pages/CurrencyStrength.tsx` | Fallback `.in()` query for NY variants (temporary safety) |
-| `src/components/correlation/StrengthTrendChart.tsx` | Same `.in()` query fix |
+| `src/pages/MarketNews.tsx` | নতুন page — calendar + news + rates |
+| `supabase/functions/fetch-forex-calendar/index.ts` | FF calendar JSON fetch + parse |
+| `src/App.tsx` | `/news` route যোগ |
+| `src/components/Layout.tsx` | Navigation এ News link যোগ (Newspaper icon) |
+| `src/components/news/EconomicCalendar.tsx` | Calendar table component |
+| `src/components/news/NewsCard.tsx` | Individual news item card |
+| `src/components/news/CentralBankRates.tsx` | Interest rates cards |
+| `src/components/news/ImpactBadge.tsx` | Impact level badge (High/Med/Low) |
 
-### Result
-- New York tab এ সব NY data ঠিকমতো দেখাবে
-- Pair suggestions (correlation) সঠিক strength diff দিয়ে calculate হবে
-- ভবিষ্যতে edge function সবসময় clean timeframe value save করবে
+### Phase approach
+- **Phase 1** (এখন): Economic Calendar (FF JSON) + Central Bank Rates (static) + basic UI
+- **Phase 2** (পরে): Live news feed via Perplexity/Firecrawl, auto-refresh, push notifications
 
