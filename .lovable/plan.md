@@ -1,31 +1,26 @@
 
 
-## Plan: Chart Variant Toggle — With RSI / Without RSI
+## Plan: সব Chart এ Period Separator যোগ করা
+
+### বর্তমান অবস্থা
+4টা file এ TradingView chart আছে। 2টাতে `session_breaks` আছে, 2টাতে নেই:
+
+| File | Period Separator |
+|------|-----------------|
+| `MiniChart.tsx` | ✅ আছে |
+| `TradingViewChart.tsx` | ✅ আছে |
+| `TradingViewWidget.tsx` | ❌ নেই |
+| `PairSuggestions.tsx` | ❌ নেই |
 
 ### কি করা হবে
-Correlation Pairs page এ chart এর জন্য ২টা variant toggle যোগ করা:
-1. **EMA + RSI** (বর্তমান — default)
-2. **EMA Only** (RSI ছাড়া — chart এ বেশি জায়গা পাওয়া যাবে)
+বাকি 2টা file এ `enabled_features: ["session_breaks"]` যোগ করা — এটাই TradingView এর period separator (দিন/সপ্তাহ/মাস এর vertical line)।
 
-### Technical Changes
+### Changes
 
 | File | Change |
 |------|--------|
-| `src/pages/CorrelationPairs.tsx` | নতুন state `chartVariant: 'ema-rsi' | 'ema-only'` + toggle button যোগ (timeframe bar এর পাশে) |
-| `src/components/correlation/MiniChart.tsx` | `showRsi` prop accept করা। `showRsi=false` হলে studies array থেকে `RSI@tv-basicstudies` বাদ দেওয়া |
+| `src/components/charts/TradingViewWidget.tsx` | Config এ `disabled_features: [], enabled_features: ["session_breaks"]` যোগ |
+| `src/components/correlation/PairSuggestions.tsx` | Config এ `disabled_features: [], enabled_features: ["session_breaks"]` যোগ |
 
-### UI
-Timeframe buttons (3M, 15M, 1H) এর পাশে ২টা variant button:
-- **EMA+RSI** — active হলে highlight
-- **EMA** — active হলে highlight
-
-Toggle করলে সব MiniChart re-render হবে নতুন studies config সহ।
-
-### Implementation Detail
-`MiniChart` এর ভেতরের `TradingViewWidget` এ `showRsi` prop pass হবে:
-```
-studies: showRsi
-  ? [EMA9, EMA15, EMA200, RSI]
-  : [EMA9, EMA15, EMA200]
-```
+খুবই ছোট change — দুটো file এ একটা করে line যোগ করলেই হবে।
 
