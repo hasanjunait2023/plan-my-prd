@@ -259,6 +259,7 @@ Deno.serve(async (req) => {
       } catch (calErr) {
         console.error('Calendar alert error:', calErr);
       }
+    }
 
     // Alert Type 5: MT5 Trade Updates
     if (settings.mt5_trade_alert) {
