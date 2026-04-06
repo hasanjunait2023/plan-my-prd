@@ -141,6 +141,7 @@ export function EconomicCalendar({ events, isLoading }: EconomicCalendarProps) {
             <TableHeader>
               <TableRow className="bg-muted/20 hover:bg-muted/20">
                 <TableHead className="text-[11px] font-semibold w-[80px]">Time</TableHead>
+                <TableHead className="text-[11px] font-semibold w-[80px]">Countdown</TableHead>
                 <TableHead className="text-[11px] font-semibold w-[70px]">Currency</TableHead>
                 <TableHead className="text-[11px] font-semibold w-[70px]">Impact</TableHead>
                 <TableHead className="text-[11px] font-semibold">Event</TableHead>
