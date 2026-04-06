@@ -211,6 +211,56 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Alert Type 6: High Impact Economic Calendar Events (30 min before)
+    {
+      try {
+        const calResponse = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json', {
+          headers: { 'User-Agent': 'TradeVault-Pro/1.0' },
+        });
+
+        if (calResponse.ok) {
+          const calEvents = await calResponse.json();
+          const now = Date.now();
+          const thirtyMinMs = 30 * 60 * 1000;
+          const windowMs = 5 * 60 * 1000; // ±5 min window
+
+          for (const ev of calEvents) {
+            if (!ev.date || (ev.impact || '').toLowerCase() !== 'high') continue;
+
+            const eventTime = new Date(ev.date).getTime();
+            const timeUntil = eventTime - now;
+
+            // Alert if event is 25-35 minutes away
+            if (timeUntil >= (thirtyMinMs - windowMs) && timeUntil <= (thirtyMinMs + windowMs)) {
+              const { data: existing } = await supabase
+                .from('alert_log')
+                .select('id')
+                .eq('alert_type', 'calendar_event')
+                .eq('metadata->>event_title', ev.title)
+                .eq('metadata->>event_date', ev.date)
+                .limit(1);
+
+              if (!existing?.length) {
+                const minsLeft = Math.round(timeUntil / 60000);
+                const flag = ev.country === 'USD' ? '🇺🇸' : ev.country === 'EUR' ? '🇪🇺' : ev.country === 'GBP' ? '🇬🇧' : ev.country === 'JPY' ? '🇯🇵' : '🌐';
+                const msg = `🔴 <b>HIGH IMPACT EVENT in ${minsLeft} min</b>\n${flag} ${ev.country} — ${ev.title}\nForecast: ${ev.forecast || '—'} | Previous: ${ev.previous || '—'}\n⚠️ Manage your positions!`;
+                alerts.push(msg);
+
+                await supabase.from('alert_log').insert({
+                  alert_type: 'calendar_event',
+                  pair: ev.country,
+                  message: msg,
+                  metadata: { event_title: ev.title, event_date: ev.date, impact: ev.impact },
+                });
+              }
+            }
+          }
+        }
+      } catch (calErr) {
+        console.error('Calendar alert error:', calErr);
+      }
+    }
+
     // Alert Type 5: MT5 Trade Updates
     if (settings.mt5_trade_alert) {
       const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
