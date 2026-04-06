@@ -1,91 +1,45 @@
 
 
-## Plan: Forex/Gold/Crypto News Page — ForexFactory Style
+## Plan: Free Live News Feed — API ছাড়া
 
-### উদ্দেশ্য
-একটা `/news` page তৈরি করা যেখানে ForexFactory Calendar এর মতো economic events + market news দেখাবে — forex pairs, gold, এবং bitcoin এর জন্য relevant news precisely filtered।
+### সমস্যা
+Market News section এ static hardcoded headlines আছে। Perplexity API ছাড়া free তে real news আনতে হবে।
 
-### Page Structure
+### Solution: Free RSS Feeds via Edge Function
 
-```text
-┌─────────────────────────────────────────────────┐
-│ 📰 Market News & Economic Calendar              │
-│ Forex, Gold & Crypto — আজকের important events   │
-├─────────────────────────────────────────────────┤
-│ [Today] [Tomorrow] [This Week]    [Filter ▼]    │
-├─────────────────────────────────────────────────┤
-│                                                  │
-│  ── Section 1: Economic Calendar ──              │
-│  ForexFactory-style table:                       │
-│  Time | Currency | Impact | Event | Actual |     │
-│       |          | 🔴🟠🟡 |       | Forecast |  │
-│  ─────────────────────────────────────────────   │
-│  9:00am  USD  🔴  ISM Services PMI  54.8  56.1  │
-│  2:00pm  USD  🟠  Consumer Credit   11.4B  8.0B │
-│  All Day EUR  🟡  French Bank Holiday            │
-│                                                  │
-│  ── Section 2: Market News Feed ──               │
-│  Tabs: [All] [Forex] [Gold] [Crypto]             │
-│  ┌──────────────────────────────────┐            │
-│  │ 🔴 FOMC Minutes Signal...       │            │
-│  │ USD • 2h ago • High Impact      │            │
-│  ├──────────────────────────────────┤            │
-│  │ 🥇 Gold Surges Past $2400...    │            │
-│  │ XAUUSD • 4h ago • Medium        │            │
-│  └──────────────────────────────────┘            │
-│                                                  │
-│  ── Section 3: Central Bank Rates ──             │
-│  Small cards: USD 3.75% | EUR 2.15% | GBP 3.75% │
-│              JPY 0.75% | AUD 4.10% | CHF 0.00%  │
-└─────────────────────────────────────────────────┘
-```
+Multiple free RSS feeds scrape করে news আনা — কোনো API key লাগবে না:
 
-### Data Sources
-
-**Option 1 — ForexFactory Scraping via Edge Function (recommended)**
-- Edge function `fetch-forex-news` যেটা ForexFactory calendar page scrape করবে
-- Economic calendar events parse করে JSON return করবে
-- Firecrawl connector ব্যবহার করা যাবে scraping এর জন্য (already available)
-
-**Option 2 — Free API alternatives**
-- [Forex Factory XML/JSON feed](https://nfs.faireconomy.media/ff_calendar_thisweek.json) — free unofficial JSON endpoint
-- এটা সবচেয়ে simple — কোনো scraping লাগবে না, direct JSON fetch
-
-**Recommendation**: Option 2 (free JSON endpoint) দিয়ে শুরু করা — simple, fast, reliable। পরে Firecrawl দিয়ে enhance করা যাবে।
-
-### Sections বিস্তারিত
-
-#### 1. Economic Calendar (ForexFactory Style)
-- Date grouping (Today, Tomorrow, etc.)
-- Impact color coding: 🔴 High, 🟠 Medium, 🟡 Low
-- Currency flag + code
-- Event name, Actual vs Forecast vs Previous
-- Currency filter: শুধু USD, EUR, GBP, JPY, AUD, CHF, CAD, NZD — যেগুলো forex এ trade করো
-- Gold/Oil related events highlight করা (CPI, PPI, Interest Rate — gold mover)
-
-#### 2. Market News Feed
-- Tabs: All | Forex | Gold | Crypto
-- প্রতিটা news card: headline, currency tag, time ago, impact level
-- Edge function দিয়ে news fetch (Perplexity API বা Firecrawl দিয়ে latest news search)
-
-#### 3. Central Bank Rates
-- ৮টা major currency এর current interest rates
-- Static data initially, later auto-update
+| Source | Feed URL | Category |
+|--------|----------|----------|
+| ForexLive | `https://www.forexlive.com/feed` | forex |
+| FXStreet | `https://www.fxstreet.com/rss` | forex |
+| Kitco Gold | `https://www.kitco.com/feed/rss/news/gold` | gold |
+| CoinDesk | `https://www.coindesk.com/arc/outboundfeeds/rss/` | crypto |
+| Investing.com | `https://www.investing.com/rss/news.rss` | all |
 
 ### Technical Changes
 
-| File | Change |
-|------|--------|
-| `src/pages/MarketNews.tsx` | নতুন page — calendar + news + rates |
-| `supabase/functions/fetch-forex-calendar/index.ts` | FF calendar JSON fetch + parse |
-| `src/App.tsx` | `/news` route যোগ |
-| `src/components/Layout.tsx` | Navigation এ News link যোগ (Newspaper icon) |
-| `src/components/news/EconomicCalendar.tsx` | Calendar table component |
-| `src/components/news/NewsCard.tsx` | Individual news item card |
-| `src/components/news/CentralBankRates.tsx` | Interest rates cards |
-| `src/components/news/ImpactBadge.tsx` | Impact level badge (High/Med/Low) |
+#### 1. Edge Function: `fetch-market-news/index.ts` (নতুন)
+- ৩-৪টা free RSS feed fetch করবে parallel এ
+- XML parse করে normalized JSON বানাবে (headline, link, pubDate, category)
+- Category auto-detect: title/description এ "gold", "XAU" থাকলে → gold; "bitcoin", "BTC", "crypto" → crypto; বাকি → forex
+- Impact assign: keyword match (FOMC, CPI, NFP → High; PMI, GDP → Medium; বাকি → Low)
+- Response cache: 5 min
 
-### Phase approach
-- **Phase 1** (এখন): Economic Calendar (FF JSON) + Central Bank Rates (static) + basic UI
-- **Phase 2** (পরে): Live news feed via Perplexity/Firecrawl, auto-refresh, push notifications
+#### 2. `src/components/news/NewsCard.tsx` — Update
+- Static data সরিয়ে edge function থেকে live data render
+- প্রতিটা card এ: headline (clickable link), source name, time ago (real), category icon, impact badge
+- Loading skeleton যোগ
+
+#### 3. `src/pages/MarketNews.tsx` — Update
+- নতুন `useQuery` যোগ `fetch-market-news` edge function এর জন্য
+- `NewsCardList` এ live data pass করা
+
+### Data Flow
+
+```text
+RSS Feeds (free) → Edge Function (XML parse) → JSON → React Query → NewsCardList
+```
+
+### কোনো API key লাগবে না — সম্পূর্ণ free।
 
