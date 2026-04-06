@@ -31,6 +31,38 @@ const goldMovers = ['cpi', 'ppi', 'interest rate', 'inflation', 'fed', 'fomc', '
 type DateFilter = 'today' | 'tomorrow' | 'week';
 type ImpactFilter = 'all' | 'high' | 'medium';
 
+function CountdownTimer({ targetDate }: { targetDate: Date }) {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (isPast(targetDate)) {
+    return <span className="text-[10px] text-muted-foreground">Published</span>;
+  }
+
+  const totalSeconds = differenceInSeconds(targetDate, now);
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  if (hours > 0) {
+    return (
+      <span className="text-[10px] font-mono text-primary/80">
+        {hours}h {mins}m
+      </span>
+    );
+  }
+
+  return (
+    <span className={`text-[10px] font-mono ${mins <= 5 ? 'text-destructive animate-pulse' : 'text-primary'}`}>
+      {mins}m {secs.toString().padStart(2, '0')}s
+    </span>
+  );
+}
+
 export function EconomicCalendar({ events, isLoading }: EconomicCalendarProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [impactFilter, setImpactFilter] = useState<ImpactFilter>('all');
