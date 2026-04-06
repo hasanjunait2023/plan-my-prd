@@ -153,8 +153,10 @@ export function EconomicCalendar({ events, isLoading }: EconomicCalendarProps) {
             <TableBody>
               {filtered.map((e, i) => {
                 let timeStr = '';
+                let eventDate: Date | null = null;
                 try {
-                  timeStr = format(parseISO(e.date), 'HH:mm');
+                  eventDate = parseISO(e.date);
+                  timeStr = format(eventDate, 'HH:mm');
                 } catch {
                   timeStr = '--:--';
                 }
@@ -163,6 +165,9 @@ export function EconomicCalendar({ events, isLoading }: EconomicCalendarProps) {
                 return (
                   <TableRow key={i} className={`hover:bg-muted/20 ${isGold ? 'bg-warning/[0.03]' : ''}`}>
                     <TableCell className="text-xs font-mono text-muted-foreground">{timeStr}</TableCell>
+                    <TableCell>
+                      {eventDate ? <CountdownTimer targetDate={eventDate} /> : <span className="text-[10px] text-muted-foreground">—</span>}
+                    </TableCell>
                     <TableCell>
                       <span className="text-xs font-medium">
                         {currencyFlags[e.country] || ''} {e.country}
