@@ -53,6 +53,8 @@ function InlineChart({ symbol, interval }: { symbol: string; interval: string })
       show_popup_button: false,
       save_image: false,
       allow_symbol_change: false,
+      disabled_features: [],
+      enabled_features: ["session_breaks"],
       width: '100%',
       height: '100%',
       support_host: 'https://www.tradingview.com',

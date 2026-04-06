@@ -52,6 +52,8 @@ function TradingViewWidgetInner({ symbol, interval }: TradingViewWidgetProps) {
       popup_height: '800',
       allow_symbol_change: false,
       save_image: true,
+      disabled_features: [],
+      enabled_features: ["session_breaks"],
       width: '100%',
       height: '100%',
       support_host: 'https://www.tradingview.com',
