@@ -1,9 +1,9 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ImpactBadge } from './ImpactBadge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarClock, Filter } from 'lucide-react';
-import { useState, useMemo } from 'react';
-import { format, parseISO, isToday, isTomorrow, isThisWeek } from 'date-fns';
+import { CalendarClock, Filter, Clock } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { format, parseISO, isToday, isTomorrow, isThisWeek, differenceInMinutes, differenceInSeconds, isPast } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 
 interface CalendarEvent {
