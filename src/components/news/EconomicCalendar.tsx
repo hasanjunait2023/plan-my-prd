@@ -1,9 +1,9 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ImpactBadge } from './ImpactBadge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarClock, Filter } from 'lucide-react';
-import { useState, useMemo } from 'react';
-import { format, parseISO, isToday, isTomorrow, isThisWeek } from 'date-fns';
+import { CalendarClock, Filter, Clock } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { format, parseISO, isToday, isTomorrow, isThisWeek, differenceInMinutes, differenceInSeconds, isPast } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 
 interface CalendarEvent {
@@ -30,6 +30,38 @@ const goldMovers = ['cpi', 'ppi', 'interest rate', 'inflation', 'fed', 'fomc', '
 
 type DateFilter = 'today' | 'tomorrow' | 'week';
 type ImpactFilter = 'all' | 'high' | 'medium';
+
+function CountdownTimer({ targetDate }: { targetDate: Date }) {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (isPast(targetDate)) {
+    return <span className="text-[10px] text-muted-foreground">Published</span>;
+  }
+
+  const totalSeconds = differenceInSeconds(targetDate, now);
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  if (hours > 0) {
+    return (
+      <span className="text-[10px] font-mono text-primary/80">
+        {hours}h {mins}m
+      </span>
+    );
+  }
+
+  return (
+    <span className={`text-[10px] font-mono ${mins <= 5 ? 'text-destructive animate-pulse' : 'text-primary'}`}>
+      {mins}m {secs.toString().padStart(2, '0')}s
+    </span>
+  );
+}
 
 export function EconomicCalendar({ events, isLoading }: EconomicCalendarProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
@@ -109,6 +141,7 @@ export function EconomicCalendar({ events, isLoading }: EconomicCalendarProps) {
             <TableHeader>
               <TableRow className="bg-muted/20 hover:bg-muted/20">
                 <TableHead className="text-[11px] font-semibold w-[80px]">Time</TableHead>
+                <TableHead className="text-[11px] font-semibold w-[80px]">Countdown</TableHead>
                 <TableHead className="text-[11px] font-semibold w-[70px]">Currency</TableHead>
                 <TableHead className="text-[11px] font-semibold w-[70px]">Impact</TableHead>
                 <TableHead className="text-[11px] font-semibold">Event</TableHead>
@@ -120,8 +153,10 @@ export function EconomicCalendar({ events, isLoading }: EconomicCalendarProps) {
             <TableBody>
               {filtered.map((e, i) => {
                 let timeStr = '';
+                let eventDate: Date | null = null;
                 try {
-                  timeStr = format(parseISO(e.date), 'HH:mm');
+                  eventDate = parseISO(e.date);
+                  timeStr = format(eventDate, 'HH:mm');
                 } catch {
                   timeStr = '--:--';
                 }
@@ -130,6 +165,9 @@ export function EconomicCalendar({ events, isLoading }: EconomicCalendarProps) {
                 return (
                   <TableRow key={i} className={`hover:bg-muted/20 ${isGold ? 'bg-warning/[0.03]' : ''}`}>
                     <TableCell className="text-xs font-mono text-muted-foreground">{timeStr}</TableCell>
+                    <TableCell>
+                      {eventDate ? <CountdownTimer targetDate={eventDate} /> : <span className="text-[10px] text-muted-foreground">—</span>}
+                    </TableCell>
                     <TableCell>
                       <span className="text-xs font-medium">
                         {currencyFlags[e.country] || ''} {e.country}
