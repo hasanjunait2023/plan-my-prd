@@ -8,9 +8,10 @@ interface MiniChartProps {
   pair: string;
   interval: string;
   dimmed?: boolean;
+  showRsi?: boolean;
 }
 
-function TradingViewWidget({ symbol, interval, height }: { symbol: string; interval: string; height: string }) {
+function TradingViewWidget({ symbol, interval, height, showRsi = true }: { symbol: string; interval: string; height: string; showRsi?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,7 +44,7 @@ function TradingViewWidget({ symbol, interval, height }: { symbol: string; inter
         { id: "MAExp@tv-basicstudies", inputs: { length: 9 } },
         { id: "MAExp@tv-basicstudies", inputs: { length: 15 } },
         { id: "MAExp@tv-basicstudies", inputs: { length: 200 } },
-        { id: "RSI@tv-basicstudies" },
+        ...(showRsi ? [{ id: "RSI@tv-basicstudies" }] : []),
       ],
       hide_top_toolbar: true,
       hide_legend: false,
@@ -64,12 +65,12 @@ function TradingViewWidget({ symbol, interval, height }: { symbol: string; inter
 
     widgetContainer.appendChild(script);
     containerRef.current.appendChild(widgetContainer);
-  }, [symbol, interval]);
+  }, [symbol, interval, showRsi]);
 
   return <div ref={containerRef} className="w-full" style={{ height }} />;
 }
 
-export function MiniChart({ symbol, pair, interval, dimmed }: MiniChartProps) {
+export function MiniChart({ symbol, pair, interval, dimmed, showRsi = true }: MiniChartProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -91,7 +92,7 @@ export function MiniChart({ symbol, pair, interval, dimmed }: MiniChartProps) {
             <Maximize2 className="h-3.5 w-3.5" />
           </button>
         </div>
-        <TradingViewWidget symbol={symbol} interval={interval} height="400px" />
+        <TradingViewWidget symbol={symbol} interval={interval} height="400px" showRsi={showRsi} />
       </div>
 
       <Dialog open={expanded} onOpenChange={setExpanded}>
@@ -100,7 +101,7 @@ export function MiniChart({ symbol, pair, interval, dimmed }: MiniChartProps) {
             <PairWithFlags pair={pair} className="text-base font-semibold text-foreground" />
           </div>
           <div className="flex-1 min-h-0" style={{ height: 'calc(90vh - 52px)' }}>
-            <TradingViewWidget symbol={symbol} interval={interval} height="100%" />
+            <TradingViewWidget symbol={symbol} interval={interval} height="100%" showRsi={showRsi} />
           </div>
         </DialogContent>
       </Dialog>
