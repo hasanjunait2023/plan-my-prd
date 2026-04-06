@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LayoutGrid, Grid2x2 } from 'lucide-react';
+import { LayoutGrid, Grid2x2, BarChart3, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MiniChart } from '@/components/correlation/MiniChart';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
@@ -43,6 +43,7 @@ export default function CorrelationPairs() {
   const [selected, setSelected] = useState('EUR');
   const [interval, setInterval] = useState('60');
   const [cols, setCols] = useState<2 | 3>(2);
+  const [chartVariant, setChartVariant] = useState<'ema-rsi' | 'ema-only'>('ema-rsi');
 
   const pairs = PAIR_MAP[selected] || [];
 
@@ -122,6 +123,28 @@ export default function CorrelationPairs() {
             </Button>
           </div>
         </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-medium">Chart:</span>
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant={chartVariant === 'ema-rsi' ? 'default' : 'ghost'}
+              className={`h-7 px-2 text-xs ${chartVariant === 'ema-rsi' ? 'bg-primary/20 text-primary' : 'text-muted-foreground'}`}
+              onClick={() => setChartVariant('ema-rsi')}
+            >
+              <BarChart3 className="h-3.5 w-3.5 mr-1" /> EMA+RSI
+            </Button>
+            <Button
+              size="sm"
+              variant={chartVariant === 'ema-only' ? 'default' : 'ghost'}
+              className={`h-7 px-2 text-xs ${chartVariant === 'ema-only' ? 'bg-primary/20 text-primary' : 'text-muted-foreground'}`}
+              onClick={() => setChartVariant('ema-only')}
+            >
+              <TrendingUp className="h-3.5 w-3.5 mr-1" /> EMA Only
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Session Panel */}
@@ -138,11 +161,12 @@ export default function CorrelationPairs() {
             const isDimmed = isBase !== majorityIsBase;
             return (
               <MiniChart
-                key={`${pair}-${interval}`}
+                key={`${pair}-${interval}-${chartVariant}`}
                 symbol={`OANDA:${pair}`}
                 pair={pair}
                 interval={interval}
                 dimmed={isDimmed}
+                showRsi={chartVariant === 'ema-rsi'}
               />
             );
           });
