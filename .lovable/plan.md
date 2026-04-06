@@ -1,45 +1,31 @@
 
 
-## Plan: Free Live News Feed — API ছাড়া
+## Plan: Chart Variant Toggle — With RSI / Without RSI
 
-### সমস্যা
-Market News section এ static hardcoded headlines আছে। Perplexity API ছাড়া free তে real news আনতে হবে।
-
-### Solution: Free RSS Feeds via Edge Function
-
-Multiple free RSS feeds scrape করে news আনা — কোনো API key লাগবে না:
-
-| Source | Feed URL | Category |
-|--------|----------|----------|
-| ForexLive | `https://www.forexlive.com/feed` | forex |
-| FXStreet | `https://www.fxstreet.com/rss` | forex |
-| Kitco Gold | `https://www.kitco.com/feed/rss/news/gold` | gold |
-| CoinDesk | `https://www.coindesk.com/arc/outboundfeeds/rss/` | crypto |
-| Investing.com | `https://www.investing.com/rss/news.rss` | all |
+### কি করা হবে
+Correlation Pairs page এ chart এর জন্য ২টা variant toggle যোগ করা:
+1. **EMA + RSI** (বর্তমান — default)
+2. **EMA Only** (RSI ছাড়া — chart এ বেশি জায়গা পাওয়া যাবে)
 
 ### Technical Changes
 
-#### 1. Edge Function: `fetch-market-news/index.ts` (নতুন)
-- ৩-৪টা free RSS feed fetch করবে parallel এ
-- XML parse করে normalized JSON বানাবে (headline, link, pubDate, category)
-- Category auto-detect: title/description এ "gold", "XAU" থাকলে → gold; "bitcoin", "BTC", "crypto" → crypto; বাকি → forex
-- Impact assign: keyword match (FOMC, CPI, NFP → High; PMI, GDP → Medium; বাকি → Low)
-- Response cache: 5 min
+| File | Change |
+|------|--------|
+| `src/pages/CorrelationPairs.tsx` | নতুন state `chartVariant: 'ema-rsi' | 'ema-only'` + toggle button যোগ (timeframe bar এর পাশে) |
+| `src/components/correlation/MiniChart.tsx` | `showRsi` prop accept করা। `showRsi=false` হলে studies array থেকে `RSI@tv-basicstudies` বাদ দেওয়া |
 
-#### 2. `src/components/news/NewsCard.tsx` — Update
-- Static data সরিয়ে edge function থেকে live data render
-- প্রতিটা card এ: headline (clickable link), source name, time ago (real), category icon, impact badge
-- Loading skeleton যোগ
+### UI
+Timeframe buttons (3M, 15M, 1H) এর পাশে ২টা variant button:
+- **EMA+RSI** — active হলে highlight
+- **EMA** — active হলে highlight
 
-#### 3. `src/pages/MarketNews.tsx` — Update
-- নতুন `useQuery` যোগ `fetch-market-news` edge function এর জন্য
-- `NewsCardList` এ live data pass করা
+Toggle করলে সব MiniChart re-render হবে নতুন studies config সহ।
 
-### Data Flow
-
-```text
-RSS Feeds (free) → Edge Function (XML parse) → JSON → React Query → NewsCardList
+### Implementation Detail
+`MiniChart` এর ভেতরের `TradingViewWidget` এ `showRsi` prop pass হবে:
 ```
-
-### কোনো API key লাগবে না — সম্পূর্ণ free।
+studies: showRsi
+  ? [EMA9, EMA15, EMA200, RSI]
+  : [EMA9, EMA15, EMA200]
+```
 
