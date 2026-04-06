@@ -1,14 +1,17 @@
 import { Card } from '@/components/ui/card';
 import { ImpactBadge } from './ImpactBadge';
 import { ExternalLink } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatDistanceToNow } from 'date-fns';
 
-interface NewsItem {
+export interface NewsItem {
   headline: string;
+  link: string;
+  pubDate: string;
+  source: string;
   category: 'forex' | 'gold' | 'crypto';
   impact: string;
-  timeAgo: string;
   currency?: string;
-  source?: string;
 }
 
 const categoryIcons: Record<string, string> = {
@@ -17,22 +20,46 @@ const categoryIcons: Record<string, string> = {
   crypto: '₿',
 };
 
-// Static placeholder news — will be replaced with live feed in Phase 2
-const staticNews: NewsItem[] = [
-  { headline: 'FOMC Minutes: Fed Officials Signal Cautious Rate Path', category: 'forex', impact: 'High', timeAgo: 'Recent', currency: 'USD' },
-  { headline: 'Gold Holds Above $3100 Amid Safe-Haven Demand', category: 'gold', impact: 'High', timeAgo: 'Recent', currency: 'XAUUSD' },
-  { headline: 'EUR/USD Consolidates Near 1.0850 Before ECB Decision', category: 'forex', impact: 'Medium', timeAgo: 'Recent', currency: 'EUR' },
-  { headline: 'Bitcoin Tests $85K Resistance as ETF Inflows Surge', category: 'crypto', impact: 'Medium', timeAgo: 'Recent', currency: 'BTC' },
-  { headline: 'GBP/USD Drops on Weak UK Services PMI', category: 'forex', impact: 'Medium', timeAgo: 'Recent', currency: 'GBP' },
-  { headline: 'Silver Breaks Out as Gold Rally Extends', category: 'gold', impact: 'Low', timeAgo: 'Recent', currency: 'XAGUSD' },
-];
-
 interface NewsCardListProps {
   filter: 'all' | 'forex' | 'gold' | 'crypto';
+  news: NewsItem[];
+  isLoading: boolean;
 }
 
-export function NewsCardList({ filter }: NewsCardListProps) {
-  const filtered = filter === 'all' ? staticNews : staticNews.filter(n => n.category === filter);
+function timeAgo(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Recent';
+    return formatDistanceToNow(d, { addSuffix: true });
+  } catch {
+    return 'Recent';
+  }
+}
+
+export function NewsCardList({ filter, news, isLoading }: NewsCardListProps) {
+  const filtered = filter === 'all' ? news : news.filter(n => n.category === filter);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Card key={i} className="bg-card/60 border-border/30 p-3">
+            <div className="flex items-start gap-3">
+              <Skeleton className="w-6 h-6 rounded" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-2/3" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-4 w-12 rounded-full" />
+                  <Skeleton className="h-4 w-16 rounded-full" />
+                </div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
@@ -40,31 +67,37 @@ export function NewsCardList({ filter }: NewsCardListProps) {
         <div className="text-center py-6 text-muted-foreground text-sm">No news in this category</div>
       ) : (
         filtered.map((n, i) => (
-          <Card key={i} className="bg-card/60 border-border/30 p-3 hover:border-primary/30 transition-colors cursor-pointer group">
-            <div className="flex items-start gap-3">
-              <span className="text-lg mt-0.5">{categoryIcons[n.category]}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors leading-relaxed">
-                  {n.headline}
-                </p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  {n.currency && (
-                    <span className="text-[10px] font-medium text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
-                      {n.currency}
-                    </span>
-                  )}
-                  <ImpactBadge impact={n.impact} />
-                  <span className="text-[10px] text-muted-foreground/60">{n.timeAgo}</span>
+          <a
+            key={i}
+            href={n.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <Card className="bg-card/60 border-border/30 p-3 hover:border-primary/30 transition-colors cursor-pointer group">
+              <div className="flex items-start gap-3">
+                <span className="text-lg mt-0.5">{categoryIcons[n.category]}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors leading-relaxed">
+                    {n.headline}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    {n.currency && (
+                      <span className="text-[10px] font-medium text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                        {n.currency}
+                      </span>
+                    )}
+                    <ImpactBadge impact={n.impact} />
+                    <span className="text-[10px] text-muted-foreground/60">{timeAgo(n.pubDate)}</span>
+                    <span className="text-[10px] text-primary/50 ml-auto">{n.source}</span>
+                  </div>
                 </div>
+                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary/60 transition-colors shrink-0 mt-1" />
               </div>
-              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary/60 transition-colors shrink-0 mt-1" />
-            </div>
-          </Card>
+            </Card>
+          </a>
         ))
       )}
-      <p className="text-[10px] text-muted-foreground/50 text-center pt-2">
-        Live news feed coming in Phase 2 — Perplexity/Firecrawl integration
-      </p>
     </div>
   );
 }
