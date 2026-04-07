@@ -160,6 +160,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Auto-detect session: if timeframe is "1H", check UTC hour
+    // 0-11 UTC = London session, 12-23 UTC = New York session
+    if (timeframe === "1H") {
+      const recordedDate = new Date(recorded_at);
+      if (recordedDate.getUTCHours() >= 12) {
+        timeframe = "New York";
+      }
+    }
+
     // Insert new records
     const records = currencies.map((c) => ({
       currency: c.currency,
