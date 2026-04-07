@@ -4,6 +4,8 @@ interface WeeklyHeatmapProps {
   logs: Array<{ date: string }>;
 }
 
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
 export function WeeklyHeatmap({ logs }: WeeklyHeatmapProps) {
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
@@ -11,7 +13,7 @@ export function WeeklyHeatmap({ logs }: WeeklyHeatmapProps) {
     const d = addDays(weekStart, i);
     return {
       date: format(d, 'yyyy-MM-dd'),
-      label: format(d, 'EEE').charAt(0),
+      label: DAY_LABELS[i],
       isToday: isDateToday(d),
     };
   });
