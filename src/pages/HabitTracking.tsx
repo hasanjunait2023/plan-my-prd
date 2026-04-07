@@ -11,6 +11,8 @@ import { HabitFormDialog } from '@/components/habits/HabitFormDialog';
 import { CompletionNoteDialog } from '@/components/habits/CompletionNoteDialog';
 import { HabitAnalytics } from '@/components/habits/HabitAnalytics';
 import { HabitProgressCalendar } from '@/components/habits/HabitProgressCalendar';
+import { HabitFocusPanel } from '@/components/habits/HabitFocusPanel';
+import { HabitRewards } from '@/components/habits/HabitRewards';
 import { toast } from 'sonner';
 import { format, subDays, isWithinInterval, parseISO } from 'date-fns';
 import {
@@ -344,6 +346,16 @@ export default function HabitTracking() {
         </Card>
       </div>
 
+      {/* Focus Panel */}
+      {habits.length > 0 && (
+        <HabitFocusPanel
+          habits={habits}
+          todayLogs={todayLogs}
+          monthLogs={monthLogs}
+          onQuickComplete={(habit) => setCompletionTarget(habit)}
+        />
+      )}
+
       {/* Category Filter */}
       {categories.length > 2 && (
         <Tabs value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -412,6 +424,9 @@ export default function HabitTracking() {
 
       {/* Analytics */}
       {habits.length > 0 && <HabitAnalytics habits={habits} logs={monthLogs} />}
+
+      {/* Rewards */}
+      {habits.length > 0 && <HabitRewards habits={habits} logs={monthLogs} />}
 
       {/* Progress Calendar */}
       {habits.length > 0 && <HabitProgressCalendar habits={habits} logs={monthLogs} />}
