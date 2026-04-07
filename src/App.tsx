@@ -24,6 +24,7 @@ import ChartAnalysis from "./pages/ChartAnalysis.tsx";
 import Auth from "./pages/Auth.tsx";
 import TradingRules from "./pages/TradingRules.tsx";
 import MarketNews from "./pages/MarketNews.tsx";
+import HabitTracking from "./pages/HabitTracking.tsx";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
                   <Route path="/charts" element={<ChartAnalysis />} />
                   <Route path="/rules" element={<TradingRules />} />
                   <Route path="/news" element={<MarketNews />} />
+                  <Route path="/habits" element={<HabitTracking />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>

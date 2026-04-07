@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap, LogOut, Gem, Bitcoin, GitCompareArrows, Sun, Moon, Cable, LineChart, Shield, Newspaper
+  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap, LogOut, Gem, Bitcoin, GitCompareArrows, Sun, Moon, Cable, LineChart, Shield, Newspaper, Target
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -46,6 +46,7 @@ const profileMenuItems = [
   { title: 'Intel', url: '/trade-intelligence', icon: Zap },
   { title: 'Rules', url: '/rules', icon: Shield },
   { title: 'News', url: '/news', icon: Newspaper },
+  { title: 'Habits', url: '/habits', icon: Target },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
 
