@@ -346,6 +346,16 @@ export default function HabitTracking() {
         </Card>
       </div>
 
+      {/* Focus Panel */}
+      {habits.length > 0 && (
+        <HabitFocusPanel
+          habits={habits}
+          todayLogs={todayLogs}
+          monthLogs={monthLogs}
+          onQuickComplete={(habit) => setCompletionTarget(habit)}
+        />
+      )}
+
       {/* Category Filter */}
       {categories.length > 2 && (
         <Tabs value={categoryFilter} onValueChange={setCategoryFilter}>
