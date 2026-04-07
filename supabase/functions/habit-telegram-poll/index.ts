@@ -80,6 +80,11 @@ Deno.serve(async (req) => {
 
     const data = await response.json();
     if (!response.ok) {
+      // 409 = another instance is already polling — exit gracefully, not an error
+      if (data.error_code === 409) {
+        console.log('Another poll instance running, exiting gracefully');
+        return json({ ok: true, processed: totalProcessed, skipped: 'conflict', finalOffset: currentOffset });
+      }
       console.error('getUpdates error:', JSON.stringify(data));
       return json({ error: data }, 502);
     }
