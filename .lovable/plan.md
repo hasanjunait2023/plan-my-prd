@@ -1,100 +1,74 @@
 
 
-## Habit Tracking Page — Enhancement Plan
+## Plan: Habit Page — বাকি ৫টা Feature একসাথে Implement
 
-### বর্তমান Gaps (যা নেই)
+### Already Done (recap)
+Streak auto-reset, Monthly heatmap, Analytics, Delete/Archive, Undo, Completion notes, Category filter — সব আছে।
 
-| Area | সমস্যা |
-|------|---------|
-| **Streak break detection** | যদি কাল complete না করে থাকি, streak reset হচ্ছে না — manually increment হচ্ছে |
-| **Monthly view** | শুধু 7 দিনের heatmap আছে, monthly/yearly overview নেই |
-| **Analytics** | কোন habit কতবার miss হয়েছে, completion rate over time — কিছুই নেই |
-| **Delete habit** | Edit আছে কিন্তু delete/archive option নেই |
-| **Undo complete** | ভুলে complete করলে undo করার উপায় নেই |
-| **Reorder/Priority** | কোন habit আগে দেখাবে সেটা control করা যায় না |
-| **Category/Tags** | Habits কে group করা যায় না (Trading, Health, Learning) |
-| **Notes on completion** | Complete করার সময় কোন note add করা যায় না |
+### যা Implement হবে
 
 ---
 
-### Proposed Enhancements (Priority Order)
+#### 1. Drag-to-Reorder (dnd-kit)
+- `@dnd-kit/core` ও `@dnd-kit/sortable` install
+- `HabitTracking.tsx` এ `DndContext` + `SortableContext` wrap
+- `HabitCard` কে sortable item বানানো (drag handle icon add)
+- Drop এ `sort_order` update করা DB তে
 
-#### 1. Streak Auto-Reset Logic
-**Problem:** এখন streak শুধু increment হয়, কিন্তু miss করলে reset হয় না।
-- App open করলে বা complete করলে check — গতকাল complete ছিল কিনা
-- না থাকলে `current_streak = 0` reset
-- Edge function দিয়েও daily midnight check করা যায়
+#### 2. Streak Milestones & Badges
+- `HabitCard.tsx` তে milestone detection: 7, 21, 66, 100 day streak
+- Milestone badge icon দেখাবে (🔥7, ⚡21, 💎66, 👑100)
+- First time milestone reach করলে `toast` দিয়ে celebration
+- Confetti animation (CSS keyframe) milestone hit এ
 
-#### 2. Monthly Heatmap (GitHub-style)
-- Current 7-day heatmap এর নিচে expandable monthly calendar view
-- Green shades দিয়ে intensity দেখাবে (miss = empty, done = green)
-- Month navigation (< April 2026 >)
+#### 3. Habit Templates
+- `HabitFormDialog.tsx` তে "Use Template" button
+- Predefined templates: Morning Journal, Chart Review, Exercise, Read 30 min, Backtest, Meditation
+- Template click করলে name + description + category auto-fill
 
-#### 3. Habit Analytics Section
-- **Completion Rate Chart** — Last 30 days line chart (Recharts)
-- **Best/Worst Days** — কোন দিন সবচেয়ে বেশি miss হয়
-- **Streak History** — Timeline of streaks with breaks marked
-- Per-habit stats card with total completions, avg weekly rate
+#### 4. Vacation Mode
+- `habits` table এ `vacation_start` (date, nullable) ও `vacation_end` (date, nullable) columns add — **DB migration**
+- `HabitFormDialog.tsx` তে vacation date range picker
+- Streak auto-reset logic তে vacation period skip — vacation range এ থাকলে streak reset হবে না
+- Vacation badge দেখাবে habit card এ (🏖️)
 
-#### 4. Delete & Archive Habits
-- Edit dialog এ "Archive" button — `active = false` set করবে
-- Archived habits আলাদা section এ দেখাবে, reactivate option সহ
-- Permanent delete with confirmation dialog
-
-#### 5. Undo / Uncomplete
-- Already completed habit এ "Undo" button
-- Click করলে habit_log delete + streak/completion decrement
-- 30-minute time window এর মধ্যে undo allow
-
-#### 6. Completion Notes
-- Complete করার সময় optional note input (mini dialog)
-- `habit_logs.notes` field ইতিমধ্যে আছে DB তে — শুধু UI add করতে হবে
-- Notes hover/click এ দেখাবে heatmap এর উপরে
-
-#### 7. Category System
-- Habit create করার সময় category select (Trading, Health, Learning, Custom)
-- `habits` table এ `category` column add
-- Page এ filter by category tabs
-
-#### 8. Drag-to-Reorder
-- Habits list এ drag handle add
-- `habits` table এ `sort_order` column
-- dnd-kit library ব্যবহার
+#### 5. Telegram Daily Evening Summary
+- New edge function `habit-daily-summary/index.ts`
+- সন্ধ্যায় একটা summary পাঠাবে: কয়টা done, কয়টা missed, current streaks
+- pg_cron দিয়ে schedule (daily 9 PM BDT = 3 PM UTC)
 
 ---
 
 ### Technical Details
 
-#### Files to modify/create:
+**New Dependencies**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
 
-| File | Change |
-|------|--------|
-| `src/pages/HabitTracking.tsx` | Analytics section, category filter, archive toggle |
-| `src/components/habits/HabitCard.tsx` | Undo button, notes display, drag handle |
-| `src/components/habits/HabitFormDialog.tsx` | Delete/archive buttons, category select |
-| `src/components/habits/MonthlyHeatmap.tsx` | **NEW** — GitHub-style monthly calendar |
-| `src/components/habits/HabitAnalytics.tsx` | **NEW** — Completion charts & stats |
-| `src/components/habits/CompletionNoteDialog.tsx` | **NEW** — Note input on complete |
-| `supabase/migrations/` | `category`, `sort_order` columns to habits |
-| Streak reset logic | Either in `HabitTracking.tsx` useEffect or new edge function |
-
-#### DB Changes:
+**DB Migration**:
 ```sql
-ALTER TABLE habits ADD COLUMN category text DEFAULT 'general';
-ALTER TABLE habits ADD COLUMN sort_order integer DEFAULT 0;
+ALTER TABLE habits ADD COLUMN vacation_start date;
+ALTER TABLE habits ADD COLUMN vacation_end date;
 ```
 
----
+**Files to create**:
+| File | Purpose |
+|------|---------|
+| `supabase/functions/habit-daily-summary/index.ts` | Evening Telegram summary |
 
-### Recommended Implementation Order
+**Files to modify**:
+| File | Changes |
+|------|---------|
+| `src/pages/HabitTracking.tsx` | DndContext wrap, sort_order update on drag end, vacation-aware streak reset |
+| `src/components/habits/HabitCard.tsx` | Drag handle, milestone badges, vacation badge |
+| `src/components/habits/HabitFormDialog.tsx` | Templates section, vacation date inputs |
 
-1. **Streak auto-reset** — সবচেয়ে critical, ভুল data দেখাচ্ছে এখন
-2. **Delete/Archive** — Basic feature missing
-3. **Undo complete** — UX improvement
-4. **Monthly heatmap** — Visual upgrade
-5. **Completion notes** — DB ready, শুধু UI
-6. **Analytics charts** — Data visualization
-7. **Categories** — Organization
-8. **Reorder** — Nice-to-have
+**pg_cron** (via insert tool, not migration):
+```sql
+SELECT cron.schedule('habit-daily-summary', '0 15 * * *', $$
+  SELECT net.http_post(
+    url:='https://ejtnvpmshcqydndxxonq.supabase.co/functions/v1/habit-daily-summary',
+    headers:='{"Content-Type":"application/json","Authorization":"Bearer <anon_key>"}'::jsonb,
+    body:='{}'::jsonb
+  );
+$$);
+```
 
-কোনটা আগে করতে চাও বলো, অথবা সব একসাথে করে দিই।
