@@ -426,6 +426,8 @@ export type Database = {
           timezone: string
           total_completions: number
           user_id: string
+          vacation_end: string | null
+          vacation_start: string | null
         }
         Insert: {
           active?: boolean
@@ -441,6 +443,8 @@ export type Database = {
           timezone?: string
           total_completions?: number
           user_id: string
+          vacation_end?: string | null
+          vacation_start?: string | null
         }
         Update: {
           active?: boolean
@@ -456,6 +460,8 @@ export type Database = {
           timezone?: string
           total_completions?: number
           user_id?: string
+          vacation_end?: string | null
+          vacation_start?: string | null
         }
         Relationships: []
       }

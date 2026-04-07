@@ -9,9 +9,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Archive, Trash2 } from 'lucide-react';
+import { Archive, Trash2, Zap, Palmtree } from 'lucide-react';
 
 const CATEGORIES = ['general', 'trading', 'health', 'learning'];
+
+const TEMPLATES = [
+  { name: 'Morning Journal', description: 'Write a quick reflection before trading', category: 'trading' },
+  { name: 'Chart Review', description: 'Review key pairs and mark levels on chart', category: 'trading' },
+  { name: 'Backtest Session', description: '30-min backtest on strategy of the week', category: 'trading' },
+  { name: 'Exercise', description: '30 minutes of physical activity', category: 'health' },
+  { name: 'Meditation', description: '10-minute mindfulness meditation', category: 'health' },
+  { name: 'Read 30 min', description: 'Read trading or self-improvement book', category: 'learning' },
+];
 
 interface HabitFormDialogProps {
   open: boolean;
@@ -27,7 +36,10 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
   const [submissionTime, setSubmissionTime] = useState('07:00');
   const [timezone, setTimezone] = useState('Asia/Dhaka');
   const [category, setCategory] = useState('general');
+  const [vacationStart, setVacationStart] = useState('');
+  const [vacationEnd, setVacationEnd] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   useEffect(() => {
     if (editHabit) {
@@ -36,12 +48,17 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
       setSubmissionTime(editHabit.submission_time?.slice(0, 5) || '07:00');
       setTimezone(editHabit.timezone || 'Asia/Dhaka');
       setCategory(editHabit.category || 'general');
+      setVacationStart(editHabit.vacation_start || '');
+      setVacationEnd(editHabit.vacation_end || '');
     } else {
       setName('');
       setDescription('');
       setSubmissionTime('07:00');
       setTimezone('Asia/Dhaka');
       setCategory('general');
+      setVacationStart('');
+      setVacationEnd('');
+      setShowTemplates(false);
     }
   }, [editHabit, open]);
 
@@ -53,21 +70,38 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
     queryClient.invalidateQueries({ queryKey: ['habit_logs_month'] });
   };
 
+  const applyTemplate = (template: typeof TEMPLATES[0]) => {
+    setName(template.name);
+    setDescription(template.description);
+    setCategory(template.category);
+    setShowTemplates(false);
+  };
+
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error('Name is required'); return; }
     setSaving(true);
     try {
+      const payload: any = {
+        name,
+        description,
+        submission_time: submissionTime,
+        timezone,
+        category,
+        vacation_start: vacationStart || null,
+        vacation_end: vacationEnd || null,
+      };
+
       if (editHabit) {
         const { error } = await supabase
           .from('habits')
-          .update({ name, description, submission_time: submissionTime, timezone, category })
+          .update(payload)
           .eq('id', editHabit.id);
         if (error) throw error;
         toast.success('Habit updated!');
       } else {
         const { error } = await supabase
           .from('habits')
-          .insert({ name, description, submission_time: submissionTime, timezone, category, user_id: user!.id });
+          .insert({ ...payload, user_id: user!.id });
         if (error) throw error;
         toast.success('Habit created! 🎯');
       }
@@ -91,7 +125,6 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
 
   const handleDelete = async () => {
     if (!editHabit) return;
-    // Delete logs first, then habit
     await supabase.from('habit_logs').delete().eq('habit_id', editHabit.id);
     const { error } = await supabase.from('habits').delete().eq('id', editHabit.id);
     if (error) { toast.error(error.message); return; }
@@ -102,11 +135,41 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border/40">
+      <DialogContent className="sm:max-w-md bg-card border-border/40 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editHabit ? 'Edit Habit' : 'New Habit'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 mt-2">
+          {/* Templates (only for new habits) */}
+          {!editHabit && (
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTemplates(!showTemplates)}
+                className="gap-1.5 text-xs w-full"
+              >
+                <Zap className="w-3.5 h-3.5" /> {showTemplates ? 'Hide Templates' : 'Use Template'}
+              </Button>
+              {showTemplates && (
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {TEMPLATES.map(t => (
+                    <button
+                      key={t.name}
+                      onClick={() => applyTemplate(t)}
+                      className="text-left p-2.5 rounded-lg border border-border/30 bg-background/50 hover:bg-accent/20 transition-colors"
+                    >
+                      <p className="text-xs font-medium text-foreground">{t.name}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{t.description}</p>
+                      <span className="text-[9px] text-muted-foreground/60 capitalize">{t.category}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <Label className="text-xs">Name</Label>
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Morning Journal" />
@@ -136,6 +199,36 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
               <Input value={timezone} onChange={e => setTimezone(e.target.value)} placeholder="Asia/Dhaka" />
             </div>
           </div>
+
+          {/* Vacation Mode */}
+          <div className="p-3 rounded-lg border border-border/30 bg-background/30 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <Palmtree className="w-3.5 h-3.5 text-cyan-400" /> Vacation Mode
+              <span className="text-[10px] text-muted-foreground/60">(streak won't break)</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-[10px]">Start Date</Label>
+                <Input type="date" value={vacationStart} onChange={e => setVacationStart(e.target.value)} className="text-xs" />
+              </div>
+              <div>
+                <Label className="text-[10px]">End Date</Label>
+                <Input type="date" value={vacationEnd} onChange={e => setVacationEnd(e.target.value)} className="text-xs" />
+              </div>
+            </div>
+            {vacationStart && vacationEnd && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-[10px] text-red-400 h-6 px-2"
+                onClick={() => { setVacationStart(''); setVacationEnd(''); }}
+              >
+                Clear Vacation
+              </Button>
+            )}
+          </div>
+
           <Button onClick={handleSubmit} disabled={saving} className="w-full">
             {saving ? 'Saving...' : editHabit ? 'Update Habit' : 'Create Habit'}
           </Button>

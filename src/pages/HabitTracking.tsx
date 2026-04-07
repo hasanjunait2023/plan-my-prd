@@ -11,7 +11,22 @@ import { HabitFormDialog } from '@/components/habits/HabitFormDialog';
 import { CompletionNoteDialog } from '@/components/habits/CompletionNoteDialog';
 import { HabitAnalytics } from '@/components/habits/HabitAnalytics';
 import { toast } from 'sonner';
-import { format, subDays } from 'date-fns';
+import { format, subDays, isWithinInterval, parseISO } from 'date-fns';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 
 export default function HabitTracking() {
   const { user } = useAuth();
@@ -23,6 +38,12 @@ export default function HabitTracking() {
   const [completionTarget, setCompletionTarget] = useState<any>(null);
   const today = format(new Date(), 'yyyy-MM-dd');
   const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+
+  // ── DnD sensors ──
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   // ── Queries ──
   const { data: habits = [], isLoading } = useQuery({
@@ -83,7 +104,6 @@ export default function HabitTracking() {
     enabled: !!user,
   });
 
-  // Month logs for monthly heatmap + analytics
   const { data: monthLogs = [] } = useQuery({
     queryKey: ['habit_logs_month'],
     queryFn: async () => {
@@ -98,13 +118,26 @@ export default function HabitTracking() {
     enabled: !!user,
   });
 
-  // ── Streak auto-reset ──
+  // ── Vacation-aware streak auto-reset ──
   useEffect(() => {
     if (!user || habits.length === 0 || monthLogs.length === 0) return;
 
     const resetStreaks = async () => {
       for (const habit of habits) {
         if (habit.current_streak === 0) continue;
+
+        // Skip if yesterday was within vacation period
+        if (habit.vacation_start && habit.vacation_end) {
+          try {
+            const vacStart = parseISO(habit.vacation_start);
+            const vacEnd = parseISO(habit.vacation_end);
+            const yesterdayDate = parseISO(yesterday);
+            if (isWithinInterval(yesterdayDate, { start: vacStart, end: vacEnd })) {
+              continue; // Don't reset — on vacation
+            }
+          } catch {}
+        }
+
         const hadYesterday = monthLogs.some(l => l.habit_id === habit.id && l.date === yesterday);
         const hadToday = todayLogs.some(l => l.habit_id === habit.id);
         if (!hadYesterday && !hadToday) {
@@ -120,6 +153,20 @@ export default function HabitTracking() {
     resetStreaks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, habits.length, monthLogs.length]);
+
+  // ── Milestone celebration ──
+  const checkMilestone = (streak: number, habitName: string) => {
+    const milestones = [
+      { day: 7, icon: '🔥', label: '7-Day Streak!' },
+      { day: 21, icon: '⚡', label: '21-Day Streak!' },
+      { day: 66, icon: '💎', label: '66-Day Habit Formed!' },
+      { day: 100, icon: '👑', label: '100-Day Legend!' },
+    ];
+    const milestone = milestones.find(m => m.day === streak);
+    if (milestone) {
+      toast.success(`${milestone.icon} ${habitName} — ${milestone.label}`, { duration: 5000 });
+    }
+  };
 
   // ── Complete mutation ──
   const completeMutation = useMutation({
@@ -141,14 +188,17 @@ export default function HabitTracking() {
           })
           .eq('id', habitId);
         if (updateError) throw updateError;
+        return { newStreak, habitName: habit.name };
       }
+      return null;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['habits'] });
       queryClient.invalidateQueries({ queryKey: ['habit_logs'] });
       queryClient.invalidateQueries({ queryKey: ['habit_logs_week'] });
       queryClient.invalidateQueries({ queryKey: ['habit_logs_month'] });
       toast.success('Habit completed! 🔥');
+      if (result) checkMilestone(result.newStreak, result.habitName);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -158,7 +208,6 @@ export default function HabitTracking() {
     mutationFn: async (habitId: string) => {
       const log = todayLogs.find(l => l.habit_id === habitId);
       if (!log) throw new Error('No log found');
-      // Check 30-min window
       const logTime = new Date(log.completed_at).getTime();
       if (Date.now() - logTime > 30 * 60 * 1000) throw new Error('Undo window (30 min) has passed');
 
@@ -198,6 +247,34 @@ export default function HabitTracking() {
       toast.success('Habit reactivated!');
     },
   });
+
+  // ── Drag end handler ──
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = filteredHabits.findIndex(h => h.id === active.id);
+    const newIndex = filteredHabits.findIndex(h => h.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(filteredHabits, oldIndex, newIndex);
+
+    // Optimistic update
+    queryClient.setQueryData(['habits'], (old: any[]) => {
+      if (!old) return old;
+      const updated = [...old];
+      reordered.forEach((h, i) => {
+        const idx = updated.findIndex(u => u.id === h.id);
+        if (idx !== -1) updated[idx] = { ...updated[idx], sort_order: i };
+      });
+      return updated.sort((a, b) => a.sort_order - b.sort_order);
+    });
+
+    // Persist to DB
+    for (let i = 0; i < reordered.length; i++) {
+      await supabase.from('habits').update({ sort_order: i }).eq('id', reordered[i].id);
+    }
+  };
 
   // ── Filter ──
   const categories = ['all', ...new Set(habits.map(h => h.category || 'general'))];
@@ -277,7 +354,7 @@ export default function HabitTracking() {
         </Tabs>
       )}
 
-      {/* Habits List */}
+      {/* Habits List with DnD */}
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Loading habits...</div>
       ) : filteredHabits.length === 0 ? (
@@ -291,21 +368,25 @@ export default function HabitTracking() {
           </Button>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {filteredHabits.map(habit => (
-            <HabitCard
-              key={habit.id}
-              habit={habit}
-              isCompleted={todayLogs.some(l => l.habit_id === habit.id)}
-              weekLogs={weekLogs.filter(l => l.habit_id === habit.id)}
-              monthLogs={monthLogs.filter(l => l.habit_id === habit.id)}
-              onComplete={() => setCompletionTarget(habit)}
-              onEdit={() => { setEditHabit(habit); setShowForm(true); }}
-              onUndo={() => undoMutation.mutate(habit.id)}
-              canUndo={canUndo(habit.id)}
-            />
-          ))}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={filteredHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-3">
+              {filteredHabits.map(habit => (
+                <HabitCard
+                  key={habit.id}
+                  habit={habit}
+                  isCompleted={todayLogs.some(l => l.habit_id === habit.id)}
+                  weekLogs={weekLogs.filter(l => l.habit_id === habit.id)}
+                  monthLogs={monthLogs.filter(l => l.habit_id === habit.id)}
+                  onComplete={() => setCompletionTarget(habit)}
+                  onEdit={() => { setEditHabit(habit); setShowForm(true); }}
+                  onUndo={() => undoMutation.mutate(habit.id)}
+                  canUndo={canUndo(habit.id)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {/* Archived Section */}
