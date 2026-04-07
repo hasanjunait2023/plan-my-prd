@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { TablesUpdate } from '@/integrations/supabase/types';
 import { Trade } from '@/types/trade';
 import { mockTrades } from '@/data/mockTrades';
 
@@ -52,6 +53,71 @@ const mapRow = (r: any): Trade => ({
   revisionRating: r.revision_rating ?? null,
   revisedAt: r.revised_at || null,
 });
+
+type TradeUpdateInput = {
+  id: string;
+} & Partial<
+  Pick<
+    Trade,
+    | 'exitPrice'
+    | 'pnl'
+    | 'pips'
+    | 'outcome'
+    | 'status'
+    | 'exitScreenshots'
+    | 'duringSituation'
+    | 'postSituation'
+    | 'whatWentWell'
+    | 'improvementNotes'
+    | 'mistakes'
+    | 'partialCloses'
+    | 'postTradeNotes'
+    | 'rrr'
+    | 'riskDollars'
+    | 'ruleChecklist'
+    | 'ruleScore'
+    | 'revisionNotes'
+    | 'revisionTakeaway'
+    | 'revisionWouldTakeAgain'
+    | 'revisionRating'
+    | 'revisedAt'
+  >
+>;
+
+const buildTradeUpdate = (fields: Omit<TradeUpdateInput, 'id'>): TablesUpdate<'trades'> => {
+  const update: TablesUpdate<'trades'> = {};
+
+  if (fields.exitPrice !== undefined) update.exit_price = fields.exitPrice;
+  if (fields.pnl !== undefined) update.pnl = fields.pnl;
+  if (fields.pips !== undefined) update.pips = fields.pips;
+  if (fields.outcome !== undefined) update.outcome = fields.outcome;
+  if (fields.status !== undefined) update.status = fields.status;
+  if (fields.exitScreenshots !== undefined) update.exit_screenshots = fields.exitScreenshots;
+  if (fields.duringSituation !== undefined) update.during_situation = fields.duringSituation;
+  if (fields.postSituation !== undefined) update.post_situation = fields.postSituation;
+  if (fields.whatWentWell !== undefined) update.what_went_well = fields.whatWentWell;
+  if (fields.improvementNotes !== undefined) update.improvement_notes = fields.improvementNotes;
+  if (fields.mistakes !== undefined) update.mistakes = fields.mistakes;
+  if (fields.partialCloses !== undefined) {
+    update.partial_closes = JSON.parse(JSON.stringify(fields.partialCloses));
+  }
+  if (fields.postTradeNotes !== undefined) update.post_trade_notes = fields.postTradeNotes;
+  if (fields.rrr !== undefined) update.rrr = fields.rrr;
+  if (fields.riskDollars !== undefined) update.risk_dollars = fields.riskDollars;
+  if (fields.ruleChecklist !== undefined) {
+    update.rule_checklist = JSON.parse(JSON.stringify(fields.ruleChecklist));
+  }
+  if (fields.ruleScore !== undefined) update.rule_score = fields.ruleScore;
+  if (fields.revisionNotes !== undefined) update.revision_notes = fields.revisionNotes;
+  if (fields.revisionTakeaway !== undefined) update.revision_takeaway = fields.revisionTakeaway;
+  if (fields.revisionWouldTakeAgain !== undefined) {
+    update.revision_would_take_again = fields.revisionWouldTakeAgain;
+  }
+  if (fields.revisionRating !== undefined) update.revision_rating = fields.revisionRating;
+  if (fields.revisedAt !== undefined) update.revised_at = fields.revisedAt;
+
+  return update;
+};
 
 export const useTrades = () => {
   return useQuery({
@@ -124,25 +190,8 @@ export const useInsertTrade = () => {
 export const useUpdateTrade = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...fields }: { id: string } & Record<string, any>) => {
-      const dbFields: Record<string, any> = {};
-      const map: Record<string, string> = {
-        exitPrice: 'exit_price', pnl: 'pnl', pips: 'pips', outcome: 'outcome', status: 'status',
-        exitScreenshots: 'exit_screenshots', duringSituation: 'during_situation',
-        postSituation: 'post_situation', whatWentWell: 'what_went_well',
-        improvementNotes: 'improvement_notes', mistakes: 'mistakes',
-        partialCloses: 'partial_closes', postTradeNotes: 'post_trade_notes',
-        rrr: 'rrr', riskDollars: 'risk_dollars',
-        ruleChecklist: 'rule_checklist', ruleScore: 'rule_score',
-        revisionNotes: 'revision_notes', revisionTakeaway: 'revision_takeaway',
-        revisionWouldTakeAgain: 'revision_would_take_again',
-        revisionRating: 'revision_rating', revisedAt: 'revised_at',
-      };
-      Object.entries(fields).forEach(([k, v]) => {
-        const dbKey = map[k] || k;
-        dbFields[dbKey] = k === 'partialCloses' ? JSON.parse(JSON.stringify(v)) : v;
-      });
-      const { error } = await supabase.from('trades').update(dbFields).eq('id', id);
+    mutationFn: async ({ id, ...fields }: TradeUpdateInput) => {
+      const { error } = await supabase.from('trades').update(buildTradeUpdate(fields)).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trades'] }),
