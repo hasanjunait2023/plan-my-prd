@@ -341,6 +341,118 @@ export type Database = {
         }
         Relationships: []
       }
+      habit_logs: {
+        Row: {
+          completed_at: string
+          date: string
+          habit_id: string
+          id: string
+          notes: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          date: string
+          habit_id: string
+          id?: string
+          notes?: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          date?: string
+          habit_id?: string
+          id?: string
+          notes?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_logs_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habit_reminders: {
+        Row: {
+          date: string
+          habit_id: string
+          id: string
+          responded: boolean
+          sent_at: string
+        }
+        Insert: {
+          date: string
+          habit_id: string
+          id?: string
+          responded?: boolean
+          sent_at?: string
+        }
+        Update: {
+          date?: string
+          habit_id?: string
+          id?: string
+          responded?: boolean
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_reminders_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habits: {
+        Row: {
+          active: boolean
+          created_at: string
+          current_streak: number
+          description: string
+          id: string
+          longest_streak: number
+          name: string
+          submission_time: string
+          timezone: string
+          total_completions: number
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          current_streak?: number
+          description?: string
+          id?: string
+          longest_streak?: number
+          name: string
+          submission_time?: string
+          timezone?: string
+          total_completions?: number
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          current_streak?: number
+          description?: string
+          id?: string
+          longest_streak?: number
+          name?: string
+          submission_time?: string
+          timezone?: string
+          total_completions?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       market_scan_temp: {
         Row: {
           change_percent: number
