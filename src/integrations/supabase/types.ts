@@ -348,6 +348,7 @@ export type Database = {
           habit_id: string
           id: string
           notes: string
+          proof_url: string | null
           source: string
           user_id: string
         }
@@ -357,6 +358,7 @@ export type Database = {
           habit_id: string
           id?: string
           notes?: string
+          proof_url?: string | null
           source?: string
           user_id: string
         }
@@ -366,6 +368,7 @@ export type Database = {
           habit_id?: string
           id?: string
           notes?: string
+          proof_url?: string | null
           source?: string
           user_id?: string
         }
