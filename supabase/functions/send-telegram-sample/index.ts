@@ -12,12 +12,15 @@ Deno.serve(async (req) => {
     });
   }
 
-  const { chat_id, text } = await req.json();
+  const { chat_id, text, reply_markup } = await req.json();
+
+  const body: Record<string, unknown> = { chat_id, text, parse_mode: 'HTML' };
+  if (reply_markup) body.reply_markup = reply_markup;
 
   const resp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' }),
+    body: JSON.stringify(body),
   });
 
   const data = await resp.json();
