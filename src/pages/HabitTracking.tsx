@@ -13,7 +13,9 @@ import { HabitAnalytics } from '@/components/habits/HabitAnalytics';
 import { HabitProgressCalendar } from '@/components/habits/HabitProgressCalendar';
 import { HabitFocusPanel } from '@/components/habits/HabitFocusPanel';
 import { HabitRewards } from '@/components/habits/HabitRewards';
+import { DailyQuote } from '@/components/habits/DailyQuote';
 import { toast } from 'sonner';
+import confetti from 'canvas-confetti';
 import { format, subDays, isWithinInterval, parseISO } from 'date-fns';
 import {
   DndContext,
@@ -157,7 +159,7 @@ export default function HabitTracking() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, habits.length, monthLogs.length]);
 
-  // ── Milestone celebration ──
+  // ── Milestone celebration with confetti ──
   const checkMilestone = (streak: number, habitName: string) => {
     const milestones = [
       { day: 7, icon: '🔥', label: '7-Day Streak!' },
@@ -168,6 +170,15 @@ export default function HabitTracking() {
     const milestone = milestones.find(m => m.day === streak);
     if (milestone) {
       toast.success(`${milestone.icon} ${habitName} — ${milestone.label}`, { duration: 5000 });
+      // Fire confetti 🎉
+      const duration = streak >= 66 ? 3000 : 1500;
+      const end = Date.now() + duration;
+      const frame = () => {
+        confetti({ particleCount: streak >= 66 ? 6 : 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#FFD700', '#FF6B35', '#00C9A7'] });
+        confetti({ particleCount: streak >= 66 ? 6 : 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#FFD700', '#FF6B35', '#00C9A7'] });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      };
+      frame();
     }
   };
 
@@ -316,7 +327,9 @@ export default function HabitTracking() {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Daily Quote */}
+      <DailyQuote />
+
       <div className="grid grid-cols-3 gap-3">
         <Card className="p-4 bg-card/60 border-border/30">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
