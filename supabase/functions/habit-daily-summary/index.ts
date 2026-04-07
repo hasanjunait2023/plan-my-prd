@@ -1,17 +1,18 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders } from 'https://esm.sh/@supabase/supabase-js@2/cors';
 
-const GATEWAY_URL = 'https://connector-gateway.lovable.dev/telegram';
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
 
-Deno.serve(async () => {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) return new Response('LOVABLE_API_KEY missing', { status: 500 });
-
-  const TELEGRAM_API_KEY = Deno.env.get('TELEGRAM_API_KEY');
-  if (!TELEGRAM_API_KEY) return new Response('TELEGRAM_API_KEY missing', { status: 500 });
+  const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
+  if (!BOT_TOKEN) return json({ ok: false, error: 'TELEGRAM_BOT_TOKEN missing' }, 500);
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const tgBase = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
   // Get telegram chat_id from alert_settings
   const { data: settings } = await supabase
@@ -21,7 +22,7 @@ Deno.serve(async () => {
     .single();
 
   if (!settings?.telegram_chat_id) {
-    return new Response(JSON.stringify({ ok: false, error: 'No telegram_chat_id configured' }), { status: 200 });
+    return json({ ok: false, error: 'No telegram_chat_id configured' });
   }
 
   const chatId = settings.telegram_chat_id;
@@ -34,7 +35,7 @@ Deno.serve(async () => {
     .eq('active', true);
 
   if (!habits || habits.length === 0) {
-    return new Response(JSON.stringify({ ok: true, message: 'No active habits' }), { status: 200 });
+    return json({ ok: true, message: 'No active habits' });
   }
 
   // Get today's logs
@@ -44,13 +45,12 @@ Deno.serve(async () => {
     .eq('date', today);
 
   const completedIds = new Set((todayLogs || []).map((l: any) => l.habit_id));
-
-  const completed = habits!.filter(h => completedIds.has(h.id));
-  const missed = habits!.filter(h => !completedIds.has(h.id));
+  const completed = habits.filter(h => completedIds.has(h.id));
+  const missed = habits.filter(h => !completedIds.has(h.id));
 
   // Build message
   let msg = `📊 <b>Daily Habit Summary</b>\n📅 ${today}\n\n`;
-  msg += `✅ Done: ${completed.length}/${habits!.length}\n\n`;
+  msg += `✅ Done: ${completed.length}/${habits.length}\n\n`;
 
   if (completed.length > 0) {
     msg += `<b>✅ Completed:</b>\n`;
@@ -69,7 +69,7 @@ Deno.serve(async () => {
   }
 
   // Top streaks
-  const topStreaks = [...habits!].sort((a, b) => b.current_streak - a.current_streak).slice(0, 3);
+  const topStreaks = [...habits].sort((a, b) => b.current_streak - a.current_streak).slice(0, 3);
   if (topStreaks.some(h => h.current_streak > 0)) {
     msg += `<b>🏆 Top Streaks:</b>\n`;
     topStreaks.filter(h => h.current_streak > 0).forEach(h => {
@@ -77,14 +77,10 @@ Deno.serve(async () => {
     });
   }
 
-  // Send via gateway
-  const response = await fetch(`${GATEWAY_URL}/sendMessage`, {
+  // Send via direct Telegram API
+  const response = await fetch(`${tgBase}/sendMessage`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-      'X-Connection-Api-Key': TELEGRAM_API_KEY,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: chatId,
       text: msg,
@@ -93,7 +89,12 @@ Deno.serve(async () => {
   });
 
   const data = await response.json();
-  return new Response(JSON.stringify({ ok: response.ok, data }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return json({ ok: response.ok, data });
 });
+
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
