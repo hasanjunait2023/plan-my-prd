@@ -414,12 +414,14 @@ export type Database = {
       habits: {
         Row: {
           active: boolean
+          category: string
           created_at: string
           current_streak: number
           description: string
           id: string
           longest_streak: number
           name: string
+          sort_order: number
           submission_time: string
           timezone: string
           total_completions: number
@@ -427,12 +429,14 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          category?: string
           created_at?: string
           current_streak?: number
           description?: string
           id?: string
           longest_streak?: number
           name: string
+          sort_order?: number
           submission_time?: string
           timezone?: string
           total_completions?: number
@@ -440,12 +444,14 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          category?: string
           created_at?: string
           current_streak?: number
           description?: string
           id?: string
           longest_streak?: number
           name?: string
+          sort_order?: number
           submission_time?: string
           timezone?: string
           total_completions?: number
