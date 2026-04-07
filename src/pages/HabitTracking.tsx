@@ -10,6 +10,7 @@ import { HabitCard } from '@/components/habits/HabitCard';
 import { HabitFormDialog } from '@/components/habits/HabitFormDialog';
 import { CompletionNoteDialog } from '@/components/habits/CompletionNoteDialog';
 import { HabitAnalytics } from '@/components/habits/HabitAnalytics';
+import { HabitProgressCalendar } from '@/components/habits/HabitProgressCalendar';
 import { toast } from 'sonner';
 import { format, subDays, isWithinInterval, parseISO } from 'date-fns';
 import {
@@ -411,6 +412,9 @@ export default function HabitTracking() {
 
       {/* Analytics */}
       {habits.length > 0 && <HabitAnalytics habits={habits} logs={monthLogs} />}
+
+      {/* Progress Calendar */}
+      {habits.length > 0 && <HabitProgressCalendar habits={habits} logs={monthLogs} />}
 
       {/* Dialogs */}
       <HabitFormDialog open={showForm} onOpenChange={setShowForm} editHabit={editHabit} />
