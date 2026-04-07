@@ -17,14 +17,12 @@ Deno.serve(async () => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // Get or create bot state
   const { data: state } = await supabase
     .from('telegram_bot_state')
     .select('update_offset')
     .eq('id', 1)
     .single();
 
-  // Create state table row if not exists
   let currentOffset = state?.update_offset ?? 0;
   if (!state) {
     await supabase.from('telegram_bot_state').upsert({ id: 1, update_offset: 0 });
@@ -47,7 +45,7 @@ Deno.serve(async () => {
         'X-Connection-Api-Key': TELEGRAM_API_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ offset: currentOffset, timeout, allowed_updates: ['message'] }),
+      body: JSON.stringify({ offset: currentOffset, timeout, allowed_updates: ['message', 'callback_query'] }),
     });
 
     const data = await response.json();
@@ -59,6 +57,97 @@ Deno.serve(async () => {
     if (updates.length === 0) continue;
 
     for (const update of updates) {
+      // Handle callback_query (inline button press)
+      if (update.callback_query) {
+        const cbData = update.callback_query.data;
+        const cbId = update.callback_query.id;
+        const chatId = update.callback_query.message?.chat?.id;
+        const messageId = update.callback_query.message?.message_id;
+
+        if (cbData?.startsWith('done_') && chatId) {
+          const habitId = cbData.replace('done_', '');
+          const today = new Date().toISOString().split('T')[0];
+
+          const { data: habit } = await supabase
+            .from('habits')
+            .select('*')
+            .eq('id', habitId)
+            .single();
+
+          if (!habit) {
+            await answerCallback(cbId, '❌ Habit not found', LOVABLE_API_KEY, TELEGRAM_API_KEY);
+            continue;
+          }
+
+          const { data: existing } = await supabase
+            .from('habit_logs')
+            .select('id')
+            .eq('habit_id', habitId)
+            .eq('date', today)
+            .limit(1);
+
+          if (existing && existing.length > 0) {
+            await answerCallback(cbId, '✅ Already done today!', LOVABLE_API_KEY, TELEGRAM_API_KEY);
+            if (messageId) {
+              await editMessage(chatId, messageId, `✅ <b>"${habit.name}"</b> — already completed today!`, LOVABLE_API_KEY, TELEGRAM_API_KEY);
+            }
+            continue;
+          }
+
+          const { error: logErr } = await supabase
+            .from('habit_logs')
+            .insert({ habit_id: habitId, user_id: habit.user_id, date: today, source: 'telegram' });
+
+          if (logErr) {
+            console.error('Log insert error:', logErr);
+            await answerCallback(cbId, '❌ Error saving', LOVABLE_API_KEY, TELEGRAM_API_KEY);
+            continue;
+          }
+
+          const newStreak = habit.current_streak + 1;
+          await supabase
+            .from('habits')
+            .update({
+              current_streak: newStreak,
+              longest_streak: Math.max(newStreak, habit.longest_streak),
+              total_completions: habit.total_completions + 1,
+            })
+            .eq('id', habitId);
+
+          await supabase
+            .from('habit_reminders')
+            .update({ responded: true })
+            .eq('habit_id', habitId)
+            .eq('date', today);
+
+          await answerCallback(cbId, `✅ Done! Streak: ${newStreak}`, LOVABLE_API_KEY, TELEGRAM_API_KEY);
+
+          if (messageId) {
+            await editMessage(chatId, messageId, `✅ <b>"${habit.name}"</b> marked complete!\n🔥 Streak: ${newStreak} days`, LOVABLE_API_KEY, TELEGRAM_API_KEY);
+          }
+
+          totalProcessed++;
+        } else if (cbData?.startsWith('skip_') && chatId) {
+          const habitId = cbData.replace('skip_', '');
+          const { data: habit } = await supabase
+            .from('habits')
+            .select('name')
+            .eq('id', habitId)
+            .single();
+
+          await answerCallback(cbId, '⏭ Skipped', LOVABLE_API_KEY, TELEGRAM_API_KEY);
+
+          if (messageId) {
+            const name = habit?.name || 'Habit';
+            await editMessage(chatId, messageId, `⏭ <b>"${name}"</b> skipped for today.`, LOVABLE_API_KEY, TELEGRAM_API_KEY);
+          }
+        } else {
+          await answerCallback(cbId, '', LOVABLE_API_KEY, TELEGRAM_API_KEY);
+        }
+        continue;
+      }
+
+      // Handle text commands (legacy /done_ support)
       const text = update.message?.text;
       const chatId = update.message?.chat?.id;
 
@@ -66,7 +155,6 @@ Deno.serve(async () => {
         const habitId = text.replace('/done_', '').trim();
         const today = new Date().toISOString().split('T')[0];
 
-        // Get habit info
         const { data: habit } = await supabase
           .from('habits')
           .select('*')
@@ -78,7 +166,6 @@ Deno.serve(async () => {
           continue;
         }
 
-        // Check if already done
         const { data: existing } = await supabase
           .from('habit_logs')
           .select('id')
@@ -91,7 +178,6 @@ Deno.serve(async () => {
           continue;
         }
 
-        // Insert log
         const { error: logErr } = await supabase
           .from('habit_logs')
           .insert({ habit_id: habitId, user_id: habit.user_id, date: today, source: 'telegram' });
@@ -101,7 +187,6 @@ Deno.serve(async () => {
           continue;
         }
 
-        // Update streak
         const newStreak = habit.current_streak + 1;
         await supabase
           .from('habits')
@@ -112,7 +197,6 @@ Deno.serve(async () => {
           })
           .eq('id', habitId);
 
-        // Mark reminder as responded
         await supabase
           .from('habit_reminders')
           .update({ responded: true })
@@ -130,7 +214,6 @@ Deno.serve(async () => {
       }
     }
 
-    // Advance offset
     const newOffset = Math.max(...updates.map((u: any) => u.update_id)) + 1;
     await supabase
       .from('telegram_bot_state')
@@ -142,8 +225,32 @@ Deno.serve(async () => {
   return new Response(JSON.stringify({ ok: true, processed: totalProcessed }));
 });
 
+async function answerCallback(callbackQueryId: string, text: string, lovableKey: string, telegramKey: string) {
+  await fetch(`${GATEWAY_URL}/answerCallbackQuery`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${lovableKey}`,
+      'X-Connection-Api-Key': telegramKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
+  });
+}
+
+async function editMessage(chatId: number, messageId: number, text: string, lovableKey: string, telegramKey: string) {
+  await fetch(`${GATEWAY_URL}/editMessageText`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${lovableKey}`,
+      'X-Connection-Api-Key': telegramKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML' }),
+  });
+}
+
 async function sendTelegramMessage(chatId: number, text: string, lovableKey: string, telegramKey: string) {
-  const resp = await fetch(`${GATEWAY_URL}/sendMessage`, {
+  await fetch(`${GATEWAY_URL}/sendMessage`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${lovableKey}`,
@@ -152,5 +259,4 @@ async function sendTelegramMessage(chatId: number, text: string, lovableKey: str
     },
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
   });
-  await resp.text();
 }
