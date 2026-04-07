@@ -425,6 +425,9 @@ export default function HabitTracking() {
       {/* Analytics */}
       {habits.length > 0 && <HabitAnalytics habits={habits} logs={monthLogs} />}
 
+      {/* Rewards */}
+      {habits.length > 0 && <HabitRewards habits={habits} logs={monthLogs} />}
+
       {/* Progress Calendar */}
       {habits.length > 0 && <HabitProgressCalendar habits={habits} logs={monthLogs} />}
 
