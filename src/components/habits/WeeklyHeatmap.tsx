@@ -1,4 +1,4 @@
-import { format, subDays } from 'date-fns';
+import { format, startOfWeek, addDays, isToday as isDateToday } from 'date-fns';
 
 interface WeeklyHeatmapProps {
   logs: Array<{ date: string }>;
@@ -6,12 +6,13 @@ interface WeeklyHeatmapProps {
 
 export function WeeklyHeatmap({ logs }: WeeklyHeatmapProps) {
   const today = new Date();
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
   const days = Array.from({ length: 7 }, (_, i) => {
-    const d = subDays(today, 6 - i);
+    const d = addDays(weekStart, i);
     return {
       date: format(d, 'yyyy-MM-dd'),
       label: format(d, 'EEE').charAt(0),
-      isToday: i === 6,
+      isToday: isDateToday(d),
     };
   });
 
