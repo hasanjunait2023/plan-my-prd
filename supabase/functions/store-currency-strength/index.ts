@@ -160,12 +160,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Auto-detect session: if timeframe is "1H", check UTC hour
-    // London data arrives ~12 UTC, New York data arrives ~19 UTC
-    // Cutoff: 16 UTC (12 PM ET) — anything after is New York
+    // Auto-detect session based on recorded_at time:
+    // London = 12:00 PM UTC, New York = 7:00 PM (19:00) UTC
+    // Simple rule: hour >= 15 UTC → New York
     if (timeframe === "1H") {
       const recordedDate = new Date(recorded_at);
-      if (recordedDate.getUTCHours() >= 16) {
+      if (recordedDate.getUTCHours() >= 15) {
         timeframe = "New York";
       }
     }
