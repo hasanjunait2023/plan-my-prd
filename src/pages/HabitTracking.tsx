@@ -11,6 +11,8 @@ import { HabitFormDialog } from '@/components/habits/HabitFormDialog';
 import { CompletionNoteDialog } from '@/components/habits/CompletionNoteDialog';
 import { HabitAnalytics } from '@/components/habits/HabitAnalytics';
 import { HabitProgressCalendar } from '@/components/habits/HabitProgressCalendar';
+import { HabitFocusPanel } from '@/components/habits/HabitFocusPanel';
+import { HabitRewards } from '@/components/habits/HabitRewards';
 import { toast } from 'sonner';
 import { format, subDays, isWithinInterval, parseISO } from 'date-fns';
 import {
