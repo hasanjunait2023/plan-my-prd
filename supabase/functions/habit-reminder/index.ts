@@ -14,7 +14,6 @@ Deno.serve(async () => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // Get all active habits
   const { data: habits, error: habitsErr } = await supabase
     .from('habits')
     .select('*')
@@ -24,7 +23,6 @@ Deno.serve(async () => {
     return new Response(JSON.stringify({ error: habitsErr?.message }), { status: 500 });
   }
 
-  // Get telegram chat_id from alert_settings
   const { data: settings } = await supabase
     .from('alert_settings')
     .select('telegram_chat_id')
@@ -40,7 +38,6 @@ Deno.serve(async () => {
   let remindersSent = 0;
 
   for (const habit of habits) {
-    // Check if already completed today
     const { data: logs } = await supabase
       .from('habit_logs')
       .select('id')
@@ -50,7 +47,6 @@ Deno.serve(async () => {
 
     if (logs && logs.length > 0) continue;
 
-    // Check if reminder already sent today
     const { data: reminders } = await supabase
       .from('habit_reminders')
       .select('id')
@@ -60,7 +56,6 @@ Deno.serve(async () => {
 
     if (reminders && reminders.length > 0) continue;
 
-    // Check if submission_time has passed in habit's timezone
     const now = new Date();
     const tzOffset = getTimezoneOffset(habit.timezone || 'Asia/Dhaka');
     const localHour = (now.getUTCHours() + tzOffset + 24) % 24;
@@ -68,11 +63,17 @@ Deno.serve(async () => {
     const [deadlineH, deadlineM] = (habit.submission_time || '07:00').split(':').map(Number);
 
     if (localHour < deadlineH || (localHour === deadlineH && localMinute < deadlineM)) {
-      continue; // Deadline hasn't passed yet
+      continue;
     }
 
-    // Send Telegram reminder
-    const message = `⏰ <b>Habit Reminder:</b> "${habit.name}"\nআজ এখনও complete করা হয়নি!\n\nReply <code>/done_${habit.id}</code> to mark complete.`;
+    const message = `⏰ <b>Habit Reminder:</b> "${habit.name}"\nআজ এখনও complete করা হয়নি!`;
+
+    const reply_markup = {
+      inline_keyboard: [[
+        { text: '✅ Done', callback_data: `done_${habit.id}` },
+        { text: '❌ Skip', callback_data: `skip_${habit.id}` },
+      ]],
+    };
 
     try {
       const resp = await fetch(`${GATEWAY_URL}/sendMessage`, {
@@ -82,11 +83,10 @@ Deno.serve(async () => {
           'X-Connection-Api-Key': TELEGRAM_API_KEY,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'HTML' }),
+        body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'HTML', reply_markup }),
       });
       await resp.text();
 
-      // Log reminder
       await supabase.from('habit_reminders').insert({
         habit_id: habit.id,
         date: today,
