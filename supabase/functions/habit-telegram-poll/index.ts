@@ -1,20 +1,19 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const GATEWAY_URL = 'https://connector-gateway.lovable.dev/telegram';
 const MAX_RUNTIME_MS = 55_000;
 const MIN_REMAINING_MS = 5_000;
 
 Deno.serve(async () => {
   const startTime = Date.now();
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  const TELEGRAM_API_KEY = Deno.env.get('TELEGRAM_API_KEY');
+  const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-  if (!LOVABLE_API_KEY || !TELEGRAM_API_KEY) {
-    return new Response(JSON.stringify({ error: 'Missing keys' }), { status: 500 });
+  if (!BOT_TOKEN) {
+    return new Response(JSON.stringify({ error: 'TELEGRAM_BOT_TOKEN not configured' }), { status: 500 });
   }
 
+  const TG = `https://api.telegram.org/bot${BOT_TOKEN}`;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   const { data: state } = await supabase
@@ -38,18 +37,15 @@ Deno.serve(async () => {
     const timeout = Math.min(50, Math.floor(remainingMs / 1000) - 5);
     if (timeout < 1) break;
 
-    const response = await fetch(`${GATEWAY_URL}/getUpdates`, {
+    const response = await fetch(`${TG}/getUpdates`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'X-Connection-Api-Key': TELEGRAM_API_KEY,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ offset: currentOffset, timeout, allowed_updates: ['message', 'callback_query'] }),
     });
 
     const data = await response.json();
     if (!response.ok) {
+      console.error('getUpdates error:', JSON.stringify(data));
       return new Response(JSON.stringify({ error: data }), { status: 502 });
     }
 
@@ -57,12 +53,13 @@ Deno.serve(async () => {
     if (updates.length === 0) continue;
 
     for (const update of updates) {
-      // Handle callback_query (inline button press)
       if (update.callback_query) {
         const cbData = update.callback_query.data;
         const cbId = update.callback_query.id;
         const chatId = update.callback_query.message?.chat?.id;
         const messageId = update.callback_query.message?.message_id;
+
+        console.log('Callback received:', cbData, 'chatId:', chatId);
 
         if (cbData?.startsWith('done_') && chatId) {
           const habitId = cbData.replace('done_', '');
@@ -75,7 +72,7 @@ Deno.serve(async () => {
             .single();
 
           if (!habit) {
-            await answerCallback(cbId, '❌ Habit not found', LOVABLE_API_KEY, TELEGRAM_API_KEY);
+            await answerCallback(TG, cbId, '❌ Habit not found');
             continue;
           }
 
@@ -87,9 +84,9 @@ Deno.serve(async () => {
             .limit(1);
 
           if (existing && existing.length > 0) {
-            await answerCallback(cbId, '✅ Already done today!', LOVABLE_API_KEY, TELEGRAM_API_KEY);
+            await answerCallback(TG, cbId, '✅ Already done today!');
             if (messageId) {
-              await editMessage(chatId, messageId, `✅ <b>"${habit.name}"</b> — already completed today!`, LOVABLE_API_KEY, TELEGRAM_API_KEY);
+              await editMessage(TG, chatId, messageId, `✅ <b>"${habit.name}"</b> — already completed today!`);
             }
             continue;
           }
@@ -100,7 +97,7 @@ Deno.serve(async () => {
 
           if (logErr) {
             console.error('Log insert error:', logErr);
-            await answerCallback(cbId, '❌ Error saving', LOVABLE_API_KEY, TELEGRAM_API_KEY);
+            await answerCallback(TG, cbId, '❌ Error saving');
             continue;
           }
 
@@ -120,10 +117,10 @@ Deno.serve(async () => {
             .eq('habit_id', habitId)
             .eq('date', today);
 
-          await answerCallback(cbId, `✅ Done! Streak: ${newStreak}`, LOVABLE_API_KEY, TELEGRAM_API_KEY);
+          await answerCallback(TG, cbId, `✅ Done! Streak: ${newStreak}`);
 
           if (messageId) {
-            await editMessage(chatId, messageId, `✅ <b>"${habit.name}"</b> marked complete!\n🔥 Streak: ${newStreak} days`, LOVABLE_API_KEY, TELEGRAM_API_KEY);
+            await editMessage(TG, chatId, messageId, `✅ <b>"${habit.name}"</b> marked complete!\n🔥 Streak: ${newStreak} days`);
           }
 
           totalProcessed++;
@@ -135,14 +132,14 @@ Deno.serve(async () => {
             .eq('id', habitId)
             .single();
 
-          await answerCallback(cbId, '⏭ Skipped', LOVABLE_API_KEY, TELEGRAM_API_KEY);
+          await answerCallback(TG, cbId, '⏭ Skipped');
 
           if (messageId) {
             const name = habit?.name || 'Habit';
-            await editMessage(chatId, messageId, `⏭ <b>"${name}"</b> skipped for today.`, LOVABLE_API_KEY, TELEGRAM_API_KEY);
+            await editMessage(TG, chatId, messageId, `⏭ <b>"${name}"</b> skipped for today.`);
           }
         } else {
-          await answerCallback(cbId, '', LOVABLE_API_KEY, TELEGRAM_API_KEY);
+          await answerCallback(TG, cbId, '');
         }
         continue;
       }
@@ -162,7 +159,7 @@ Deno.serve(async () => {
           .single();
 
         if (!habit) {
-          await sendTelegramMessage(chatId, '❌ Habit not found.', LOVABLE_API_KEY, TELEGRAM_API_KEY);
+          await sendMessage(TG, chatId, '❌ Habit not found.');
           continue;
         }
 
@@ -174,7 +171,7 @@ Deno.serve(async () => {
           .limit(1);
 
         if (existing && existing.length > 0) {
-          await sendTelegramMessage(chatId, `✅ "${habit.name}" already completed today!`, LOVABLE_API_KEY, TELEGRAM_API_KEY);
+          await sendMessage(TG, chatId, `✅ "${habit.name}" already completed today!`);
           continue;
         }
 
@@ -203,13 +200,7 @@ Deno.serve(async () => {
           .eq('habit_id', habitId)
           .eq('date', today);
 
-        await sendTelegramMessage(
-          chatId,
-          `✅ <b>"${habit.name}"</b> marked complete!\n🔥 Streak: ${newStreak} days`,
-          LOVABLE_API_KEY,
-          TELEGRAM_API_KEY
-        );
-
+        await sendMessage(TG, chatId, `✅ <b>"${habit.name}"</b> marked complete!\n🔥 Streak: ${newStreak} days`);
         totalProcessed++;
       }
     }
@@ -225,38 +216,32 @@ Deno.serve(async () => {
   return new Response(JSON.stringify({ ok: true, processed: totalProcessed }));
 });
 
-async function answerCallback(callbackQueryId: string, text: string, lovableKey: string, telegramKey: string) {
-  await fetch(`${GATEWAY_URL}/answerCallbackQuery`, {
+async function answerCallback(tg: string, callbackQueryId: string, text: string) {
+  const r = await fetch(`${tg}/answerCallbackQuery`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${lovableKey}`,
-      'X-Connection-Api-Key': telegramKey,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
   });
+  const d = await r.json();
+  console.log('answerCallback:', JSON.stringify(d));
 }
 
-async function editMessage(chatId: number, messageId: number, text: string, lovableKey: string, telegramKey: string) {
-  await fetch(`${GATEWAY_URL}/editMessageText`, {
+async function editMessage(tg: string, chatId: number, messageId: number, text: string) {
+  const r = await fetch(`${tg}/editMessageText`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${lovableKey}`,
-      'X-Connection-Api-Key': telegramKey,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML' }),
   });
+  const d = await r.json();
+  console.log('editMessage:', JSON.stringify(d));
 }
 
-async function sendTelegramMessage(chatId: number, text: string, lovableKey: string, telegramKey: string) {
-  await fetch(`${GATEWAY_URL}/sendMessage`, {
+async function sendMessage(tg: string, chatId: number, text: string) {
+  const r = await fetch(`${tg}/sendMessage`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${lovableKey}`,
-      'X-Connection-Api-Key': telegramKey,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
   });
+  const d = await r.json();
+  console.log('sendMessage:', JSON.stringify(d));
 }
