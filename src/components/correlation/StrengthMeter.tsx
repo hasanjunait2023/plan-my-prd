@@ -2,6 +2,7 @@ import { CurrencyStrengthRecord, CURRENCY_FLAGS, CATEGORY_COLORS } from '@/types
 
 interface StrengthMeterProps {
   data: CurrencyStrengthRecord[];
+  previousData?: CurrencyStrengthRecord[];
 }
 
 // Convert hsl string to hsla with opacity
