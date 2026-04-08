@@ -6,6 +6,9 @@ import { StrengthMeter } from '@/components/correlation/StrengthMeter';
 import { SummaryCards } from '@/components/correlation/SummaryCards';
 import { PairSuggestions } from '@/components/correlation/PairSuggestions';
 import { StrengthTrendChart } from '@/components/correlation/StrengthTrendChart';
+import { StrengthHeatmap } from '@/components/correlation/StrengthHeatmap';
+import { TimeframeComparison } from '@/components/correlation/TimeframeComparison';
+import { TradeOfTheDay } from '@/components/correlation/TradeOfTheDay';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RefreshCw, TrendingUp, CalendarIcon, Activity } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
@@ -29,23 +32,19 @@ function formatUtcTimestamp(timestamp: string) {
   const hours24 = date.getUTCHours();
   const hours12 = String(((hours24 + 11) % 12) + 1).padStart(2, '0');
   const meridiem = hours24 >= 12 ? 'PM' : 'AM';
-
   return `${day} ${month} ${year}, ${hours12}:${minutes} ${meridiem}`;
 }
 
 function useCurrencyStrength(timeframe: string, selectedDate: Date) {
   const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
-
   return useQuery({
     queryKey: ['currency-strength', timeframe, selectedDateKey],
     queryFn: async () => {
       const dayStart = `${selectedDateKey}T00:00:00.000Z`;
       const dayEnd = `${selectedDateKey}T23:59:59.999Z`;
-
       const timeframeVariants = timeframe === 'New York'
         ? ['New York', 'Strength On New York']
         : [timeframe];
-
       const { data, error } = await supabase
         .from('currency_strength')
         .select('*')
@@ -53,10 +52,8 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
         .gte('recorded_at', dayStart)
         .lte('recorded_at', dayEnd)
         .order('recorded_at', { ascending: false });
-
       if (error) throw error;
       if (!data || data.length === 0) return [] as CurrencyStrengthRecord[];
-
       const latestTime = data[0].recorded_at;
       return data.filter((row) => row.recorded_at === latestTime) as CurrencyStrengthRecord[];
     },
@@ -64,13 +61,81 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
   });
 }
 
+function usePreviousDayStrength(timeframe: string, selectedDate: Date) {
+  const prevDateKey = format(subDays(selectedDate, 1), 'yyyy-MM-dd');
+  return useQuery({
+    queryKey: ['currency-strength-prev', timeframe, prevDateKey],
+    queryFn: async () => {
+      const dayStart = `${prevDateKey}T00:00:00.000Z`;
+      const dayEnd = `${prevDateKey}T23:59:59.999Z`;
+      const timeframeVariants = timeframe === 'New York'
+        ? ['New York', 'Strength On New York']
+        : [timeframe];
+      const { data, error } = await supabase
+        .from('currency_strength')
+        .select('*')
+        .in('timeframe', timeframeVariants)
+        .gte('recorded_at', dayStart)
+        .lte('recorded_at', dayEnd)
+        .order('recorded_at', { ascending: false });
+      if (error) throw error;
+      if (!data || data.length === 0) return [] as CurrencyStrengthRecord[];
+      const latestTime = data[0].recorded_at;
+      return data.filter((row) => row.recorded_at === latestTime) as CurrencyStrengthRecord[];
+    },
+  });
+}
+
+function useBothSessionData(selectedDate: Date) {
+  const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
+  const dayStart = `${selectedDateKey}T00:00:00.000Z`;
+  const dayEnd = `${selectedDateKey}T23:59:59.999Z`;
+
+  const london = useQuery({
+    queryKey: ['currency-strength-london-cmp', selectedDateKey],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('currency_strength')
+        .select('*')
+        .eq('timeframe', '1H')
+        .gte('recorded_at', dayStart)
+        .lte('recorded_at', dayEnd)
+        .order('recorded_at', { ascending: false });
+      if (error) throw error;
+      if (!data || data.length === 0) return [] as CurrencyStrengthRecord[];
+      const latestTime = data[0].recorded_at;
+      return data.filter(r => r.recorded_at === latestTime) as CurrencyStrengthRecord[];
+    },
+  });
+
+  const ny = useQuery({
+    queryKey: ['currency-strength-ny-cmp', selectedDateKey],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('currency_strength')
+        .select('*')
+        .in('timeframe', ['New York', 'Strength On New York'])
+        .gte('recorded_at', dayStart)
+        .lte('recorded_at', dayEnd)
+        .order('recorded_at', { ascending: false });
+      if (error) throw error;
+      if (!data || data.length === 0) return [] as CurrencyStrengthRecord[];
+      const latestTime = data[0].recorded_at;
+      return data.filter(r => r.recorded_at === latestTime) as CurrencyStrengthRecord[];
+    },
+  });
+
+  return { londonData: london.data || [], nyData: ny.data || [] };
+}
+
 export default function CurrencyStrength() {
   const [activeTab, setActiveTab] = useState('1H');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const queryClient = useQueryClient();
   const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab, selectedDate);
+  const { data: previousData } = usePreviousDayStrength(activeTab, selectedDate);
+  const { londonData, nyData } = useBothSessionData(selectedDate);
 
-  // Realtime subscription — auto-refetch on new inserts
   useEffect(() => {
     const channel = supabase
       .channel('currency-strength-realtime')
@@ -82,7 +147,6 @@ export default function CurrencyStrength() {
         queryClient.invalidateQueries({ queryKey: ['currency-strength'] });
       })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
@@ -111,7 +175,6 @@ export default function CurrencyStrength() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Date Picker */}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -150,6 +213,9 @@ export default function CurrencyStrength() {
 
       <SessionPanel />
 
+      {/* Trade of the Day */}
+      {!isLoading && data && data.length > 0 && <TradeOfTheDay data={data} />}
+
       {/* Summary Cards */}
       {!isLoading && data && data.length > 0 && <SummaryCards data={data} />}
 
@@ -179,7 +245,7 @@ export default function CurrencyStrength() {
               ))}
             </div>
           ) : data && data.length > 0 ? (
-            <StrengthMeter data={data} />
+            <StrengthMeter data={data} previousData={previousData} />
           ) : (
             <div className="text-center py-16 text-muted-foreground">
               <div className="w-16 h-16 rounded-2xl bg-muted/10 flex items-center justify-center mx-auto mb-4">
@@ -191,6 +257,12 @@ export default function CurrencyStrength() {
           )}
         </CardContent>
       </Card>
+
+      {/* Heatmap */}
+      {!isLoading && data && data.length > 0 && <StrengthHeatmap data={data} />}
+
+      {/* London vs New York Comparison */}
+      <TimeframeComparison londonData={londonData} nyData={nyData} />
 
       {/* Pair Suggestions */}
       {!isLoading && data && data.length > 0 && <PairSuggestions data={data} />}

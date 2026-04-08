@@ -188,6 +188,61 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Strength Alert Threshold — check if any currency crossed ≥7 or ≤-7
+    try {
+      const THRESHOLD = 7;
+      const alertCurrencies = currencies.filter(c => Math.abs(c.strength) >= THRESHOLD);
+
+      if (alertCurrencies.length > 0) {
+        // Check alert_settings for telegram_chat_id
+        const { data: alertSettings } = await supabase
+          .from("alert_settings")
+          .select("telegram_chat_id")
+          .limit(1)
+          .single();
+
+        const chatId = alertSettings?.telegram_chat_id;
+        const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+
+        if (chatId && botToken) {
+          // Check dedup — only alert once per day per currency
+          const today = new Date().toISOString().split("T")[0];
+
+          for (const ac of alertCurrencies) {
+            const dedupKey = `strength_threshold_${ac.currency}_${today}`;
+
+            const { data: existing } = await supabase
+              .from("alert_log")
+              .select("id")
+              .eq("alert_type", "strength_threshold")
+              .eq("metadata->>dedup_key", dedupKey)
+              .limit(1);
+
+            if (existing && existing.length > 0) continue;
+
+            const icon = ac.strength >= THRESHOLD ? "🟢" : "🔴";
+            const direction = ac.strength >= THRESHOLD ? "STRONG" : "WEAK";
+            const message = `${icon} <b>Strength Alert!</b>\n\n💱 <b>${ac.currency}</b> is now <b>${direction}</b>\n📊 Score: <b>${ac.strength > 0 ? "+" : ""}${ac.strength}</b>\n⏰ Session: ${timeframe}\n\n⚡ Check Currency Strength page for details.`;
+
+            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "HTML" }),
+            });
+
+            await supabase.from("alert_log").insert({
+              alert_type: "strength_threshold",
+              message,
+              pair: ac.currency,
+              metadata: { dedup_key: dedupKey, strength: ac.strength, category: ac.category },
+            });
+          }
+        }
+      }
+    } catch (alertErr) {
+      console.error("Strength alert error (non-fatal):", alertErr);
+    }
+
     return new Response(
       JSON.stringify({ success: true, inserted: records.length, timeframe, currencies: currencies.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

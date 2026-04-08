@@ -2,6 +2,7 @@ import { CurrencyStrengthRecord, CURRENCY_FLAGS, CATEGORY_COLORS } from '@/types
 
 interface StrengthMeterProps {
   data: CurrencyStrengthRecord[];
+  previousData?: CurrencyStrengthRecord[];
 }
 
 // Convert hsl string to hsla with opacity
@@ -11,9 +12,17 @@ function withOpacity(hslColor: string, opacity: number): string {
   return hslColor;
 }
 
-export function StrengthMeter({ data }: StrengthMeterProps) {
+export function StrengthMeter({ data, previousData }: StrengthMeterProps) {
   const sorted = [...data].sort((a, b) => b.strength - a.strength);
   const maxAbs = 10;
+
+  // Build previous day map for delta calculation
+  const prevMap = new Map<string, number>();
+  if (previousData) {
+    for (const p of previousData) {
+      prevMap.set(p.currency, p.strength);
+    }
+  }
 
   return (
     <div className="space-y-1.5">
@@ -73,6 +82,23 @@ export function StrengthMeter({ data }: StrengthMeterProps) {
                 {item.strength > 0 ? '+' : ''}{item.strength}
               </span>
             </div>
+
+            {/* Delta badge */}
+            {(() => {
+              const prev = prevMap.get(item.currency);
+              if (prev === undefined) return <div className="w-12 shrink-0" />;
+              const delta = item.strength - prev;
+              if (delta === 0) return <div className="w-12 shrink-0 text-center text-[10px] text-muted-foreground/50">—</div>;
+              const deltaColor = delta > 0 ? 'hsl(142, 71%, 45%)' : 'hsl(0, 84%, 60%)';
+              return (
+                <div
+                  className="w-12 shrink-0 text-center text-[10px] font-bold rounded-md py-0.5"
+                  style={{ color: deltaColor, backgroundColor: delta > 0 ? 'hsla(142,71%,45%,0.1)' : 'hsla(0,84%,60%,0.1)' }}
+                >
+                  {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
+                </div>
+              );
+            })()}
 
             {/* Direction arrow */}
             <span
