@@ -175,8 +175,8 @@ Deno.serve(async (req) => {
 
       // London: 08:00 UTC, NY: 13:30 UTC — alert 5 min before
       const sessions = [
-        { name: 'London', hour: 7, min: 55 },
-        { name: 'New York', hour: 13, min: 25 },
+        { name: 'London', hour: 7, min: 55, bdOpen: '13:00' },
+        { name: 'New York', hour: 13, min: 25, bdOpen: '18:00' },
       ];
 
       for (const session of sessions) {
@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
               .limit(3);
 
             const setupList = topSetups?.map(s => `${s.pair} (${s.grade})`).join(', ') || 'None';
-            const msg = `🕐 <b>${session.name} Session opens in 5 min</b>\nTop setups: ${setupList}\nCheck your charts!`;
+            const msg = `🕐 <b>${session.name} Session opens in 5 min</b>\n⏰ 🇧🇩 ${session.bdOpen}\nTop setups: ${setupList}\nCheck your charts!`;
             alerts.push(msg);
 
             await supabase.from('alert_log').insert({

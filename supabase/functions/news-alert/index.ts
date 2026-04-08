@@ -121,11 +121,13 @@ Deno.serve(async (req) => {
       const minutesLeft = Math.round(diffMin);
       const affectedPairs = getAffectedPairs(currency, title);
       const goldMover = isGoldMover(title);
-      const timeStr = eventDate.toISOString().slice(11, 16) + ' UTC';
+      const bdHour = (eventDate.getUTCHours() + 6) % 24;
+      const bdMin = eventDate.getUTCMinutes();
+      const bdTimeStr = `${String(bdHour).padStart(2, '0')}:${String(bdMin).padStart(2, '0')}`;
 
       let msg = `${impactEmoji} ${flag} <b>${impactLabel}</b> — ${minutesLeft} min left!\n\n`;
       msg += `📰 <b>${title}</b>\n`;
-      msg += `⏰ Time: ${timeStr}\n`;
+      msg += `⏰ Time: 🇧🇩 ${bdTimeStr}\n`;
       if (event.forecast || event.previous) {
         msg += `📊 Forecast: ${event.forecast || 'N/A'} | Previous: ${event.previous || 'N/A'}\n`;
       }

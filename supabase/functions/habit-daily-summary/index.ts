@@ -104,7 +104,9 @@ Deno.serve(async (req) => {
   const missed = habits.filter((h: any) => !completedIds.has(h.id));
   const rate = Math.round((completed.length / habits.length) * 100);
 
-  let msg = `📊 <b>Daily Habit Summary</b>\n📅 ${today}\n\n`;
+  const bdNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
+  const bdTimeStr = `${String(bdNow.getUTCHours()).padStart(2, '0')}:${String(bdNow.getUTCMinutes()).padStart(2, '0')}`;
+  let msg = `📊 <b>Daily Habit Summary</b>\n📅 ${today} | 🇧🇩 ${bdTimeStr}\n\n`;
   msg += `✅ Done: ${completed.length}/${habits.length} (${rate}%)\n\n`;
 
   if (completed.length > 0) {

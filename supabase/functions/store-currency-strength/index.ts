@@ -222,7 +222,9 @@ Deno.serve(async (req) => {
 
             const icon = ac.strength >= THRESHOLD ? "🟢" : "🔴";
             const direction = ac.strength >= THRESHOLD ? "STRONG" : "WEAK";
-            const message = `${icon} <b>Strength Alert!</b>\n\n💱 <b>${ac.currency}</b> is now <b>${direction}</b>\n📊 Score: <b>${ac.strength > 0 ? "+" : ""}${ac.strength}</b>\n⏰ Session: ${timeframe}\n\n⚡ Check Currency Strength page for details.`;
+            const bdNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
+            const bdTimeStr = `${String(bdNow.getUTCHours()).padStart(2, '0')}:${String(bdNow.getUTCMinutes()).padStart(2, '0')}`;
+            const message = `${icon} <b>Strength Alert!</b>\n\n💱 <b>${ac.currency}</b> is now <b>${direction}</b>\n📊 Score: <b>${ac.strength > 0 ? "+" : ""}${ac.strength}</b>\n⏰ 🇧🇩 ${bdTimeStr} | Session: ${timeframe}\n\n⚡ Check Currency Strength page for details.`;
 
             await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
               method: "POST",

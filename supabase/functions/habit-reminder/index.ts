@@ -66,7 +66,9 @@ Deno.serve(async () => {
       continue;
     }
 
-    const message = `⏰ <b>Habit Reminder:</b> "${habit.name}"\nআজ এখনও complete করা হয়নি!`;
+    const bdNow = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+    const bdTimeStr = `${String(bdNow.getUTCHours()).padStart(2, '0')}:${String(bdNow.getUTCMinutes()).padStart(2, '0')}`;
+    const message = `⏰ <b>Habit Reminder:</b> "${habit.name}"\n🇧🇩 ${bdTimeStr} — আজ এখনও complete করা হয়নি!`;
 
     const reply_markup = {
       inline_keyboard: [[
