@@ -12,9 +12,17 @@ function withOpacity(hslColor: string, opacity: number): string {
   return hslColor;
 }
 
-export function StrengthMeter({ data }: StrengthMeterProps) {
+export function StrengthMeter({ data, previousData }: StrengthMeterProps) {
   const sorted = [...data].sort((a, b) => b.strength - a.strength);
   const maxAbs = 10;
+
+  // Build previous day map for delta calculation
+  const prevMap = new Map<string, number>();
+  if (previousData) {
+    for (const p of previousData) {
+      prevMap.set(p.currency, p.strength);
+    }
+  }
 
   return (
     <div className="space-y-1.5">
