@@ -83,6 +83,23 @@ export function StrengthMeter({ data, previousData }: StrengthMeterProps) {
               </span>
             </div>
 
+            {/* Delta badge */}
+            {(() => {
+              const prev = prevMap.get(item.currency);
+              if (prev === undefined) return <div className="w-12 shrink-0" />;
+              const delta = item.strength - prev;
+              if (delta === 0) return <div className="w-12 shrink-0 text-center text-[10px] text-muted-foreground/50">—</div>;
+              const deltaColor = delta > 0 ? 'hsl(142, 71%, 45%)' : 'hsl(0, 84%, 60%)';
+              return (
+                <div
+                  className="w-12 shrink-0 text-center text-[10px] font-bold rounded-md py-0.5"
+                  style={{ color: deltaColor, backgroundColor: delta > 0 ? 'hsla(142,71%,45%,0.1)' : 'hsla(0,84%,60%,0.1)' }}
+                >
+                  {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
+                </div>
+              );
+            })()}
+
             {/* Direction arrow */}
             <span
               className="w-5 text-center shrink-0 text-sm font-bold"
