@@ -123,8 +123,10 @@ Deno.serve(async (req) => {
   const trend = rateDiff > 0 ? `📈 +${rateDiff}%` : rateDiff < 0 ? `📉 ${rateDiff}%` : '➡️ Same';
 
   // Build message
+  const bdNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
+  const bdTimeStr = `${String(bdNow.getUTCHours()).padStart(2, '0')}:${String(bdNow.getUTCMinutes()).padStart(2, '0')}`;
   let msg = `📊 <b>Weekly Habit Recap</b>\n`;
-  msg += `📅 ${fmt(thisWeekStart)} → ${fmt(thisWeekEnd)}\n\n`;
+  msg += `📅 ${fmt(thisWeekStart)} → ${fmt(thisWeekEnd)} | 🇧🇩 ${bdTimeStr}\n\n`;
 
   msg += `<b>📈 Completion Rate:</b> ${thisWeekRate}% ${trend}\n`;
   msg += `<b>✅ Total Completions:</b> ${thisWeekTotal}/${thisWeekMaxPossible}\n`;
