@@ -218,15 +218,20 @@ export default function CurrencyStrength() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
+  // Persist section order to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sectionOrder));
+    } catch {}
+  }, [sectionOrder]);
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setSectionOrder(prev => {
         const oldIndex = prev.indexOf(active.id as string);
         const newIndex = prev.indexOf(over.id as string);
-        const newOrder = arrayMove(prev, oldIndex, newIndex);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrder));
-        return newOrder;
+        return arrayMove(prev, oldIndex, newIndex);
       });
     }
   }, []);
