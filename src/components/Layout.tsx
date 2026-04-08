@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap, LogOut, Gem, Bitcoin, GitCompareArrows, Sun, Moon, Cable, LineChart, Shield, Newspaper, Target
+  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap, LogOut, Gem, Bitcoin, GitCompareArrows, Sun, Moon, Cable, LineChart, Shield, Newspaper, Target, Grid3X3
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,8 +9,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPairWithFlags } from '@/lib/pairFlags';
+
 interface NotificationItem {
   id: string;
   icon: typeof TrendingUp;
@@ -27,30 +29,51 @@ const staticNotifications: NotificationItem[] = [
   { id: 'local-2', icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false, source: 'local' },
 ];
 
-const mainNavItems = [
+// Primary nav items — always visible
+const primaryNavItems = [
   { title: 'Dashboard', short: 'Home', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Journal', short: 'Jrnl', url: '/journal', icon: BookOpen },
   { title: 'New Trade', short: 'New', url: '/new-trade', icon: PlusCircle },
   { title: 'Analytics', short: 'Ana', url: '/analytics', icon: BarChart3 },
   { title: 'Strength', short: 'Str', url: '/currency-strength', icon: Gauge },
-  { title: 'EMA Scan', short: 'EMA', url: '/ema-scanner', icon: Crosshair },
-  { title: 'Charts', short: 'Chart', url: '/charts', icon: LineChart },
 ];
 
-const profileMenuItems = [
-  { title: 'MT5', url: '/mt5', icon: Cable },
-  { title: 'Commodities', url: '/commodities', icon: Gem },
-  { title: 'Crypto', url: '/crypto', icon: Bitcoin },
-  { title: 'Correlation', url: '/correlation-pairs', icon: GitCompareArrows },
-  { title: 'Psychology', url: '/psychology', icon: Brain },
-  { title: 'Intel', url: '/trade-intelligence', icon: Zap },
-  { title: 'Rules', url: '/rules', icon: Shield },
-  { title: 'News', url: '/news', icon: Newspaper },
-  { title: 'Habits', url: '/habits', icon: Target },
-  { title: 'Settings', url: '/settings', icon: Settings },
+// Tools dropdown — categorized
+const toolsCategories = [
+  {
+    label: 'Market',
+    icon: LineChart,
+    items: [
+      { title: 'Charts', url: '/charts', icon: LineChart },
+      { title: 'EMA Scan', url: '/ema-scanner', icon: Crosshair },
+      { title: 'Correlation', url: '/correlation-pairs', icon: GitCompareArrows },
+      { title: 'News', url: '/news', icon: Newspaper },
+    ],
+  },
+  {
+    label: 'Analysis',
+    icon: Brain,
+    items: [
+      { title: 'Intel', url: '/trade-intelligence', icon: Zap },
+      { title: 'Psychology', url: '/psychology', icon: Brain },
+      { title: 'Rules', url: '/rules', icon: Shield },
+    ],
+  },
+  {
+    label: 'Other',
+    icon: Settings,
+    items: [
+      { title: 'MT5', url: '/mt5', icon: Cable },
+      { title: 'Commodities', url: '/commodities', icon: Gem },
+      { title: 'Crypto', url: '/crypto', icon: Bitcoin },
+      { title: 'Habits', url: '/habits', icon: Target },
+      { title: 'Settings', url: '/settings', icon: Settings },
+    ],
+  },
 ];
 
-const allNavItems = [...mainNavItems, ...profileMenuItems];
+const allToolsItems = toolsCategories.flatMap(c => c.items);
+const allNavItems = [...primaryNavItems, ...allToolsItems];
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -77,12 +100,17 @@ const ThemeToggleButton = () => {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, signOut } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>(staticNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const unreadCount = notifications.filter(n => n.unread).length;
+
+  // Check if any tools sub-page is active
+  const isToolsActive = allToolsItems.some(item => location.pathname === item.url);
 
   // Fetch EMA scan notifications from DB
   const fetchDbNotifications = useCallback(async () => {
@@ -114,12 +142,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchDbNotifications();
-    // Poll every 60s for new notifications
     const interval = setInterval(fetchDbNotifications, 60000);
     return () => clearInterval(interval);
   }, [fetchDbNotifications]);
 
-  // Subscribe to realtime inserts
   useEffect(() => {
     const channel = supabase
       .channel('ema-notifications')
@@ -137,7 +163,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const markAsRead = async (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
-    // Update DB if it's a DB notification
     const notif = notifications.find(n => n.id === id);
     if (notif?.source === 'db') {
       await supabase
@@ -172,7 +197,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col w-full">
       {/* Top Header */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/30 px-4 md:px-6">
-        <div className="flex items-center h-14 gap-6 max-w-[1400px] mx-auto w-full justify-between">
+        <div className="flex items-center h-14 gap-4 max-w-[1400px] mx-auto w-full justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-[0_0_12px_hsla(145,63%,49%,0.3)]">
@@ -184,34 +209,79 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* Desktop Nav Tabs — hidden on mobile */}
-          <nav className="flex-1 overflow-x-auto hidden md:block" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--muted)) transparent' }}>
-            <div className="flex items-center gap-0.5">
-              {allNavItems.map((item) => (
-                <NavLink
-                  key={item.title}
-                  to={item.url}
-                  end={item.url === '/'}
-                  className={({ isActive }) =>
-                    `flex items-center gap-1 px-2.5 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 relative ${
-                      isActive
-                        ? 'text-primary bg-primary/10 shadow-[0_0_8px_hsla(145,63%,49%,0.15)]'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
-                    }`
-                  }
+          {/* Desktop Nav — Primary Tabs + Tools Dropdown */}
+          <nav className="flex-1 hidden md:flex items-center justify-center gap-1">
+            {primaryNavItems.map((item) => (
+              <NavLink
+                key={item.title}
+                to={item.url}
+                className={({ isActive }) =>
+                  `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
+                    isActive
+                      ? 'text-primary bg-primary/15 border-primary/30 shadow-[0_0_12px_hsla(145,63%,49%,0.2)]'
+                      : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-card/60'
+                  }`
+                }
+              >
+                <item.icon className="w-4 h-4 shrink-0" />
+                <span>{item.title}</span>
+              </NavLink>
+            ))}
+
+            {/* Tools Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 border relative ${
+                    isToolsActive
+                      ? 'text-primary bg-primary/15 border-primary/30 shadow-[0_0_12px_hsla(145,63%,49%,0.2)]'
+                      : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-card/60'
+                  }`}
                 >
-                  {({ isActive }) => (
-                    <>
-                      <item.icon className="w-4 h-4 shrink-0" />
-                      <span>{item.title}</span>
-                      {isActive && (
-                        <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-gradient-to-r from-primary to-primary/50 rounded-full" />
-                      )}
-                    </>
+                  <Grid3X3 className="w-4 h-4 shrink-0" />
+                  <span>Tools</span>
+                  {isToolsActive && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full shadow-[0_0_6px_hsla(145,63%,49%,0.5)]" />
                   )}
-                </NavLink>
-              ))}
-            </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="center"
+                className="w-[420px] p-4 bg-card/95 backdrop-blur-xl border-border/40 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+              >
+                <div className="grid grid-cols-3 gap-4">
+                  {toolsCategories.map((category) => (
+                    <div key={category.label}>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <category.icon className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                          {category.label}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        {category.items.map((item) => {
+                          const isActive = location.pathname === item.url;
+                          return (
+                            <button
+                              key={item.title}
+                              onClick={() => navigate(item.url)}
+                              className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-all duration-150 text-left w-full ${
+                                isActive
+                                  ? 'text-primary bg-primary/10'
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                              }`}
+                            >
+                              <item.icon className="w-3.5 h-3.5 shrink-0" />
+                              <span>{item.title}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
 
           {/* Right side — Theme Toggle + Bell + Avatar */}
@@ -298,16 +368,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <div className="px-3 py-2 border-b border-border/30">
                   <p className="text-xs font-medium text-foreground truncate">{user?.email}</p>
                 </div>
-                {profileMenuItems.map((item) => (
-                  <DropdownMenuItem
-                    key={item.title}
-                    onClick={() => navigate(item.url)}
-                    className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground"
-                  >
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.title}</span>
-                  </DropdownMenuItem>
-                ))}
                 <DropdownMenuSeparator className="bg-border/30" />
                 <DropdownMenuItem
                   onClick={async () => { await signOut(); navigate('/auth'); }}
@@ -331,7 +391,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden backdrop-blur-md bg-background/90 border-t border-border/30"
            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-center justify-around px-1 h-16">
-          {mainNavItems.map((item) => (
+          {primaryNavItems.slice(0, 4).map((item) => (
             <NavLink
               key={item.title}
               to={item.url}
@@ -363,8 +423,73 @@ export function Layout({ children }: { children: React.ReactNode }) {
               )}
             </NavLink>
           ))}
+
+          {/* Tools Button — opens bottom sheet */}
+          <button
+            onClick={() => setMobileToolsOpen(true)}
+            className={`flex flex-col items-center justify-center gap-0.5 px-1.5 py-1 rounded-xl min-w-[44px] transition-all duration-200 relative ${
+              isToolsActive ? 'text-primary' : 'text-muted-foreground active:scale-95'
+            }`}
+          >
+            {isToolsActive && (
+              <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-5 h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60 rounded-full shadow-[0_0_8px_hsla(145,63%,49%,0.4)]" />
+            )}
+            <div className="relative">
+              <Grid3X3 className={`w-5 h-5 transition-all duration-200 ${
+                isToolsActive ? 'drop-shadow-[0_0_6px_hsla(145,63%,49%,0.5)]' : ''
+              }`} />
+              {isToolsActive && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full shadow-[0_0_6px_hsla(145,63%,49%,0.5)]" />
+              )}
+            </div>
+            <span className={`text-[10px] font-medium leading-none ${
+              isToolsActive ? 'text-primary' : 'text-muted-foreground'
+            }`}>
+              Tools
+            </span>
+          </button>
         </div>
       </nav>
+
+      {/* Mobile Tools Bottom Sheet */}
+      <Sheet open={mobileToolsOpen} onOpenChange={setMobileToolsOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">
+          <SheetHeader className="pb-2">
+            <SheetTitle className="text-sm font-semibold text-foreground">Tools</SheetTitle>
+          </SheetHeader>
+          <div className="grid grid-cols-3 gap-4 pt-2 pb-4">
+            {toolsCategories.map((category) => (
+              <div key={category.label}>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <category.icon className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    {category.label}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  {category.items.map((item) => {
+                    const isActive = location.pathname === item.url;
+                    return (
+                      <button
+                        key={item.title}
+                        onClick={() => { navigate(item.url); setMobileToolsOpen(false); }}
+                        className={`flex items-center gap-2 px-2 py-2 rounded-md text-xs font-medium transition-all duration-150 text-left w-full ${
+                          isActive
+                            ? 'text-primary bg-primary/10'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4 shrink-0" />
+                        <span>{item.title}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
