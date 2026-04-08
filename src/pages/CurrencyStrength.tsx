@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo, useCallback, ReactNode } from 'react';
 import { CurrencyStrengthRecord } from '@/types/correlation';
 import { StrengthMeter } from '@/components/correlation/StrengthMeter';
 import { SummaryCards } from '@/components/correlation/SummaryCards';
@@ -15,11 +15,27 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { RefreshCw, TrendingUp, CalendarIcon, Activity } from 'lucide-react';
+import { RefreshCw, TrendingUp, CalendarIcon, Activity, GripVertical } from 'lucide-react';
 import { format, subDays } from 'date-fns';
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const UTC_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -128,13 +144,65 @@ function useBothSessionData(selectedDate: Date) {
   return { londonData: london.data || [], nyData: ny.data || [] };
 }
 
+// --- Sortable wrapper ---
+function SortableSection({ id, children }: { id: string; children: ReactNode }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.7 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative group">
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute -left-2 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing bg-card/80 backdrop-blur-sm border border-border/30 rounded-md p-1 shadow-lg"
+      >
+        <GripVertical className="w-4 h-4 text-muted-foreground" />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+const STORAGE_KEY = 'cs-section-order';
+const DEFAULT_ORDER = ['session', 'trade-of-day', 'summary', 'strength-meter', 'heatmap', 'comparison', 'pair-suggestions', 'trend-chart', 'legend'];
+
+function getSavedOrder(): string[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length === DEFAULT_ORDER.length) return parsed;
+    }
+  } catch {}
+  return DEFAULT_ORDER;
+}
+
 export default function CurrencyStrength() {
   const [activeTab, setActiveTab] = useState('1H');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [sectionOrder, setSectionOrder] = useState<string[]>(getSavedOrder);
   const queryClient = useQueryClient();
   const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab, selectedDate);
   const { data: previousData } = usePreviousDayStrength(activeTab, selectedDate);
   const { londonData, nyData } = useBothSessionData(selectedDate);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   useEffect(() => {
     const channel = supabase
@@ -150,11 +218,111 @@ export default function CurrencyStrength() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setSectionOrder(prev => {
+        const oldIndex = prev.indexOf(active.id as string);
+        const newIndex = prev.indexOf(over.id as string);
+        const newOrder = arrayMove(prev, oldIndex, newIndex);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrder));
+        return newOrder;
+      });
+    }
+  }, []);
+
   const lastUpdated = data?.[0]?.recorded_at;
+  const hasData = !isLoading && data && data.length > 0;
+
+  const sectionMap: Record<string, ReactNode> = useMemo(() => ({
+    'session': <SessionPanel />,
+    'trade-of-day': hasData ? <TradeOfTheDay data={data!} /> : null,
+    'summary': hasData ? <SummaryCards data={data!} /> : null,
+    'strength-meter': (
+      <Card className="border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center">
+                <Activity className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <CardTitle className="text-base font-bold tracking-tight">Strength Ranking</CardTitle>
+            </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="bg-muted/20 border border-border/30">
+                <TabsTrigger value="1H" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">London</TabsTrigger>
+                <TabsTrigger value="New York" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">New York</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-8 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : hasData ? (
+            <StrengthMeter data={data!} previousData={previousData} />
+          ) : (
+            <div className="text-center py-16 text-muted-foreground">
+              <div className="w-16 h-16 rounded-2xl bg-muted/10 flex items-center justify-center mx-auto mb-4">
+                <Activity className="w-8 h-8 text-muted-foreground/50" />
+              </div>
+              <p className="text-base font-semibold mb-1">কোনো ডেটা নেই</p>
+              <p className="text-xs">এই তারিখে কোনো currency strength data পাওয়া যায়নি।</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    ),
+    'heatmap': hasData ? <StrengthHeatmap data={data!} /> : null,
+    'comparison': <TimeframeComparison londonData={londonData} nyData={nyData} />,
+    'pair-suggestions': hasData ? <PairSuggestions data={data!} /> : null,
+    'trend-chart': (
+      <Card className="border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center">
+              <TrendingUp className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <CardTitle className="text-base font-bold tracking-tight">Strength Trend</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <StrengthTrendChart timeframe={activeTab} />
+        </CardContent>
+      </Card>
+    ),
+    'legend': (
+      <Card className="border-border/30 bg-card/30 backdrop-blur-sm">
+        <CardContent className="pt-5 pb-4">
+          <div className="grid grid-cols-4 gap-4 text-center">
+            {[
+              { color: 'hsl(142, 71%, 45%)', label: 'STRONG', range: '+5 to +10' },
+              { color: 'hsl(48, 96%, 53%)', label: 'NEUTRAL', range: '-3 to +4' },
+              { color: 'hsl(25, 95%, 53%)', label: 'MID WEAK', range: '-6 to -4' },
+              { color: 'hsl(0, 84%, 60%)', label: 'WEAK', range: '-10 to -7' },
+            ].map((item) => (
+              <div key={item.label} className="space-y-1.5">
+                <div
+                  className="w-3 h-3 rounded-full mx-auto"
+                  style={{ backgroundColor: item.color, boxShadow: `0 0 8px ${item.color}40` }}
+                />
+                <p className="font-bold text-foreground text-[11px] tracking-wider">{item.label}</p>
+                <p className="text-muted-foreground text-[10px] font-medium">{item.range}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    ),
+  }), [data, isLoading, hasData, previousData, londonData, nyData, activeTab]);
 
   return (
     <div className="space-y-5 max-w-6xl mx-auto">
-      {/* Header */}
+      {/* Header — always on top, not draggable */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shadow-[0_0_20px_hsla(142,71%,45%,0.1)]">
@@ -208,102 +376,37 @@ export default function CurrencyStrength() {
             <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
             রিফ্রেশ
           </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              localStorage.removeItem(STORAGE_KEY);
+              setSectionOrder(DEFAULT_ORDER);
+            }}
+            className="text-[10px] text-muted-foreground hover:text-foreground"
+          >
+            Reset Layout
+          </Button>
         </div>
       </div>
 
-      <SessionPanel />
-
-      {/* Trade of the Day */}
-      {!isLoading && data && data.length > 0 && <TradeOfTheDay data={data} />}
-
-      {/* Summary Cards */}
-      {!isLoading && data && data.length > 0 && <SummaryCards data={data} />}
-
-      {/* Strength Meter */}
-      <Card className="border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center">
-                <Activity className="w-3.5 h-3.5 text-primary" />
-              </div>
-              <CardTitle className="text-base font-bold tracking-tight">Strength Ranking</CardTitle>
-            </div>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="bg-muted/20 border border-border/30">
-                <TabsTrigger value="1H" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">London</TabsTrigger>
-                <TabsTrigger value="New York" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">New York</TabsTrigger>
-              </TabsList>
-            </Tabs>
+      {/* Draggable sections */}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
+          <div className="space-y-5">
+            {sectionOrder.map(id => {
+              const content = sectionMap[id];
+              if (!content) return null;
+              return (
+                <SortableSection key={id} id={id}>
+                  {content}
+                </SortableSection>
+              );
+            })}
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-8 w-full rounded-lg" />
-              ))}
-            </div>
-          ) : data && data.length > 0 ? (
-            <StrengthMeter data={data} previousData={previousData} />
-          ) : (
-            <div className="text-center py-16 text-muted-foreground">
-              <div className="w-16 h-16 rounded-2xl bg-muted/10 flex items-center justify-center mx-auto mb-4">
-                <Activity className="w-8 h-8 text-muted-foreground/50" />
-              </div>
-              <p className="text-base font-semibold mb-1">কোনো ডেটা নেই</p>
-              <p className="text-xs">এই তারিখে কোনো currency strength data পাওয়া যায়নি।</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Heatmap */}
-      {!isLoading && data && data.length > 0 && <StrengthHeatmap data={data} />}
-
-      {/* London vs New York Comparison */}
-      <TimeframeComparison londonData={londonData} nyData={nyData} />
-
-      {/* Pair Suggestions */}
-      {!isLoading && data && data.length > 0 && <PairSuggestions data={data} />}
-
-      {/* Trend Chart */}
-      <Card className="border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center">
-              <TrendingUp className="w-3.5 h-3.5 text-primary" />
-            </div>
-            <CardTitle className="text-base font-bold tracking-tight">Strength Trend</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <StrengthTrendChart timeframe={activeTab} />
-        </CardContent>
-      </Card>
-
-      {/* Legend */}
-      <Card className="border-border/30 bg-card/30 backdrop-blur-sm">
-        <CardContent className="pt-5 pb-4">
-          <div className="grid grid-cols-4 gap-4 text-center">
-            {[
-              { color: 'hsl(142, 71%, 45%)', label: 'STRONG', range: '+5 to +10' },
-              { color: 'hsl(48, 96%, 53%)', label: 'NEUTRAL', range: '-3 to +4' },
-              { color: 'hsl(25, 95%, 53%)', label: 'MID WEAK', range: '-6 to -4' },
-              { color: 'hsl(0, 84%, 60%)', label: 'WEAK', range: '-10 to -7' },
-            ].map((item) => (
-              <div key={item.label} className="space-y-1.5">
-                <div
-                  className="w-3 h-3 rounded-full mx-auto"
-                  style={{ backgroundColor: item.color, boxShadow: `0 0 8px ${item.color}40` }}
-                />
-                <p className="font-bold text-foreground text-[11px] tracking-wider">{item.label}</p>
-                <p className="text-muted-foreground text-[10px] font-medium">{item.range}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
