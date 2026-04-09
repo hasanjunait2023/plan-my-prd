@@ -1,56 +1,77 @@
 
 
-## Plan: Option C — Segmented Tab Bar with Tools Dropdown
+## Plan: OpenClaw Agent × TradeVault Pro — Full Integration
 
-### কি হবে
-Desktop nav কে **5টা primary tab + "Tools" dropdown** এ ভাগ করা হবে। Mobile bottom bar এ **5 primary + center Tools button** যেটা bottom sheet open করবে।
+### কি করা হবে
+তোমার cloud-hosted OpenClaw agent কে TradeVault Pro এর সাথে connect করার জন্য একটা **secure REST API layer** তৈরি হবে। OpenClaw এর `web_fetch` tool ব্যবহার করে এই API call করবে, এবং একটা **SKILL.md** file agent কে শেখাবে কিভাবে TradeVault ব্যবহার করতে হয়।
 
-### Desktop Nav Structure
+### Architecture
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│ 🟢 TradeVault │ Dashboard  Journal  New Trade  Analytics  Strength │ ⊞ Tools ▾ │ 🌙 🔔 👤 │
-│     PRO       │ ════════                                          │           │           │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────┐     web_fetch      ┌──────────────────────┐       ┌──────────┐
+│  OpenClaw    │ ──────────────────► │  openclaw-api        │ ────► │ Supabase │
+│  (Cloud)     │   Bearer API_KEY   │  (Edge Function)     │       │   DB     │
+│  via Telegram│ ◄────────────────── │  /trades, /analytics │ ◄──── │          │
+└──────────────┘     JSON response  └──────────────────────┘       └──────────┘
 ```
 
-**"Tools" dropdown** — 3-column categorized grid:
-```text
-┌──────────────────────────────────────────┐
-│  📈 Market        │ 🧠 Analysis  │ ⚙️ Other    │
-│  Charts           │ Intel        │ MT5         │
-│  EMA Scan         │ Psychology   │ Commodities │
-│  Correlation      │ Rules        │ Crypto      │
-│  News             │              │ Habits      │
-│                   │              │ Settings    │
-└──────────────────────────────────────────┘
-```
+### API Endpoints (Single Edge Function — route-based)
 
-### Mobile Bottom Bar
-```text
-┌────────────────────────────────┐
-│ 🏠  📖  ⊕  📊  ⊞Tools        │
-└────────────────────────────────┘
-```
-- "Tools" button tap → Sheet (bottom slide-up) with all secondary items in grid
-- Active sub-page → Tools button এ **green dot badge**
+| Route | Method | কি করে |
+|-------|--------|--------|
+| `/trades/list` | GET | সব trades দেখাবে (filter: date, pair, outcome) |
+| `/trades/create` | POST | নতুন trade entry (chat থেকে: "EURUSD long 1.0850 SL 1.0820") |
+| `/trades/stats` | GET | Today/week/month P&L, win rate, trade count |
+| `/analytics/summary` | GET | Overall performance summary |
+| `/analytics/pair` | GET | Pair-wise breakdown |
+| `/psychology/log` | POST | Psychology log entry |
+| `/psychology/today` | GET | আজকের psychology status |
+| `/habits/status` | GET | Habit completion status |
+| `/habits/complete` | POST | Habit mark as done |
+| `/market/sessions` | GET | Active sessions, market open/close status |
+| `/market/strength` | GET | Latest currency strength data |
+| `/market/confluence` | GET | Top confluence pairs |
+| `/account/balance` | GET | Account balance, equity, risk status |
+| `/rules/list` | GET | Trading rules list |
+| `/coaching/check` | GET | Proactive analysis — rule violations, pattern detection |
 
-### Visual Design
-- **Active tab:** `bg-primary/15 border border-primary/30 shadow-[0_0_12px_hsla(145,63%,49%,0.2)]` — glass-morphism pill
-- **Hover:** `hover:bg-card/60` with slight brightness lift
-- **Tools dropdown:** glass background (`bg-card/95 backdrop-blur-xl`), rounded-xl, grid layout
-- **Tools badge:** green dot when any sub-page is currently active
-- **Category headers:** uppercase, muted, `text-[10px]` tracking-widest
+### Authentication & Security
+- নতুন secret `OPENCLAW_API_KEY` — একটা random key generate করে set করা হবে
+- Edge function এ `Authorization: Bearer <OPENCLAW_API_KEY>` check হবে
+- Service role key দিয়ে DB access (user_id hardcode — single user app)
 
-### Technical Details
+### OpenClaw SKILL.md
+একটা skill file তৈরি হবে যেটা OpenClaw এর `~/.openclaw/skills/` folder এ রাখতে হবে:
+- TradeVault API endpoints এর documentation
+- Natural language → API mapping (e.g., "আজকের P&L কত?" → GET /trades/stats?period=today)
+- Trade entry format parsing rules
+- Proactive coaching prompts (কখন কি check করতে হবে)
+- Cron suggestions (market open এ auto-check, daily summary)
 
-**Modified file:** `src/components/Layout.tsx`
+### Proactive Coaching Logic
+`/coaching/check` endpoint agent কে বলবে:
+- "তুমি আজ 3টা trade নিয়েছো, max limit 3 — আর নেওয়া উচিত না"
+- "এই সপ্তাহে London session এ 80% loss — সাবধান"
+- "Last 5 trades এ FOMO emotion — break নাও"
+- "Current drawdown 4.2% — max 5% limit কাছে"
 
-**Changes:**
-1. Split `allNavItems` into `primaryNavItems` (5: Dashboard, Journal, New Trade, Analytics, Strength) and `toolsNavItems` (3 categories)
-2. Desktop: Replace horizontal scroll nav with 5 pill tabs + Radix `DropdownMenu` for Tools
-3. Mobile: Replace 7-item bottom bar with 5 items (Dashboard, Journal, New Trade, Analytics, Tools)
-4. Tools button on mobile → uses existing `Sheet` component (bottom side) with categorized grid
-5. Active detection: check if current route matches any tools sub-item → show badge dot on Tools button
+### যা যা তৈরি হবে
 
-**No new dependencies.** Uses existing Radix DropdownMenu + Sheet components.
+| File | Purpose |
+|------|---------|
+| `supabase/functions/openclaw-api/index.ts` | Main API edge function — সব routes handle করবে |
+| `/mnt/documents/TRADEVAULT_SKILL.md` | OpenClaw skill file — agent এর skills folder এ copy করতে হবে |
+
+### DB Changes
+- কোন নতুন table লাগবে না
+- Existing tables (trades, psychology_logs, habits, currency_strength, confluence_scores, account_settings, trading_rules) থেকে read/write
+
+### New Secret
+- `OPENCLAW_API_KEY` — API authentication এর জন্য
+
+### Setup Steps (তোমার জন্য)
+1. Edge function deploy হবে automatically
+2. `OPENCLAW_API_KEY` secret set করতে হবে
+3. SKILL.md file download করে OpenClaw এর skills folder এ রাখতে হবে
+4. OpenClaw config এ `web_fetch` tool allow করতে হবে (default এ আছে)
+5. Telegram এ agent কে বলো: "TradeVault connect করো" — সে skill পড়ে automatically কাজ শুরু করবে
 
