@@ -1,18 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const GATEWAY_URL = 'https://connector-gateway.lovable.dev/telegram';
-
 Deno.serve(async () => {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  const TELEGRAM_API_KEY = Deno.env.get('TELEGRAM_API_KEY');
+  const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-  if (!LOVABLE_API_KEY || !TELEGRAM_API_KEY) {
-    return new Response(JSON.stringify({ error: 'Missing keys' }), { status: 500 });
+  if (!BOT_TOKEN) {
+    return new Response(JSON.stringify({ error: 'TELEGRAM_BOT_TOKEN not configured' }), { status: 500 });
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const tgBase = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
   const { data: habits, error: habitsErr } = await supabase
     .from('habits')
@@ -36,6 +34,7 @@ Deno.serve(async () => {
 
   const today = new Date().toISOString().split('T')[0];
   let remindersSent = 0;
+  const errors: string[] = [];
 
   for (const habit of habits) {
     const { data: logs } = await supabase
@@ -78,16 +77,19 @@ Deno.serve(async () => {
     };
 
     try {
-      const resp = await fetch(`${GATEWAY_URL}/sendMessage`, {
+      const resp = await fetch(`${tgBase}/sendMessage`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'X-Connection-Api-Key': TELEGRAM_API_KEY,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'HTML', reply_markup }),
       });
-      await resp.text();
+
+      const respData = await resp.json();
+
+      if (!resp.ok) {
+        console.error(`Failed to send reminder for ${habit.name}:`, JSON.stringify(respData));
+        errors.push(`${habit.name}: ${respData.description || 'unknown error'}`);
+        continue; // Don't insert reminder record if send failed
+      }
 
       await supabase.from('habit_reminders').insert({
         habit_id: habit.id,
@@ -97,10 +99,11 @@ Deno.serve(async () => {
       remindersSent++;
     } catch (e) {
       console.error(`Failed to send reminder for ${habit.name}:`, e);
+      errors.push(`${habit.name}: ${e.message}`);
     }
   }
 
-  return new Response(JSON.stringify({ ok: true, remindersSent }));
+  return new Response(JSON.stringify({ ok: true, remindersSent, errors }));
 });
 
 function getTimezoneOffset(tz: string): number {
