@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const SESSIONS = {
-  tokyo: { start: 0, end: 9, label: 'Tokyo' },
+  tokyo: { start: 1, end: 9, label: 'Tokyo' },
   london: { start: 7, end: 16, label: 'London' },
   newyork: { start: 12, end: 21, label: 'New York' },
 };

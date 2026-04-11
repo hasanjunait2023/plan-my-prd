@@ -108,32 +108,32 @@ export const MARKET_SESSIONS: SessionConfig[] = [
   {
     name: 'Sydney',
     dstRegion: 'AU',
-    winterStartUtc: 22, winterEndUtc: 7,
-    summerStartUtc: 21, summerEndUtc: 6,
+    winterStartUtc: 22, winterEndUtc: 7,   // AEDT (UTC+11): 9AM-6PM local
+    summerStartUtc: 22, summerEndUtc: 7,   // AEST (UTC+10): 8AM-5PM local
     color: '#ffeb3b', emoji: '🟡',
     bestPairs: ['AUD/USD', 'NZD/USD', 'AUD/JPY'],
   },
   {
     name: 'Tokyo',
     dstRegion: null, // Japan has no DST
-    winterStartUtc: 0, winterEndUtc: 9,
-    summerStartUtc: 0, summerEndUtc: 9,
+    winterStartUtc: 1, winterEndUtc: 9,    // JST (UTC+9): 10AM-6PM local → BD 07:00-15:00
+    summerStartUtc: 1, summerEndUtc: 9,
     color: '#e91e63', emoji: '🔴',
     bestPairs: ['USD/JPY', 'AUD/JPY', 'NZD/JPY'],
   },
   {
     name: 'London',
     dstRegion: 'EU',
-    winterStartUtc: 7, winterEndUtc: 16,
-    summerStartUtc: 6, summerEndUtc: 15,
+    winterStartUtc: 8, winterEndUtc: 16,   // GMT: 8AM-4PM local → BD 14:00-22:00
+    summerStartUtc: 7, summerEndUtc: 16,   // BST (UTC+1): 8AM-5PM local → BD 13:00-22:00
     color: '#2157f3', emoji: '🔵',
     bestPairs: ['EUR/USD', 'GBP/USD', 'EUR/GBP'],
   },
   {
     name: 'New York',
     dstRegion: 'US',
-    winterStartUtc: 12, winterEndUtc: 21,
-    summerStartUtc: 11, summerEndUtc: 20,
+    winterStartUtc: 13, winterEndUtc: 22,  // EST (UTC-5): 8AM-5PM local → BD 19:00-04:00
+    summerStartUtc: 12, summerEndUtc: 21,  // EDT (UTC-4): 8AM-5PM local → BD 18:00-03:00
     color: '#ff5d00', emoji: '🟠',
     bestPairs: ['EUR/USD', 'GBP/USD', 'USD/CAD'],
   },
@@ -161,9 +161,9 @@ export interface KillZoneConfig {
 }
 
 export const KILL_ZONES: KillZoneConfig[] = [
-  { name: 'Asian KZ', dstRegion: 'AU', winterStartUtc: 0, winterEndUtc: 2, summerStartUtc: 0, summerEndUtc: 2, color: 'hsl(35, 90%, 55%)' },
-  { name: 'London KZ', dstRegion: 'EU', winterStartUtc: 7, winterEndUtc: 9, summerStartUtc: 6, summerEndUtc: 8, color: 'hsl(210, 80%, 55%)' },
-  { name: 'NY KZ', dstRegion: 'US', winterStartUtc: 12, winterEndUtc: 14, summerStartUtc: 11, summerEndUtc: 13, color: 'hsl(0, 70%, 55%)' },
+  { name: 'Asian KZ', dstRegion: 'AU', winterStartUtc: 1, winterEndUtc: 3, summerStartUtc: 1, summerEndUtc: 3, color: 'hsl(35, 90%, 55%)' },
+  { name: 'London KZ', dstRegion: 'EU', winterStartUtc: 8, winterEndUtc: 10, summerStartUtc: 7, summerEndUtc: 9, color: 'hsl(210, 80%, 55%)' },
+  { name: 'NY KZ', dstRegion: 'US', winterStartUtc: 13, winterEndUtc: 15, summerStartUtc: 12, summerEndUtc: 14, color: 'hsl(0, 70%, 55%)' },
 ];
 
 export function getKillZoneHours(kz: KillZoneConfig, date: Date): { start: number; end: number } {
