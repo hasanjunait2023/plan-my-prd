@@ -161,9 +161,9 @@ export interface KillZoneConfig {
 }
 
 export const KILL_ZONES: KillZoneConfig[] = [
-  { name: 'Asian KZ', dstRegion: 'AU', winterStartUtc: 0, winterEndUtc: 2, summerStartUtc: 0, summerEndUtc: 2, color: 'hsl(35, 90%, 55%)' },
-  { name: 'London KZ', dstRegion: 'EU', winterStartUtc: 7, winterEndUtc: 9, summerStartUtc: 6, summerEndUtc: 8, color: 'hsl(210, 80%, 55%)' },
-  { name: 'NY KZ', dstRegion: 'US', winterStartUtc: 12, winterEndUtc: 14, summerStartUtc: 11, summerEndUtc: 13, color: 'hsl(0, 70%, 55%)' },
+  { name: 'Asian KZ', dstRegion: 'AU', winterStartUtc: 1, winterEndUtc: 3, summerStartUtc: 1, summerEndUtc: 3, color: 'hsl(35, 90%, 55%)' },
+  { name: 'London KZ', dstRegion: 'EU', winterStartUtc: 8, winterEndUtc: 10, summerStartUtc: 7, summerEndUtc: 9, color: 'hsl(210, 80%, 55%)' },
+  { name: 'NY KZ', dstRegion: 'US', winterStartUtc: 13, winterEndUtc: 15, summerStartUtc: 12, summerEndUtc: 14, color: 'hsl(0, 70%, 55%)' },
 ];
 
 export function getKillZoneHours(kz: KillZoneConfig, date: Date): { start: number; end: number } {
