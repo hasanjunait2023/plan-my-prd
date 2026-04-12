@@ -341,6 +341,45 @@ export type Database = {
         }
         Relationships: []
       }
+      fundamental_biases: {
+        Row: {
+          actual: string
+          bias: string
+          currency: string
+          event_date: string
+          event_title: string
+          forecast: string
+          id: string
+          impact: string
+          previous: string
+          updated_at: string
+        }
+        Insert: {
+          actual?: string
+          bias?: string
+          currency: string
+          event_date?: string
+          event_title?: string
+          forecast?: string
+          id?: string
+          impact?: string
+          previous?: string
+          updated_at?: string
+        }
+        Update: {
+          actual?: string
+          bias?: string
+          currency?: string
+          event_date?: string
+          event_title?: string
+          forecast?: string
+          id?: string
+          impact?: string
+          previous?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       habit_logs: {
         Row: {
           completed_at: string
