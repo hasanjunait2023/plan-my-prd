@@ -162,20 +162,42 @@ Deno.serve(async (req) => {
     if (!thresholdMap.cross) thresholdMap.cross = { percent: 0.20, cooldown: 5 };
     if (!thresholdMap.gold) thresholdMap.gold = { percent: 0.30, cooldown: 5 };
 
-    // Fetch current prices from TwelveData (batch)
-    const symbols = ALL_PAIRS.join(',');
-    const priceRes = await fetch(`https://api.twelvedata.com/price?symbol=${symbols}&apikey=${twelveDataKey}`);
-    const priceData = await priceRes.json();
-
-    // Parse prices — batch returns { "EUR/USD": { price: "1.0850" }, ... }
+    // Fetch current prices from TwelveData in batches of 8 (free tier: 8 credits/min)
     const currentPrices: Record<string, number> = {};
-    for (const pair of ALL_PAIRS) {
-      const val = priceData[pair]?.price;
-      if (val) currentPrices[pair] = parseFloat(val);
+    const BATCH_SIZE = 8;
+    for (let i = 0; i < ALL_PAIRS.length; i += BATCH_SIZE) {
+      const batch = ALL_PAIRS.slice(i, i + BATCH_SIZE);
+      const symbols = batch.join(',');
+      const priceRes = await fetch(`https://api.twelvedata.com/price?symbol=${symbols}&apikey=${twelveDataKey}`);
+      const priceData = await priceRes.json();
+
+      // Handle rate limit error
+      if (priceData.code === 429) {
+        console.log('Rate limited, waiting 60s...');
+        await new Promise(r => setTimeout(r, 60000));
+        // Retry this batch
+        i -= BATCH_SIZE;
+        continue;
+      }
+
+      // Single symbol returns { price: "..." }, multi returns { "SYM": { price: "..." } }
+      if (batch.length === 1) {
+        if (priceData.price) currentPrices[batch[0]] = parseFloat(priceData.price);
+      } else {
+        for (const pair of batch) {
+          const val = priceData[pair]?.price;
+          if (val) currentPrices[pair] = parseFloat(val);
+        }
+      }
+
+      // Wait between batches to respect rate limits (only if more batches remain)
+      if (i + BATCH_SIZE < ALL_PAIRS.length) {
+        await new Promise(r => setTimeout(r, 62000)); // wait ~62s for next credit window
+      }
     }
 
     if (Object.keys(currentPrices).length === 0) {
-      return new Response(JSON.stringify({ ok: false, error: 'No prices fetched' }), {
+      return new Response(JSON.stringify({ ok: false, error: 'No prices fetched', note: 'Rate limit or API issue' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
