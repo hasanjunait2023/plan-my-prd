@@ -438,8 +438,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-semibold text-foreground truncate">{n.title}</span>
-                              {n.source === 'db' && (
-                                <span className="text-[9px] font-medium px-1 py-0.5 rounded bg-primary/10 text-primary shrink-0">EMA</span>
+                              {n.badge && (
+                                <span className={`text-[9px] font-medium px-1 py-0.5 rounded shrink-0 ${n.badgeColor || 'bg-muted text-muted-foreground'}`}>{n.badge}</span>
                               )}
                               {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
                             </div>
