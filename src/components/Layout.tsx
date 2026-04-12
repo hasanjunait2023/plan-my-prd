@@ -221,10 +221,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    fetchDbNotifications();
-    const interval = setInterval(fetchDbNotifications, 60000);
+    fetchAllNotifications();
+    const interval = setInterval(fetchAllNotifications, 60000);
     return () => clearInterval(interval);
-  }, [fetchDbNotifications]);
+  }, [fetchAllNotifications]);
 
   useEffect(() => {
     const channel = supabase
@@ -234,12 +234,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
         schema: 'public',
         table: 'ema_scan_notifications',
       }, () => {
-        fetchDbNotifications();
+        fetchAllNotifications();
+      })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'alert_log',
+      }, () => {
+        fetchAllNotifications();
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [fetchDbNotifications]);
+  }, [fetchAllNotifications]);
 
   const markAsRead = async (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
