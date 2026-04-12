@@ -101,7 +101,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
-  const { primaryItems, toolsItems, primaryUrls, updatePrimaryUrls, resetToDefault, defaultUrls } = useNavConfig(ALL_NAV_ITEMS);
+  const { primaryItems, toolsItems, primaryUrls, maxMobile, maxDesktop, updateConfig, resetToDefault, defaultUrls } = useNavConfig(ALL_NAV_ITEMS);
   const [navEditOpen, setNavEditOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(staticNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -527,10 +527,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         onOpenChange={setNavEditOpen}
         allItems={ALL_NAV_ITEMS}
         primaryUrls={primaryUrls}
-        onSave={updatePrimaryUrls}
+        onSave={(urls) => updateConfig({ primaryUrls: urls })}
         onReset={resetToDefault}
         defaultUrls={defaultUrls}
-        maxItems={isMobile ? 5 : 6}
+        maxItems={isMobile ? maxMobile : maxDesktop}
+        currentMaxMobile={maxMobile}
+        currentMaxDesktop={maxDesktop}
+        onMaxChange={(mobile, desktop) => updateConfig({ maxMobile: mobile, maxDesktop: desktop })}
+        isMobile={isMobile}
       />
     </div>
   );

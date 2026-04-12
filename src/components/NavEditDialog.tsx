@@ -3,6 +3,7 @@ import { ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { NavItem } from '@/hooks/useNavConfig';
 
 interface NavEditDialogProps {
@@ -13,7 +14,11 @@ interface NavEditDialogProps {
   onSave: (urls: string[]) => void;
   onReset: () => void;
   defaultUrls: string[];
-  maxItems?: number;
+  maxItems: number;
+  currentMaxMobile: number;
+  currentMaxDesktop: number;
+  onMaxChange: (mobile: number, desktop: number) => void;
+  isMobile: boolean;
 }
 
 export function NavEditDialog({
@@ -24,23 +29,34 @@ export function NavEditDialog({
   onSave,
   onReset,
   defaultUrls,
-  maxItems = 6,
+  maxItems,
+  currentMaxMobile,
+  currentMaxDesktop,
+  onMaxChange,
+  isMobile,
 }: NavEditDialogProps) {
   const [selected, setSelected] = useState<string[]>(primaryUrls);
+  const [localMaxMobile, setLocalMaxMobile] = useState(currentMaxMobile);
+  const [localMaxDesktop, setLocalMaxDesktop] = useState(currentMaxDesktop);
 
-  // Reset local state when dialog opens
+  const activeMax = isMobile ? localMaxMobile : localMaxDesktop;
+
   const handleOpenChange = (val: boolean) => {
-    if (val) setSelected(primaryUrls);
+    if (val) {
+      setSelected(primaryUrls);
+      setLocalMaxMobile(currentMaxMobile);
+      setLocalMaxDesktop(currentMaxDesktop);
+    }
     onOpenChange(val);
   };
 
   const toggleItem = (url: string) => {
     setSelected(prev => {
       if (prev.includes(url)) {
-        if (prev.length <= 3) return prev; // min 3
+        if (prev.length <= 3) return prev;
         return prev.filter(u => u !== url);
       }
-      if (prev.length >= maxItems) return prev; // max limit
+      if (prev.length >= activeMax) return prev;
       return [...prev, url];
     });
   };
@@ -66,28 +82,74 @@ export function NavEditDialog({
   };
 
   const handleSave = () => {
+    onMaxChange(localMaxMobile, localMaxDesktop);
     onSave(selected);
     onOpenChange(false);
   };
 
   const handleReset = () => {
     setSelected(defaultUrls);
+    setLocalMaxMobile(5);
+    setLocalMaxDesktop(6);
   };
 
-  const isDefault = JSON.stringify(selected) === JSON.stringify(defaultUrls);
+  // When max decreases, trim selected
+  const handleMaxChange = (value: string, type: 'mobile' | 'desktop') => {
+    const num = parseInt(value);
+    if (type === 'mobile') setLocalMaxMobile(num);
+    else setLocalMaxDesktop(num);
+
+    const newMax = type === (isMobile ? 'mobile' : 'desktop') ? num : activeMax;
+    if (selected.length > newMax) {
+      setSelected(prev => prev.slice(0, newMax));
+    }
+  };
+
+  const isDefault = JSON.stringify(selected) === JSON.stringify(defaultUrls) && localMaxMobile === 5 && localMaxDesktop === 6;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-sm max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-sm font-semibold">Customize Navigation</DialogTitle>
-          <p className="text-[11px] text-muted-foreground">
-            Select {maxItems > 5 ? '3–6' : '3–5'} items for your nav bar. Drag to reorder.
-          </p>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-1 py-2">
-          {/* Selected items first — with reorder */}
+        {/* Max items settings */}
+        <div className="flex items-center gap-3 px-1 py-2 border-b border-border/30">
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Mobile:</span>
+            <Select value={String(localMaxMobile)} onValueChange={(v) => handleMaxChange(v, 'mobile')}>
+              <SelectTrigger className="h-7 w-16 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[3, 4, 5, 6, 7, 8].map(n => (
+                  <SelectItem key={n} value={String(n)} className="text-xs">{n} items</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Desktop:</span>
+            <Select value={String(localMaxDesktop)} onValueChange={(v) => handleMaxChange(v, 'desktop')}>
+              <SelectTrigger className="h-7 w-16 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                  <SelectItem key={n} value={String(n)} className="text-xs">{n} items</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <p className="text-[11px] text-muted-foreground px-1">
+          Currently: {selected.length}/{activeMax} selected ({isMobile ? 'Mobile' : 'Desktop'} view)
+        </p>
+
+        <div className="flex-1 overflow-y-auto space-y-1 py-1">
+          {/* Selected items with reorder */}
           {selected.map((url, idx) => {
             const item = allItems.find(i => i.url === url);
             if (!item) return null;
@@ -142,7 +204,7 @@ export function NavEditDialog({
                 <Checkbox
                   checked={false}
                   onCheckedChange={() => toggleItem(item.url)}
-                  disabled={selected.length >= maxItems}
+                  disabled={selected.length >= activeMax}
                   className="shrink-0"
                 />
                 <item.icon className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -151,9 +213,9 @@ export function NavEditDialog({
             ))}
         </div>
 
-        {selected.length >= maxItems && (
-          <p className="text-[10px] text-amber-400 px-1">
-            Maximum {maxItems} items reached. Remove one to add another.
+        {selected.length >= activeMax && (
+          <p className="text-[10px] text-destructive px-1">
+            Maximum {activeMax} items reached. Remove one or increase limit.
           </p>
         )}
 
