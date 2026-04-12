@@ -176,10 +176,13 @@ Deno.serve(async (req) => {
       try {
         const symbol = p.pair.replace('/', '');
         const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1h&outputsize=100&apikey=${apiKey}`;
+        console.log(`Fetching S/D for ${symbol}...`);
         const resp = await fetch(url);
         const json = await resp.json();
+        console.log(`${symbol} response status:`, json.status || 'ok', 'values:', json.values?.length || 0);
 
         if (json.status === 'error' || !json.values || json.values.length === 0) {
+          console.log(`${symbol} error/no data:`, json.message || json.code || 'empty values');
           results.push({
             pair: p.pair,
             direction: p.direction,
