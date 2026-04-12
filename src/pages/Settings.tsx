@@ -241,6 +241,22 @@ const Settings = () => {
             </div>
           </div>
 
+          {/* Push Notification Toggle */}
+          <div className="border-t border-border/30 pt-3 mt-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center">
+                  <Smartphone className="w-3 h-3 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">📱 Push Notification</p>
+                  <p className="text-xs text-muted-foreground">Phone এ directly spike alert পাবেন (PWA install থাকতে হবে)</p>
+                </div>
+              </div>
+              <Switch checked={pushEnabled} onCheckedChange={handlePushToggle} disabled={pushLoading} />
+            </div>
+          </div>
+
           <Button onClick={saveAlertSettings} disabled={savingAlerts} className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400" size="sm">
             {savingAlerts ? 'Saving...' : 'Save Alert Settings'}
           </Button>
