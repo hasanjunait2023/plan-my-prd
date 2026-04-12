@@ -11,6 +11,8 @@ export interface NavItem {
 
 interface NavConfig {
   primaryUrls: string[];
+  maxMobile: number;
+  maxDesktop: number;
 }
 
 const DEFAULT_PRIMARY_URLS = [
