@@ -90,6 +90,19 @@ Deno.serve(async (req) => {
       }),
     });
 
+    // Web Push for streak break
+    try {
+      const names = brokenStreaks.map((h: any) => h.name).join(', ');
+      await supabase.functions.invoke('send-push-notification', {
+        body: {
+          title: '⚠️ Streak Break!',
+          body: `${names} — streak হারিয়ে গেছে! আজ আবার শুরু করো 💪`,
+          tag: 'streak-break',
+          url: '/habit-tracking',
+        },
+      });
+    } catch (e) { console.error('Push error:', e); }
+
     return json({ ok: true, mode: 'streak_alert', broken: brokenStreaks.length });
   }
 
@@ -155,6 +168,19 @@ Deno.serve(async (req) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' }),
   });
+
+  // Web Push for daily summary
+  try {
+    const perfectEmoji = missed.length === 0 && completed.length > 0 ? '🌟 PERFECT DAY! ' : '';
+    await supabase.functions.invoke('send-push-notification', {
+      body: {
+        title: `📊 Daily Summary`,
+        body: `${perfectEmoji}✅ ${completed.length}/${habits.length} done (${rate}%)`,
+        tag: 'habit-daily-summary',
+        url: '/habit-tracking',
+      },
+    });
+  } catch (e) { console.error('Push error:', e); }
 
   const data = await response.json();
   return json({ ok: response.ok, data });

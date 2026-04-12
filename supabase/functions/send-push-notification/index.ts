@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { title, body, tag } = await req.json();
+    const { title, body, tag, url } = await req.json();
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
           vapidPrivateKey,
         );
 
-        const pushPayload = JSON.stringify({ title, body, tag: tag || 'spike-alert' });
+        const pushPayload = JSON.stringify({ title, body, tag: tag || 'spike-alert', url: url || '/' });
 
         const res = await fetch(sub.endpoint, {
           method: 'POST',

@@ -96,6 +96,18 @@ Deno.serve(async () => {
         date: today,
       });
 
+      // Web Push
+      try {
+        await supabase.functions.invoke('send-push-notification', {
+          body: {
+            title: `⏰ Habit Reminder`,
+            body: `"${habit.name}" — আজ এখনও complete করা হয়নি! 🇧🇩 ${bdTimeStr}`,
+            tag: `habit-reminder-${habit.id}`,
+            url: '/habit-tracking',
+          },
+        });
+      } catch (e) { console.error('Push error:', e); }
+
       remindersSent++;
     } catch (e) {
       console.error(`Failed to send reminder for ${habit.name}:`, e);
