@@ -1,90 +1,54 @@
 
 
-## Plan: সব Telegram Alert এ Web Push Notification যোগ
+## Plan: Navigation Bar Edit/Customize Feature
 
-### বর্তমান অবস্থা
-শুধু `price-spike-detector` এ push notification আছে। বাকি ৫টা Edge Function এ Telegram message যায় কিন্তু push notification যায় না।
+### কী হবে
+Mobile bottom tab bar এবং Desktop top nav bar এ একটা **Edit** button থাকবে। সেখানে click করলে সব available pages/tools এর list দেখাবে। User চাইলে যেকোনো tool কে primary nav এ add/remove করতে পারবে। Selection localStorage এ save হবে।
 
-### যা যা আপডেট হবে
+### কিভাবে কাজ করবে
 
-#### 1. `telegram-trade-alerts/index.ts` — 6 ধরনের alert এ push যোগ
-- 🟢 Confluence A/A+ setup alert
-- ⚡ EMA alignment shift
-- 🔴 Risk breach warning
-- 🕐 Session reminder (London/NY)
-- 📊 MT5 trade open/close
-- 🔴 High impact calendar event
+1. **Edit Mode UI**
+   - Desktop: Tools dropdown এর পাশে একটা ছোট Edit (Pencil) icon। Click করলে একটা dialog/modal খুলবে
+   - Mobile: Tools bottom sheet এর header এ Edit button। Click করলে same dialog খুলবে
+   - Dialog এ সব nav items checkbox list হিসেবে দেখাবে — checked মানে primary bar এ আছে
 
-প্রতিটা alert Telegram এ পাঠানোর পরে `send-push-notification` invoke করবে।
+2. **Customization Logic**
+   - সর্বনিম্ন ৩টা এবং সর্বোচ্চ ৬টা (desktop) / ৫টা (mobile) item primary bar এ রাখা যাবে
+   - Drag-to-reorder অথবা simple up/down arrow দিয়ে order change করা যাবে
+   - "Reset to Default" button থাকবে
 
-#### 2. `news-alert/index.ts` — Economic news alert এ push যোগ
-- High/Medium impact news এর 5-10 min আগে push notification
-
-#### 3. `habit-reminder/index.ts` — Habit reminder এ push যোগ
-- যে habit complete হয়নি সেটার push reminder
-
-#### 4. `habit-daily-summary/index.ts` — Daily summary ও streak break এ push যোগ
-- Streak break alert: "⚠️ X day streak lost!"
-- Daily summary: "✅ 5/7 done (71%)"
-
-#### 5. `habit-weekly-recap/index.ts` — Weekly recap এ push যোগ
-- সপ্তাহের summary push notification
-
-#### 6. `send-push-notification/index.ts` — Minor improvement
-- `url` parameter support যোগ — notification click করলে specific page এ যাবে
-- `sw.js` এ click handler আপডেট
-
-### প্রতিটা function এ যা যোগ হবে (pattern)
-```typescript
-// Telegram alert পাঠানোর পরে:
-try {
-  await supabase.functions.invoke('send-push-notification', {
-    body: { 
-      title: '🟢 A+ Setup: EUR/USD', 
-      body: 'BUY — Strength 85 | EMA 3/3 ✓\n🕐 02:30 PM (BD)',
-      tag: 'confluence-alert',
-      url: '/trade-intelligence'  // click destination
-    },
-  });
-} catch (e) { console.error('Push error:', e); }
-```
-
-### sw.js আপডেট — Click-to-open
-```js
-self.addEventListener('notificationclick', (event) => {
-  const url = event.notification.data?.url || '/';
-  event.notification.close();
-  event.waitUntil(
-    clients.openWindow(url)
-  );
-});
-```
+3. **State Persistence**
+   - `localStorage` key: `tradevault-nav-config`
+   - Format: `{ primaryItems: ['/dashboard', '/journal', ...], order: [...] }`
+   - Layout component mount হলে localStorage থেকে config load করবে
 
 ### ফাইল পরিবর্তন
 
 | ফাইল | কাজ |
 |---|---|
-| `supabase/functions/telegram-trade-alerts/index.ts` | 6 alert type এ push যোগ |
-| `supabase/functions/news-alert/index.ts` | News alert এ push যোগ |
-| `supabase/functions/habit-reminder/index.ts` | Habit reminder এ push যোগ |
-| `supabase/functions/habit-daily-summary/index.ts` | Daily summary + streak break এ push যোগ |
-| `supabase/functions/habit-weekly-recap/index.ts` | Weekly recap এ push যোগ |
-| `supabase/functions/send-push-notification/index.ts` | `url` param support যোগ |
-| `public/sw.js` | Notification click → specific page open |
+| `src/hooks/useNavConfig.ts` | **নতুন** — nav config read/write hook (localStorage) |
+| `src/components/NavEditDialog.tsx` | **নতুন** — Edit dialog with checkboxes + reorder |
+| `src/components/Layout.tsx` | **আপডেট** — useNavConfig hook ব্যবহার করে dynamic primaryNavItems render, Edit button যোগ |
 
-### Notification Click Destinations
+### UI Flow
+```text
+┌─────────────────────────────────────┐
+│  NavEditDialog                      │
+│  ┌───────────────────────────────┐  │
+│  │ ☑ Dashboard        ↑ ↓       │  │
+│  │ ☑ Journal           ↑ ↓      │  │
+│  │ ☑ Analytics         ↑ ↓      │  │
+│  │ ☐ Charts                     │  │
+│  │ ☐ EMA Scan                   │  │
+│  │ ☑ Spike Alerts      ↑ ↓     │  │
+│  │ ☐ News                       │  │
+│  │ ...                          │  │
+│  └───────────────────────────────┘  │
+│  [Reset Default]          [Save]    │
+└─────────────────────────────────────┘
+```
 
-| Alert Type | Click করলে যাবে |
-|---|---|
-| Spike Alert | `/spike-alerts` |
-| Confluence | `/trade-intelligence` |
-| EMA Shift | `/ema-scanner` |
-| Risk Breach | `/analytics` |
-| Session Reminder | `/chart-analysis` |
-| MT5 Trade | `/mt5-connection` |
-| Calendar Event | `/market-news` |
-| Habit Reminder | `/habit-tracking` |
-| Daily Summary | `/habit-tracking` |
-| Weekly Recap | `/habit-tracking` |
-| News Alert | `/market-news` |
+- Checked items = primary nav bar এ দেখাবে
+- বাকিগুলো Tools dropdown/sheet এ থাকবে
+- Max limit cross করলে warning দেখাবে
 
