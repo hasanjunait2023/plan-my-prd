@@ -1,45 +1,43 @@
 
 
-## Plan: Last Week এর News Data Fetch করে Fundamental Bias Populate করা
+## Plan: Fundamental Bias — Clean Table Layout
 
-### সমস্যা
-ForexFactory API তে `ff_calendar_thisweek.json` রবিবারে খালি থাকে। DB তেও কোনো data নেই কারণ আগে কখনো populate হয়নি।
+### বর্তমান সমস্যা
+Card-row layout এ data গুলো scattered — currency, news, correlation, alignment সব মিশে যাচ্ছে। User দ্রুত scan করতে পারছে না।
 
-### সমাধান
+### নতুন Table Structure
 
-**Edge Function Update — `fundamental-bias/index.ts`**
-
-1. দুইটা URL থেকে data fetch করবে:
-   - `ff_calendar_thisweek.json` (এই সপ্তাহ)
-   - `ff_calendar_lastweek.json` (গত সপ্তাহ)
-2. দুইটা response merge করবে — this week এর data priority পাবে
-3. প্রতি currency এর জন্য latest released high/medium impact event বের করবে
-4. Bias calculate করে DB তে upsert করবে
-
-**Code Change:**
-```typescript
-const FF_THIS_WEEK = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
-const FF_LAST_WEEK = 'https://nfs.faireconomy.media/ff_calendar_lastweek.json';
-
-// Fetch both in parallel
-const [thisWeekRes, lastWeekRes] = await Promise.all([
-  fetch(FF_THIS_WEEK, ...),
-  fetch(FF_LAST_WEEK, ...)
-]);
-
-// Merge: this week first, then last week
-const allEvents = [...thisWeekEvents, ...lastWeekEvents];
+```text
+┌──────────┬────────────┬───────────────┬───────────────────────────────────┬───────────┐
+│ Currency │ Corr Score │ Corr Strength │ Fundamental Impact                │ Alignment │
+├──────────┼────────────┼───────────────┼───────────────────────────────────┼───────────┤
+│ 🇺🇸 USD  │ +6         │ ▲ Strong      │ NFP: 256K (F:180K P:212K) HIGH   │ ✅ Aligned │
+│ 🇪🇺 EUR  │ -4         │ ▼ Weak        │ CPI: 2.1% (F:2.4% P:2.6%) HIGH  │ ✅ Aligned │
+│ 🇬🇧 GBP  │ +5         │ ▲ Strong      │ GDP: 0.3% (F:0.3% P:0.1%) MED   │ ⚠️ Mixed  │
+│ 🇯🇵 JPY  │ -2         │ ● Neutral     │ BOJ Rate: -0.1% (F:-0.1%) HIGH   │ — Neutral │
+└──────────┴────────────┴───────────────┴───────────────────────────────────┴───────────┘
 ```
 
-**কোনো নতুন file বা table লাগবে না** — শুধু `supabase/functions/fundamental-bias/index.ts` এ পরিবর্তন।
+### Column বিবরণ
+
+| Column | Data |
+|--------|------|
+| **Currency** | Flag + code (🇺🇸 USD) |
+| **Corr Score** | Numeric value (+6, -4) — color coded: green=positive, red=negative |
+| **Corr Strength** | Label (Very Strong / Strong / Mild Bull / Neutral / Mild Bear / Weak / Very Weak) with arrow icon & color |
+| **Fundamental Impact** | Event name + Actual value (bold, colored) + Forecast & Previous (muted) + Impact badge (High/Medium) |
+| **Alignment** | ✅ Aligned / ⚠️ Divergent / ● Mixed — comparing fundamental bias vs correlation direction |
+
+### Technical Details
+
+- **File**: `src/components/correlation/FundamentalBias.tsx` — full rewrite of content area
+- shadcn `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell` ব্যবহার হবে
+- Card wrapper ও header (aligned counter, timestamp) যেমন আছে তেমনই থাকবে
+- Sticky header, row hover effect, horizontal scroll on mobile
+- কোনো নতুন file বা dependency লাগবে না
 
 ### ফলাফল
-- রবিবার/সোমবারেও গত সপ্তাহের news থেকে bias data থাকবে
-- নতুন সপ্তাহে news release হলে সেটা automatically replace করবে
-- DB persist থাকবে তাই পরবর্তী call এও data দেখাবে
-
-### Files
-| File | Action |
-|------|--------|
-| `supabase/functions/fundamental-bias/index.ts` | Edit — add last week fetch |
+- এক নজরে ৮টি currency এর complete picture — correlation + fundamental + alignment
+- প্রতিটি data point নিজ column এ isolated — verify করা সহজ
+- "First graded currency" খুঁজে পেতে Alignment column এ ✅ Aligned দেখলেই হবে
 
