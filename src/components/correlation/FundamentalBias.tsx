@@ -127,7 +127,19 @@ export function FundamentalBias({ strengthData }: FundamentalBiasProps) {
                 </tr>
               </thead>
               <tbody>
-                {CURRENCIES.map(currency => {
+                {[...CURRENCIES].sort((a, b) => {
+                  const biasA = data.biases[a];
+                  const biasB = data.biases[b];
+                  const strA = strengthMap.get(a);
+                  const strB = strengthMap.get(b);
+                  const corrA = strA !== undefined ? getStrengthCategory(strA) : null;
+                  const corrB = strB !== undefined ? getStrengthCategory(strB) : null;
+                  const alignedA = corrA !== null && biasA && biasA.bias !== 'Neutral' && biasA.bias === corrA.bias;
+                  const alignedB = corrB !== null && biasB && biasB.bias !== 'Neutral' && biasB.bias === corrB.bias;
+                  if (alignedA && !alignedB) return -1;
+                  if (!alignedA && alignedB) return 1;
+                  return 0;
+                }).map(currency => {
                   const bias = data.biases[currency];
                   if (!bias) return null;
 
