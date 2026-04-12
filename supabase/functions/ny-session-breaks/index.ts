@@ -95,13 +95,13 @@ Deno.serve(async (req) => {
     const nyWindow = getLastNySessionWindow()
 
     // Fetch 1h candles — increase outputsize to cover weekends (up to 120h = 5 days back)
-    const timeSeriesUrl = `${TWELVEDATA_BASE}/time_series?symbol=${symbols}&interval=1h&outputsize=120&apikey=${TWELVEDATA_API_KEY}`
+    const timeSeriesUrl = `${TWELVEDATA_BASE}/time_series?symbol=${encodeURIComponent(symbols)}&interval=1h&outputsize=120&apikey=${TWELVEDATA_API_KEY}`
     const tsResponse = await fetch(timeSeriesUrl)
     const tsData = await tsResponse.json()
     console.log(`time_series status for ${symbols}:`, tsData?.status || 'ok', 'values count:', topPairs.length === 1 ? tsData?.values?.length : 'multi')
 
     // Fetch current prices (on weekends this returns last known price)
-    const priceUrl = `${TWELVEDATA_BASE}/price?symbol=${symbols}&apikey=${TWELVEDATA_API_KEY}`
+    const priceUrl = `${TWELVEDATA_BASE}/price?symbol=${encodeURIComponent(symbols)}&apikey=${TWELVEDATA_API_KEY}`
     const priceResponse = await fetch(priceUrl)
     const priceData = await priceResponse.json()
     console.log(`price data for ${symbols}:`, JSON.stringify(priceData).substring(0, 200))
