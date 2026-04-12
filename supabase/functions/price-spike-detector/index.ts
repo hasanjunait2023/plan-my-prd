@@ -355,7 +355,8 @@ Deno.serve(async (req) => {
             console.error('Push notification error:', pushErr);
           }
         }
-    }
+      } // if (chatId)
+    } // if (spikedPairs)
 
     // Upsert snapshots
     const upsertRows = pairsToFetch
