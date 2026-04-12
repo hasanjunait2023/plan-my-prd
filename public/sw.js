@@ -5,7 +5,7 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body || 'Price spike detected!',
     icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    badge: '/badge-96.png',
     vibrate: [200, 100, 200, 100, 200],
     tag: data.tag || 'spike-alert',
     renotify: true,

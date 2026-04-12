@@ -341,11 +341,13 @@ Deno.serve(async (req) => {
           const pushTitle = filteredSpikes.length >= 2
             ? `🔴 ${filteredSpikes.length} Pairs Spiking!`
             : `🔴 ${filteredSpikes[0].pair} Spike!`;
+          const bdTime = getBdDateTime();
           const pushBody = filteredSpikes.map(s => {
             const sign = s.change > 0 ? '+' : '';
+            const pipSign = s.pips > 0 ? '+' : '';
             const dir = s.direction === 'BULLISH' ? '📈 বেড়েছে' : '📉 কমেছে';
-            return `${s.pair} ${sign}${s.change.toFixed(2)}% ${dir}`;
-          }).join('\n');
+            return `${s.pair} ${sign}${s.change.toFixed(2)}% (${pipSign}${s.pips} pips) ${dir}`;
+          }).join('\n') + `\n🕐 ${bdTime.time} (BD)`;
 
           try {
             await supabase.functions.invoke('send-push-notification', {
