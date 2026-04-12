@@ -49,14 +49,16 @@ Deno.serve(async (req) => {
     const fetchOpts = { headers: { 'User-Agent': 'TradeVault-Pro/1.0' } };
     const [thisWeekRes, lastWeekRes] = await Promise.all([
       fetch(FF_THIS_WEEK, fetchOpts),
-      fetch(FF_LAST_WEEK, fetchOpts),
+      fetch(FF_LAST_WEEK, fetchOpts).catch(() => null),
     ]);
 
     if (!thisWeekRes.ok) throw new Error(`FF this-week API returned ${thisWeekRes.status}`);
-    if (!lastWeekRes.ok) throw new Error(`FF last-week API returned ${lastWeekRes.status}`);
 
     const thisWeekEvents: any[] = await thisWeekRes.json();
-    const lastWeekEvents: any[] = await lastWeekRes.json();
+    let lastWeekEvents: any[] = [];
+    if (lastWeekRes && lastWeekRes.ok) {
+      lastWeekEvents = await lastWeekRes.json();
+    }
 
     // Merge: this week first (higher priority), then last week
     const allEvents = [...thisWeekEvents, ...lastWeekEvents];
