@@ -20,6 +20,7 @@ import { format, subDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { SessionPanel } from '@/components/correlation/SessionPanel';
 import { FundamentalBias } from '@/components/correlation/FundamentalBias';
+import { PowerGrabPanel } from '@/components/correlation/PowerGrabPanel';
 import {
   DndContext,
   closestCenter,
@@ -178,7 +179,7 @@ function SortableSection({ id, children }: { id: string; children: ReactNode }) 
 }
 
 const STORAGE_KEY = 'cs-section-order';
-const DEFAULT_ORDER = ['session', 'trade-of-day', 'summary', 'fundamental-bias', 'strength-meter', 'heatmap', 'comparison', 'pair-suggestions', 'trend-chart', 'legend'];
+const DEFAULT_ORDER = ['session', 'trade-of-day', 'summary', 'fundamental-bias', 'power-grab', 'strength-meter', 'heatmap', 'comparison', 'pair-suggestions', 'trend-chart', 'legend'];
 
 function getSavedOrder(): string[] {
   try {
@@ -251,6 +252,7 @@ export default function CurrencyStrength() {
     'trade-of-day': hasData ? <TradeOfTheDay data={data!} /> : null,
     'summary': hasData ? <SummaryCards data={data!} /> : null,
     'fundamental-bias': <FundamentalBias strengthData={data} />,
+    'power-grab': <PowerGrabPanel strengthData={data} />,
     'strength-meter': (
       <Card className="border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
         <CardHeader className="pb-3">
