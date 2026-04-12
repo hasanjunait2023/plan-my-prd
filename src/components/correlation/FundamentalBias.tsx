@@ -115,21 +115,14 @@ export function FundamentalBias({ strengthData }: FundamentalBiasProps) {
             <p className="text-[10px] mt-1">এই সপ্তাহে এখনো কোনো high-impact news release হয়নি।</p>
           </div>
         ) : (
-          <Table className="table-fixed w-full">
-            <colgroup>
-              <col className="w-[72px]" />
-              <col className="w-[56px]" />
-              <col className="w-[88px]" />
-              <col />
-              <col className="w-[88px]" />
-            </colgroup>
+          <Table>
             <TableHeader>
               <TableRow className="border-b border-border/30 hover:bg-transparent bg-accent/5">
-                <TableHead className="h-8 px-3 text-[9px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground/60">Currency</TableHead>
-                <TableHead className="h-8 px-2 text-[9px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground/60 text-right">Score</TableHead>
-                <TableHead className="h-8 px-2 text-[9px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground/60">Strength</TableHead>
+                <TableHead className="h-8 px-3 text-[9px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground/60 w-[80px]">Currency</TableHead>
+                <TableHead className="h-8 px-2 text-[9px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground/60 w-[64px] text-right">Score</TableHead>
+                <TableHead className="h-8 px-2 text-[9px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground/60 w-[100px]">Strength</TableHead>
                 <TableHead className="h-8 px-3 text-[9px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground/60">Fundamental Impact</TableHead>
-                <TableHead className="h-8 px-3 text-[9px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground/60 text-right">Alignment</TableHead>
+                <TableHead className="h-8 px-3 text-[9px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground/60 w-[96px] text-right">Alignment</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
