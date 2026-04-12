@@ -1,0 +1,1 @@
+CREATE POLICY "Anyone can read fundamental biases" ON public.fundamental_biases FOR SELECT USING (true);
