@@ -1,114 +1,69 @@
 
 
-## Plan: Push Notification + Telegram Dual Alert System
+## Plan: Notification Icon Fix + Enhanced Push Content
 
-### সমস্যা
-বর্তমানে spike detect হলে শুধু Telegram এ message যায়। কিন্তু Telegram miss হতে পারে। Android PWA তে push notification আসলে phone এ directly alert পাবেন — কখনো miss হবে না।
+### সমস্যা ১: Notification Bar এ Icon দেখাচ্ছে না
+Android notification bar এ `badge` icon হিসেবে monochrome (single color, transparent background) icon দরকার। বর্তমান `icon-192.png` একটা full-color icon যা Android notification bar এ white square হিসেবে দেখায়। 
 
-### কিভাবে কাজ করবে
+**সমাধান:** একটা monochrome badge icon তৈরি করতে হবে (72x72 বা 96x96, transparent background, white foreground only) এবং `sw.js` এ `badge` property তে সেটা ব্যবহার করতে হবে। এছাড়া `manifest.json` এ `monochrome` purpose icon যোগ করতে হবে।
 
-```text
-Spike Detected
-    ↓
-price-spike-detector edge function
-    ↓
-    ├── 1. Telegram Message (existing — as before)
-    └── 2. Web Push Notification (NEW)
-              ↓
-         Android PWA তে notification আসবে
-         (sound + vibration সহ)
-```
+### সমস্যা ২: Push Notification এ সময় ও বিস্তারিত তথ্য নেই
+বর্তমানে push body তে শুধু pair name আর change % দেখায়। সময় (BD time) নেই।
+
+**সমাধান:** `price-spike-detector` function এ push body তে BD time যোগ করা।
+
+---
 
 ### পরিবর্তনসমূহ
 
-#### 1. Database — Push subscription store করা
-নতুন table `push_subscriptions` তৈরি হবে যেখানে আপনার browser/PWA এর push subscription save থাকবে।
+#### 1. Monochrome badge icon তৈরি (public/badge-96.png)
+- বর্তমান icon-192.png থেকে একটা 96x96 monochrome version generate করা
+- Transparent background, white foreground — Android notification bar এর জন্য standard
 
-```sql
-create table push_subscriptions (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete cascade,
-  endpoint text not null,
-  p256dh text not null,
-  auth text not null,
-  created_at timestamptz default now()
-);
+#### 2. `public/sw.js` আপডেট
+```js
+// badge এ monochrome icon ব্যবহার
+badge: '/badge-96.png',  // ← ছোট monochrome icon
+icon: '/icon-192.png',   // ← full notification icon (unchanged)
 ```
 
-#### 2. VAPID Keys — Web Push এর জন্য encryption keys
-Web Push কাজ করতে VAPID key pair লাগে (public + private)। একটা script দিয়ে generate করে:
-- **Public key** → frontend code এ থাকবে (subscribe করার জন্য)
-- **Private key** → Supabase secret এ save হবে (`VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`)
-
-#### 3. Service Worker — Push receive করার জন্য
-`public/sw.js` ফাইল তৈরি হবে যেটা push notification receive করবে এবং Android এ notification দেখাবে:
-
-```javascript
-// public/sw.js
-self.addEventListener('push', (event) => {
-  const data = event.data?.json() || {};
-  event.waitUntil(
-    self.registration.showNotification(data.title || '🔴 Spike Alert!', {
-      body: data.body,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      vibrate: [200, 100, 200],
-      tag: 'spike-alert',
-      reopen: true,
-    })
-  );
-});
-```
-
-#### 4. Frontend — Notification permission + subscription
-- `src/main.tsx` বা Settings page এ service worker register করা হবে
-- User কে notification permission চাওয়া হবে
-- Permission দিলে push subscription তৈরি হবে এবং `push_subscriptions` table এ save হবে
-- Settings page এ "Push Notification" toggle যোগ হবে
-
-#### 5. Edge Function — Push পাঠানো
-`price-spike-detector/index.ts` এ Telegram message পাঠানোর পরে push notification ও পাঠাবে:
-
-```typescript
-// Telegram message এর পরে...
-// Web Push notification
-const { data: subs } = await supabase.from('push_subscriptions').select('*');
-for (const sub of subs) {
-  await webpush.sendNotification(sub, JSON.stringify({
-    title: '🔴 Spike Alert!',
-    body: `${pair} ${direction === 'bullish' ? '📈 বেড়েছে' : '📉 কমেছে'} ${change}%`,
-  }));
+#### 3. `public/manifest.json` আপডেট
+- Monochrome purpose icon entry যোগ:
+```json
+{
+  "src": "/badge-96.png",
+  "sizes": "96x96",
+  "type": "image/png",
+  "purpose": "monochrome"
 }
 ```
 
-#### 6. নতুন Edge Function — `send-push-notification`
-Push notification পাঠানোর logic আলাদা edge function এ রাখা হবে যাতে spike detector থেকে invoke করা যায়। এটা `web-push` library ব্যবহার করবে VAPID keys দিয়ে।
+#### 4. `supabase/functions/price-spike-detector/index.ts` আপডেট
+Push notification body তে BD time যোগ:
+```typescript
+const { time } = getBdDateTime();
+const pushBody = filteredSpikes.map(s => {
+  const sign = s.change > 0 ? '+' : '';
+  const dir = s.direction === 'BULLISH' ? '📈 বেড়েছে' : '📉 কমেছে';
+  return `${s.pair} ${sign}${s.change.toFixed(2)}% (${s.pips} pips) ${dir}`;
+}).join('\n') + `\n🕐 ${time} (BD)`;
+```
 
-### Settings Page এ যা যোগ হবে
-- **"Push Notification"** toggle — enable/disable
-- Enable করলে browser permission চাইবে
-- Permission দিলে subscription save হবে
-- Disable করলে subscription delete হবে
+#### 5. `send-push-notification` Edge Function আপডেট
+Push payload তে timestamp pass করা যাতে notification এ সময় দেখায়।
 
-### কি কি Secret লাগবে
-| Secret | কোথা থেকে |
-|--------|-----------|
-| `VAPID_PUBLIC_KEY` | Script দিয়ে generate করবো |
-| `VAPID_PRIVATE_KEY` | Script দিয়ে generate করবো |
+---
 
-### File Changes Summary
-| File | Action |
-|------|--------|
-| `public/sw.js` | নতুন — Service Worker |
-| `src/main.tsx` | Update — SW registration |
-| `src/pages/Settings.tsx` | Update — Push toggle যোগ |
-| `supabase/functions/send-push-notification/index.ts` | নতুন — Push sender |
-| `supabase/functions/price-spike-detector/index.ts` | Update — Push call যোগ |
-| Migration | নতুন — `push_subscriptions` table |
+### ফাইল পরিবর্তন
 
-### গুরুত্বপূর্ণ তথ্য
-- Push notification শুধু **published version** এ কাজ করবে (Lovable preview তে না)
-- Android PWA তে install করার পরে notification permission দিতে হবে
-- Phone এ sound + vibration সহ notification আসবে
-- Telegram + Push দুটোই simultaneously যাবে — কোনোটা miss হবে না
+| ফাইল | কাজ |
+|---|---|
+| `public/badge-96.png` | নতুন — monochrome notification badge icon |
+| `public/sw.js` | badge icon path পরিবর্তন |
+| `public/manifest.json` | monochrome icon entry যোগ |
+| `supabase/functions/price-spike-detector/index.ts` | Push body তে time + pips যোগ |
+
+### গুরুত্বপূর্ণ
+- Badge icon fix হলে পরবর্তী push notification থেকে সঠিক icon দেখাবে
+- পুরানো notification cache clear করতে app reinstall বা notification settings clear করতে হতে পারে
 
