@@ -582,6 +582,51 @@ export type Database = {
         }
         Relationships: []
       }
+      mt5_candles: {
+        Row: {
+          close: number
+          high: number
+          id: string
+          low: number
+          open: number
+          open_time: string
+          pushed_at: string
+          real_volume: number
+          symbol: string
+          tick_volume: number
+          timeframe: string
+          volume: number
+        }
+        Insert: {
+          close: number
+          high: number
+          id?: string
+          low: number
+          open: number
+          open_time: string
+          pushed_at?: string
+          real_volume?: number
+          symbol: string
+          tick_volume?: number
+          timeframe: string
+          volume?: number
+        }
+        Update: {
+          close?: number
+          high?: number
+          id?: string
+          low?: number
+          open?: number
+          open_time?: string
+          pushed_at?: string
+          real_volume?: number
+          symbol?: string
+          tick_volume?: number
+          timeframe?: string
+          volume?: number
+        }
+        Relationships: []
+      }
       mt5_trades: {
         Row: {
           close_time: string | null
