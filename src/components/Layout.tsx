@@ -101,7 +101,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
-  const { primaryItems, toolsItems, primaryUrls, updatePrimaryUrls, resetToDefault, defaultUrls } = useNavConfig(ALL_NAV_ITEMS);
+  const { primaryItems, toolsItems, primaryUrls, maxMobile, maxDesktop, updateConfig, resetToDefault, defaultUrls } = useNavConfig(ALL_NAV_ITEMS);
   const [navEditOpen, setNavEditOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(staticNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
