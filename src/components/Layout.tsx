@@ -48,6 +48,7 @@ const toolsCategories = [
       { title: 'EMA Scan', url: '/ema-scanner', icon: Crosshair },
       { title: 'Correlation', url: '/correlation-pairs', icon: GitCompareArrows },
       { title: 'News', url: '/news', icon: Newspaper },
+      { title: 'Spike Alerts', url: '/spike-alerts', icon: AlertTriangle },
     ],
   },
   {

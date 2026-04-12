@@ -606,6 +606,27 @@ export type Database = {
         }
         Relationships: []
       }
+      price_snapshots: {
+        Row: {
+          pair: string
+          previous_price: number | null
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          pair: string
+          previous_price?: number | null
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          pair?: string
+          previous_price?: number | null
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       psychology_logs: {
         Row: {
           created_at: string
@@ -648,6 +669,30 @@ export type Database = {
           rule_adherence?: boolean
           sleep_quality?: number
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      spike_thresholds: {
+        Row: {
+          category: string
+          cooldown_minutes: number
+          id: string
+          threshold_percent: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          cooldown_minutes?: number
+          id?: string
+          threshold_percent: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          cooldown_minutes?: number
+          id?: string
+          threshold_percent?: number
+          updated_at?: string
         }
         Relationships: []
       }
