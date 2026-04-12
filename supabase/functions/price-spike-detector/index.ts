@@ -151,10 +151,11 @@ Deno.serve(async (req) => {
     const twelveDataKey = Deno.env.get('TWELVEDATA_API_KEY');
     if (!twelveDataKey) throw new Error('TWELVEDATA_API_KEY not set');
 
-    // Determine which group to fetch this run (rotate based on minute)
+    // Determine which group to fetch (override with ?group=0..3, else rotate by minute)
+    const groupParam = url.searchParams.get('group');
     const minuteNow = new Date().getMinutes();
-    const groupIndex = Math.floor(minuteNow / 2) % ALL_GROUPS.length;
-    const pairsToFetch = ALL_GROUPS[groupIndex];
+    const groupIndex = groupParam !== null ? parseInt(groupParam) : Math.floor(minuteNow / 2) % ALL_GROUPS.length;
+    const pairsToFetch = ALL_GROUPS[Math.min(groupIndex, ALL_GROUPS.length - 1)];
 
     console.log(`Fetching group ${groupIndex} (${pairsToFetch.length} pairs): ${pairsToFetch.join(', ')}`);
 
