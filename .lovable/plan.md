@@ -1,43 +1,29 @@
 
 
-## Plan: Fundamental Bias — Clean Table Layout
+## Plan: Fundamental Bias — Mobile Compact + Aligned Row Highlighting + Gap Fix
 
-### বর্তমান সমস্যা
-Card-row layout এ data গুলো scattered — currency, news, correlation, alignment সব মিশে যাচ্ছে। User দ্রুত scan করতে পারছে না।
+### পরিবর্তন ৩টি
 
-### নতুন Table Structure
+**1. Aligned Row Color Highlighting**
+- Bullish Aligned rows: পুরো row এ subtle emerald/green background tint (`bg-emerald-500/8`)
+- Bearish Aligned rows: পুরো row এ subtle red background tint (`bg-red-500/8`)
+- Currency name text ও bold হবে aligned rows এ
 
-```text
-┌──────────┬────────────┬───────────────┬───────────────────────────────────┬───────────┐
-│ Currency │ Corr Score │ Corr Strength │ Fundamental Impact                │ Alignment │
-├──────────┼────────────┼───────────────┼───────────────────────────────────┼───────────┤
-│ 🇺🇸 USD  │ +6         │ ▲ Strong      │ NFP: 256K (F:180K P:212K) HIGH   │ ✅ Aligned │
-│ 🇪🇺 EUR  │ -4         │ ▼ Weak        │ CPI: 2.1% (F:2.4% P:2.6%) HIGH  │ ✅ Aligned │
-│ 🇬🇧 GBP  │ +5         │ ▲ Strong      │ GDP: 0.3% (F:0.3% P:0.1%) MED   │ ⚠️ Mixed  │
-│ 🇯🇵 JPY  │ -2         │ ● Neutral     │ BOJ Rate: -0.1% (F:-0.1%) HIGH   │ — Neutral │
-└──────────┴────────────┴───────────────┴───────────────────────────────────┴───────────┘
-```
+**2. Table Gap Fix (Fundamental Impact → Alignment)**
+- `Fundamental Impact` column এর fixed `max-width` সরিয়ে দেওয়া হবে
+- Alignment column width কমানো হবে (`w-[96px]` → `w-[72px]`)
+- Table এ `table-fixed` layout ব্যবহার করা হবে যেন columns evenly distribute হয় এবং মাঝে বড় gap না থাকে
 
-### Column বিবরণ
+**3. Mobile Single-Screen Fit (No Scroll)**
+- Font sizes আরও compact করা: mobile এ `text-[9px]` body, `text-[8px]` headers
+- Row padding `py-2` → `py-1` (mobile)
+- Strength bar সরিয়ে দেওয়া হবে mobile এ (space save)
+- A/F/P line mobile এ hide করা হবে — শুধু bias chip + event name দেখাবে
+- Header padding compact করা হবে
+- `useIsMobile()` hook ব্যবহার করে conditional rendering
 
-| Column | Data |
-|--------|------|
-| **Currency** | Flag + code (🇺🇸 USD) |
-| **Corr Score** | Numeric value (+6, -4) — color coded: green=positive, red=negative |
-| **Corr Strength** | Label (Very Strong / Strong / Mild Bull / Neutral / Mild Bear / Weak / Very Weak) with arrow icon & color |
-| **Fundamental Impact** | Event name + Actual value (bold, colored) + Forecast & Previous (muted) + Impact badge (High/Medium) |
-| **Alignment** | ✅ Aligned / ⚠️ Divergent / ● Mixed — comparing fundamental bias vs correlation direction |
-
-### Technical Details
-
-- **File**: `src/components/correlation/FundamentalBias.tsx` — full rewrite of content area
-- shadcn `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell` ব্যবহার হবে
-- Card wrapper ও header (aligned counter, timestamp) যেমন আছে তেমনই থাকবে
-- Sticky header, row hover effect, horizontal scroll on mobile
-- কোনো নতুন file বা dependency লাগবে না
-
-### ফলাফল
-- এক নজরে ৮টি currency এর complete picture — correlation + fundamental + alignment
-- প্রতিটি data point নিজ column এ isolated — verify করা সহজ
-- "First graded currency" খুঁজে পেতে Alignment column এ ✅ Aligned দেখলেই হবে
+### File
+| File | Action |
+|------|--------|
+| `src/components/correlation/FundamentalBias.tsx` | Edit — row highlighting, gap fix, mobile compact |
 
