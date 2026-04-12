@@ -411,8 +411,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile Bottom Navigation Bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden backdrop-blur-md bg-background/90 border-t border-border/30"
            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        <div className="flex items-center justify-around px-1 h-16">
-          {primaryItems.slice(0, 4).map((item) => (
+        <div className="flex items-center justify-around px-1 h-16 overflow-x-auto">
+          {primaryItems.map((item) => (
             <NavLink
               key={item.url}
               to={item.url}
