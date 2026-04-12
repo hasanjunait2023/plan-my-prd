@@ -41,7 +41,7 @@ function detectZones(candles: Candle[]): { demandZones: Zone[]; supplyZones: Zon
     atrSum += candles[i].high - candles[i].low;
   }
   const atr = atrSum / Math.min(14, candles.length - 1);
-  const impulsiveThreshold = atr * 2;
+  const impulsiveThreshold = atr * 1.2; // relaxed from 2x to 1.2x for more zone detection
 
   const demandZones: Zone[] = [];
   const supplyZones: Zone[] = [];
@@ -170,32 +170,43 @@ Deno.serve(async (req) => {
 
     // Limit to 8 pairs (TwelveData rate limit)
     const pairsToProcess = pairs.slice(0, 8);
-    const results: ZoneResult[] = [];
 
-    for (const p of pairsToProcess) {
+    // Batch API call — single request for all symbols (1 credit per symbol)
+    const symbols = pairsToProcess.map(p => p.pair).join(',');
+    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbols)}&interval=1h&outputsize=100&apikey=${apiKey}`;
+    console.log(`Batch fetching S/D for: ${symbols}`);
+    const resp = await fetch(url);
+    const batchData = await resp.json();
+
+    const results: ZoneResult[] = pairsToProcess.map((p) => {
       try {
-        const symbol = p.pair; // TwelveData uses EUR/USD format for forex
-        const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1h&outputsize=100&apikey=${apiKey}`;
-        console.log(`Fetching S/D for ${symbol}...`);
-        const resp = await fetch(url);
-        const json = await resp.json();
-        console.log(`${symbol} response status:`, json.status || 'ok', 'values:', json.values?.length || 0);
+        // Handle single vs multi symbol response
+        let values: any[] = [];
+        if (pairsToProcess.length === 1) {
+          values = batchData?.values || [];
+        } else {
+          values = batchData?.[p.pair]?.values || [];
+        }
 
-        if (json.status === 'error' || !json.values || json.values.length === 0) {
-          console.log(`${symbol} error/no data:`, json.message || json.code || 'empty values');
-          results.push({
+        if (!values || values.length === 0) {
+          const errMsg = pairsToProcess.length === 1 
+            ? batchData?.message 
+            : batchData?.[p.pair]?.message;
+          console.log(`${p.pair}: no data - ${errMsg || 'empty'}`);
+          return {
             pair: p.pair,
             direction: p.direction,
             demandZone: null,
             supplyZone: null,
             currentPrice: null,
-            proximity: 'No Data',
+            proximity: 'No Data' as const,
             priceRange: null,
-          });
-          continue;
+          };
         }
 
-        const candles: Candle[] = json.values.map((v: any) => ({
+        console.log(`${p.pair}: ${values.length} candles received`);
+
+        const candles: Candle[] = values.map((v: any) => ({
           datetime: v.datetime,
           open: parseFloat(v.open),
           high: parseFloat(v.high),
@@ -208,6 +219,7 @@ Deno.serve(async (req) => {
         const chartLow = Math.min(...candles.map(c => c.low));
 
         const { demandZones, supplyZones } = detectZones(candles);
+        console.log(`${p.pair}: found ${demandZones.length} demand, ${supplyZones.length} supply zones`);
 
         const bestDemand = pickBestZone(demandZones, currentPrice, 'demand');
         const bestSupply = pickBestZone(supplyZones, currentPrice, 'supply');
@@ -221,7 +233,7 @@ Deno.serve(async (req) => {
 
         const proximity = calculateProximity(currentPrice, p.direction, bestDemand, bestSupply, atrApprox);
 
-        results.push({
+        return {
           pair: p.pair,
           direction: p.direction,
           demandZone: bestDemand,
@@ -229,20 +241,20 @@ Deno.serve(async (req) => {
           currentPrice,
           proximity,
           priceRange: { chartHigh, chartLow },
-        });
+        };
       } catch (err) {
         console.error(`Error processing ${p.pair}:`, err);
-        results.push({
+        return {
           pair: p.pair,
           direction: p.direction,
           demandZone: null,
           supplyZone: null,
           currentPrice: null,
-          proximity: 'No Data',
+          proximity: 'No Data' as const,
           priceRange: null,
-        });
+        };
       }
-    }
+    });
 
     return new Response(JSON.stringify({ zones: results }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
