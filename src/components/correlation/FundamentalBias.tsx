@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { CURRENCY_FLAGS } from '@/types/correlation';
 import type { CurrencyStrengthRecord } from '@/types/correlation';
-import { Newspaper, TrendingUp, TrendingDown, Minus, RefreshCw, ArrowUpRight, ArrowDownRight, Activity, CheckCircle2, AlertTriangle, BarChart3 } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { Newspaper, RefreshCw, CheckCircle2, AlertTriangle, Activity, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 interface BiasData {
   bias: 'Bullish' | 'Bearish' | 'Neutral';
@@ -45,10 +45,6 @@ function getStrengthCategory(strength: number): { label: string; bias: 'Bullish'
   return { label: 'Very Weak', bias: 'Bearish' };
 }
 
-function getStrengthBarWidth(strength: number): number {
-  return Math.min(Math.abs(strength) * 10, 100);
-}
-
 const CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
 
 export function FundamentalBias({ strengthData }: FundamentalBiasProps) {
@@ -66,8 +62,7 @@ export function FundamentalBias({ strengthData }: FundamentalBiasProps) {
     if (!bias || bias.bias === 'Neutral') return false;
     const strength = strengthMap.get(c);
     if (strength === undefined) return false;
-    const corrBias = getStrengthCategory(strength).bias;
-    return bias.bias === corrBias;
+    return bias.bias === getStrengthCategory(strength).bias;
   }).length : 0;
 
   const totalActive = data?.biases ? CURRENCIES.filter(c => {
@@ -85,7 +80,7 @@ export function FundamentalBias({ strengthData }: FundamentalBiasProps) {
             </div>
             <div>
               <CardTitle className="text-base font-bold tracking-tight">Fundamental Bias</CardTitle>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Latest news impact on each currency</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">News impact vs technical correlation alignment</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -109,8 +104,8 @@ export function FundamentalBias({ strengthData }: FundamentalBiasProps) {
       <CardContent className="p-0">
         {isLoading ? (
           <div className="p-4 space-y-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full rounded-lg" />
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full rounded" />
             ))}
           </div>
         ) : !data?.biases || Object.keys(data.biases).length === 0 ? (
@@ -120,150 +115,156 @@ export function FundamentalBias({ strengthData }: FundamentalBiasProps) {
             <p className="text-[10px] mt-1">এই সপ্তাহে এখনো কোনো high-impact news release হয়নি।</p>
           </div>
         ) : (
-          <div className="divide-y divide-border/10">
-            {CURRENCIES.map(currency => {
-              const bias = data.biases[currency];
-              if (!bias) return null;
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-border/20 hover:bg-transparent">
+                <TableHead className="h-9 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 w-[90px]">Currency</TableHead>
+                <TableHead className="h-9 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 w-[80px] text-center">Corr Score</TableHead>
+                <TableHead className="h-9 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 w-[110px]">Corr Strength</TableHead>
+                <TableHead className="h-9 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Fundamental Impact</TableHead>
+                <TableHead className="h-9 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 w-[100px] text-center">Alignment</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {CURRENCIES.map(currency => {
+                const bias = data.biases[currency];
+                if (!bias) return null;
 
-              const strength = strengthMap.get(currency);
-              const corrInfo = strength !== undefined ? getStrengthCategory(strength) : null;
-              const isAligned = corrInfo !== null && bias.bias !== 'Neutral' && bias.bias === corrInfo.bias;
-              const isDivergent = corrInfo !== null && bias.bias !== 'Neutral' && corrInfo.bias !== 'Neutral' && bias.bias !== corrInfo.bias;
-              const barWidth = strength !== undefined ? getStrengthBarWidth(strength) : 0;
+                const strength = strengthMap.get(currency);
+                const corrInfo = strength !== undefined ? getStrengthCategory(strength) : null;
+                const isAligned = corrInfo !== null && bias.bias !== 'Neutral' && bias.bias === corrInfo.bias;
+                const isDivergent = corrInfo !== null && bias.bias !== 'Neutral' && corrInfo.bias !== 'Neutral' && bias.bias !== corrInfo.bias;
+                const isNeutralBias = bias.bias === 'Neutral';
 
-              const isBullish = bias.bias === 'Bullish';
-              const isBearish = bias.bias === 'Bearish';
+                const isBullish = bias.bias === 'Bullish';
+                const isBearish = bias.bias === 'Bearish';
 
-              return (
-                <div
-                  key={currency}
-                  className="px-4 py-3 hover:bg-accent/5 transition-colors relative group"
-                >
-                  {/* Subtle left accent bar */}
-                  <div className={`absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full ${
-                    isBullish ? 'bg-emerald-500' : isBearish ? 'bg-red-500' : 'bg-yellow-500/60'
-                  }`} />
-
-                  {/* Row 1: Currency + Bias + Alignment */}
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 min-w-[72px]">
-                        <span className="text-xl leading-none">{CURRENCY_FLAGS[currency]}</span>
+                return (
+                  <TableRow key={currency} className="border-b border-border/10 hover:bg-accent/5 transition-colors">
+                    {/* Currency */}
+                    <TableCell className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg leading-none">{CURRENCY_FLAGS[currency]}</span>
                         <span className="font-bold text-sm text-foreground tracking-wide">{currency}</span>
                       </div>
+                    </TableCell>
 
-                      {/* Fundamental bias badge */}
-                      <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
-                        isBullish ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' :
-                        isBearish ? 'bg-red-500/15 text-red-400 border border-red-500/25' :
-                        'bg-yellow-500/15 text-yellow-400 border border-yellow-500/25'
-                      }`}>
-                        {isBullish && <ArrowUpRight className="w-3.5 h-3.5" />}
-                        {isBearish && <ArrowDownRight className="w-3.5 h-3.5" />}
-                        {bias.bias === 'Neutral' && <Minus className="w-3.5 h-3.5" />}
-                        <span>{bias.bias}</span>
-                      </div>
-
-                      {/* Impact badge */}
-                      <Badge
-                        variant="outline"
-                        className={`text-[9px] px-1.5 py-0 h-4 font-semibold ${
-                          bias.impact.toLowerCase() === 'high'
-                            ? 'border-red-500/40 text-red-400 bg-red-500/5'
-                            : 'border-yellow-500/40 text-yellow-400 bg-yellow-500/5'
-                        }`}
-                      >
-                        {bias.impact}
-                      </Badge>
-                    </div>
-
-                    {/* Alignment indicator */}
-                    <div className="flex items-center gap-2">
-                      {corrInfo && bias.bias !== 'Neutral' && (
-                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                          isAligned
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : isDivergent
-                            ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
-                            : 'bg-accent/20 text-muted-foreground border border-border/30'
+                    {/* Corr Score */}
+                    <TableCell className="px-3 py-2.5 text-center">
+                      {strength !== undefined ? (
+                        <span className={`font-mono text-sm font-bold ${
+                          strength > 0 ? 'text-emerald-400' : strength < 0 ? 'text-red-400' : 'text-yellow-400'
                         }`}>
-                          {isAligned ? (
-                            <><CheckCircle2 className="w-3 h-3" /> Aligned</>
-                          ) : isDivergent ? (
-                            <><AlertTriangle className="w-3 h-3" /> Divergent</>
-                          ) : (
-                            <><Activity className="w-3 h-3" /> Mixed</>
-                          )}
-                        </div>
+                          {strength > 0 ? '+' : ''}{strength.toFixed(1)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/40">—</span>
                       )}
-                    </div>
-                  </div>
+                    </TableCell>
 
-                  {/* Row 2: News detail + Correlation bar */}
-                  <div className="flex items-end justify-between gap-4">
-                    {/* News info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-medium text-foreground/80 truncate">
-                        {bias.event}
-                      </p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] text-muted-foreground">Actual:</span>
-                          <span className={`text-[11px] font-bold ${
-                            isBullish ? 'text-emerald-400' : isBearish ? 'text-red-400' : 'text-yellow-400'
-                          }`}>{bias.actual}</span>
+                    {/* Corr Strength */}
+                    <TableCell className="px-3 py-2.5">
+                      {corrInfo ? (
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1.5">
+                            {corrInfo.bias === 'Bullish' && <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" />}
+                            {corrInfo.bias === 'Bearish' && <ArrowDownRight className="w-3.5 h-3.5 text-red-400" />}
+                            {corrInfo.bias === 'Neutral' && <Minus className="w-3.5 h-3.5 text-yellow-400" />}
+                            <span className={`text-xs font-semibold ${
+                              corrInfo.bias === 'Bullish' ? 'text-emerald-400' :
+                              corrInfo.bias === 'Bearish' ? 'text-red-400' :
+                              'text-yellow-400'
+                            }`}>
+                              {corrInfo.label}
+                            </span>
+                          </div>
+                          {/* Mini bar */}
+                          <div className="w-full h-1 rounded-full bg-accent/20 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                (strength ?? 0) >= 0
+                                  ? 'bg-gradient-to-r from-emerald-500/60 to-emerald-400'
+                                  : 'bg-gradient-to-r from-red-400 to-red-500/60'
+                              }`}
+                              style={{ width: `${Math.min(Math.abs(strength ?? 0) * 10, 100)}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] text-muted-foreground">Forecast:</span>
-                          <span className="text-[11px] font-medium text-foreground/60">{bias.forecast || '—'}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] text-muted-foreground">Previous:</span>
-                          <span className="text-[11px] font-medium text-foreground/60">{bias.previous || '—'}</span>
-                        </div>
-                        {bias.date && (
-                          <span className="text-[9px] text-muted-foreground/50 ml-auto hidden sm:block">
-                            {format(new Date(bias.date), 'MMM dd, HH:mm')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/40">—</span>
+                      )}
+                    </TableCell>
 
-                    {/* Correlation strength mini gauge */}
-                    {strength !== undefined && (
-                      <div className="flex flex-col items-end gap-1 min-w-[120px]">
-                        <div className="flex items-center gap-1.5 w-full justify-end">
-                          <BarChart3 className="w-3 h-3 text-muted-foreground/50" />
-                          <span className="text-[9px] text-muted-foreground">Correlation:</span>
-                          <span className={`text-[11px] font-bold ${
-                            corrInfo?.bias === 'Bullish' ? 'text-emerald-400' :
-                            corrInfo?.bias === 'Bearish' ? 'text-red-400' :
-                            'text-yellow-400'
+                    {/* Fundamental Impact */}
+                    <TableCell className="px-3 py-2.5">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          {/* Bias pill */}
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            isBullish ? 'bg-emerald-500/15 text-emerald-400' :
+                            isBearish ? 'bg-red-500/15 text-red-400' :
+                            'bg-yellow-500/15 text-yellow-400'
                           }`}>
-                            {corrInfo?.label}
+                            {isBullish ? '▲' : isBearish ? '▼' : '●'} {bias.bias}
                           </span>
-                          <span className="text-[10px] font-mono text-muted-foreground/70">
-                            ({strength > 0 ? '+' : ''}{strength})
+                          {/* Impact */}
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            bias.impact.toLowerCase() === 'high'
+                              ? 'bg-red-500/10 text-red-400'
+                              : 'bg-yellow-500/10 text-yellow-400'
+                          }`}>
+                            {bias.impact.toUpperCase()}
                           </span>
                         </div>
-                        {/* Mini progress bar */}
-                        <div className="w-full h-1.5 rounded-full bg-accent/20 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              (strength ?? 0) >= 0
-                                ? 'bg-gradient-to-r from-emerald-500/60 to-emerald-400'
-                                : 'bg-gradient-to-r from-red-400 to-red-500/60'
-                            }`}
-                            style={{ width: `${barWidth}%`, marginLeft: (strength ?? 0) < 0 ? 'auto' : undefined }}
-                          />
+                        <p className="text-[11px] text-foreground/80 truncate max-w-[280px]" title={bias.event}>
+                          {bias.event}
+                        </p>
+                        <div className="flex items-center gap-2.5 text-[10px]">
+                          <span>
+                            <span className="text-muted-foreground/60">A:</span>{' '}
+                            <span className={`font-bold ${
+                              isBullish ? 'text-emerald-400' : isBearish ? 'text-red-400' : 'text-foreground/70'
+                            }`}>{bias.actual || '—'}</span>
+                          </span>
+                          <span>
+                            <span className="text-muted-foreground/60">F:</span>{' '}
+                            <span className="text-foreground/50">{bias.forecast || '—'}</span>
+                          </span>
+                          <span>
+                            <span className="text-muted-foreground/60">P:</span>{' '}
+                            <span className="text-foreground/50">{bias.previous || '—'}</span>
+                          </span>
                         </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                    </TableCell>
+
+                    {/* Alignment */}
+                    <TableCell className="px-3 py-2.5 text-center">
+                      {isNeutralBias ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold bg-accent/10 text-muted-foreground/60 border border-border/20">
+                          <Minus className="w-3 h-3" /> Neutral
+                        </span>
+                      ) : corrInfo === null ? (
+                        <span className="text-xs text-muted-foreground/40">—</span>
+                      ) : isAligned ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_8px_hsla(152,100%,50%,0.1)]">
+                          <CheckCircle2 className="w-3 h-3" /> Aligned
+                        </span>
+                      ) : isDivergent ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20 shadow-[0_0_8px_hsla(30,100%,50%,0.1)]">
+                          <AlertTriangle className="w-3 h-3" /> Divergent
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold bg-accent/15 text-muted-foreground border border-border/30">
+                          <Activity className="w-3 h-3" /> Mixed
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </CardContent>
     </Card>
