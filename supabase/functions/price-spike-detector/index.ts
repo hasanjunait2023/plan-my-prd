@@ -292,7 +292,7 @@ Deno.serve(async (req) => {
                 'X-Connection-Api-Key': TELEGRAM_API_KEY,
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'HTML' }),
+              body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown' }),
             });
 
             await supabase.from('alert_log').insert({
@@ -319,7 +319,7 @@ Deno.serve(async (req) => {
               'X-Connection-Api-Key': TELEGRAM_API_KEY,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'HTML' }),
+            body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown' }),
           });
 
           await supabase.from('alert_log').insert({
