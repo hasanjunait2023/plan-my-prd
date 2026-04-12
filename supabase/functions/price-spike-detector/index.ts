@@ -135,7 +135,10 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    if (isWeekend()) {
+    const url = new URL(req.url);
+    const force = url.searchParams.get('force') === 'true';
+
+    if (!force && isWeekend()) {
       return new Response(JSON.stringify({ ok: true, skipped: 'weekend' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
