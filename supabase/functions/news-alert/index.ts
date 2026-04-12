@@ -180,6 +180,19 @@ Deno.serve(async (req) => {
           metadata: { dedup_key: dedupKey, title, country, impact, event_time: event.date },
         });
         alertsSent.push(title);
+
+        // Web Push
+        try {
+          const pushBody = `${flag} ${impactLabel}: ${title}\n⏰ 🇧🇩 ${bdTimeStr} (${minutesLeft} min left)\n💥 ${affectedPairs.join(', ')}`;
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              title: `${impactEmoji} ${title}`,
+              body: pushBody,
+              tag: 'news-alert',
+              url: '/market-news',
+            },
+          });
+        } catch (e) { console.error('Push error:', e); }
       }
     }
 

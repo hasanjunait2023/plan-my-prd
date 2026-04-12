@@ -297,9 +297,49 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Send all alerts
+    // Send all alerts via Telegram + Web Push
+    const pushUrlMap: Record<string, string> = {
+      confluence: '/trade-intelligence',
+      ema_shift: '/ema-scanner',
+      risk_breach: '/analytics',
+      session_reminder: '/chart-analysis',
+      mt5_trade: '/mt5-connection',
+      calendar_event: '/market-news',
+    };
+
     for (const msg of alerts) {
       await sendTelegram(chatId, msg, BOT_TOKEN);
+    }
+
+    // Send push notifications for each alert type logged
+    const { data: recentAlerts } = await supabase
+      .from('alert_log')
+      .select('alert_type, message, pair')
+      .gte('sent_at', new Date(Date.now() - 60 * 1000).toISOString())
+      .order('sent_at', { ascending: false })
+      .limit(alerts.length || 1);
+
+    if (recentAlerts?.length) {
+      for (const a of recentAlerts) {
+        const plainText = a.message.replace(/<[^>]*>/g, '');
+        const pushTitle = a.alert_type === 'confluence' ? `🟢 ${a.pair || 'Setup'}` :
+          a.alert_type === 'ema_shift' ? `⚡ EMA: ${a.pair}` :
+          a.alert_type === 'risk_breach' ? '🔴 Risk Alert' :
+          a.alert_type === 'session_reminder' ? '🕐 Session' :
+          a.alert_type === 'mt5_trade' ? `📊 MT5: ${a.pair}` :
+          a.alert_type === 'calendar_event' ? '🔴 High Impact' : '📢 Alert';
+
+        try {
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              title: pushTitle,
+              body: plainText.substring(0, 200),
+              tag: a.alert_type,
+              url: pushUrlMap[a.alert_type] || '/',
+            },
+          });
+        } catch (e) { console.error('Push error:', e); }
+      }
     }
 
     return new Response(JSON.stringify({ ok: true, alerts_sent: alerts.length }), {

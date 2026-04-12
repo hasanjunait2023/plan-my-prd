@@ -164,6 +164,18 @@ Deno.serve(async (req) => {
     body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' }),
   });
 
+  // Web Push for weekly recap
+  try {
+    await supabase.functions.invoke('send-push-notification', {
+      body: {
+        title: '📊 Weekly Recap',
+        body: `${thisWeekRate}% completion (${trend}) | 🌟 ${perfectDays} perfect days | ⚡ ${thisWeekXP} XP`,
+        tag: 'habit-weekly-recap',
+        url: '/habit-tracking',
+      },
+    });
+  } catch (e) { console.error('Push error:', e); }
+
   const data = await response.json();
   return json({ ok: response.ok, data });
 });
