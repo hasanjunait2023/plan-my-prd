@@ -5,7 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FF_CALENDAR_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
+const FF_THIS_WEEK = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
+const FF_LAST_WEEK = 'https://nfs.faireconomy.media/ff_calendar_lastweek.json';
 
 const CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
 
@@ -45,15 +46,24 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const response = await fetch(FF_CALENDAR_URL, {
-      headers: { 'User-Agent': 'TradeVault-Pro/1.0' },
-    });
+    const fetchOpts = { headers: { 'User-Agent': 'TradeVault-Pro/1.0' } };
+    const [thisWeekRes, lastWeekRes] = await Promise.all([
+      fetch(FF_THIS_WEEK, fetchOpts),
+      fetch(FF_LAST_WEEK, fetchOpts).catch(() => null),
+    ]);
 
-    if (!response.ok) throw new Error(`FF API returned ${response.status}`);
+    if (!thisWeekRes.ok) throw new Error(`FF this-week API returned ${thisWeekRes.status}`);
 
-    const rawEvents: any[] = await response.json();
+    const thisWeekEvents: any[] = await thisWeekRes.json();
+    let lastWeekEvents: any[] = [];
+    if (lastWeekRes && lastWeekRes.ok) {
+      lastWeekEvents = await lastWeekRes.json();
+    }
 
-    const releasedEvents = rawEvents
+    // Merge: this week first (higher priority), then last week
+    const allEvents = [...thisWeekEvents, ...lastWeekEvents];
+
+    const releasedEvents = allEvents
       .filter((e: any) => {
         const impact = (e.impact || '').toLowerCase();
         return (impact === 'high' || impact === 'medium') && e.actual?.trim();
