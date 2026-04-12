@@ -185,7 +185,13 @@ function getSavedOrder(): string[] {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length === DEFAULT_ORDER.length) return parsed;
+      if (Array.isArray(parsed)) {
+        // Add any new sections that don't exist in saved order
+        const missing = DEFAULT_ORDER.filter(id => !parsed.includes(id));
+        if (missing.length === 0 && parsed.length === DEFAULT_ORDER.length) return parsed;
+        // Merge: keep saved order + append missing
+        return [...parsed.filter((id: string) => DEFAULT_ORDER.includes(id)), ...missing];
+      }
     }
   } catch {}
   return DEFAULT_ORDER;
