@@ -1,0 +1,159 @@
+import { corsHeaders } from '@supabase/supabase-js/cors'
+
+const TWELVEDATA_BASE = 'https://api.twelvedata.com'
+
+interface PairInput {
+  pair: string
+  direction: 'BUY' | 'SELL'
+}
+
+interface PairResult {
+  pair: string
+  direction: 'BUY' | 'SELL'
+  nyHigh: number | null
+  nyLow: number | null
+  currentPrice: number | null
+  breakStatus: 'HH Break' | 'LL Break' | 'In Range' | 'Counter Move' | 'No Data'
+}
+
+function toTwelveDataSymbol(pair: string): string {
+  return pair.replace('/', '')
+}
+
+function getNySessionWindow(): { start: string; end: string } {
+  const now = new Date()
+  // Yesterday's NY session: 13:00-22:00 UTC
+  const yesterday = new Date(now)
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1)
+  
+  const start = new Date(yesterday)
+  start.setUTCHours(13, 0, 0, 0)
+  
+  const end = new Date(yesterday)
+  end.setUTCHours(22, 0, 0, 0)
+  
+  return {
+    start: start.toISOString().replace('T', ' ').substring(0, 19),
+    end: end.toISOString().replace('T', ' ').substring(0, 19),
+  }
+}
+
+function determineBreakStatus(
+  direction: 'BUY' | 'SELL',
+  nyHigh: number,
+  nyLow: number,
+  currentPrice: number
+): PairResult['breakStatus'] {
+  if (direction === 'BUY') {
+    if (currentPrice > nyHigh) return 'HH Break'
+    if (currentPrice < nyLow) return 'Counter Move'
+    return 'In Range'
+  } else {
+    if (currentPrice < nyLow) return 'LL Break'
+    if (currentPrice > nyHigh) return 'Counter Move'
+    return 'In Range'
+  }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const TWELVEDATA_API_KEY = Deno.env.get('TWELVEDATA_API_KEY')
+    if (!TWELVEDATA_API_KEY) {
+      return new Response(JSON.stringify({ error: 'TWELVEDATA_API_KEY not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const { pairs } = await req.json() as { pairs: PairInput[] }
+    if (!pairs || pairs.length === 0) {
+      return new Response(JSON.stringify({ pairs: [] }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Limit to top 8 pairs
+    const topPairs = pairs.slice(0, 8)
+    const symbols = topPairs.map(p => toTwelveDataSymbol(p.pair)).join(',')
+    const nyWindow = getNySessionWindow()
+
+    // Fetch 1h candles for last 48 hours
+    const timeSeriesUrl = `${TWELVEDATA_BASE}/time_series?symbol=${symbols}&interval=1h&outputsize=48&apikey=${TWELVEDATA_API_KEY}`
+    const tsResponse = await fetch(timeSeriesUrl)
+    const tsData = await tsResponse.json()
+
+    // Fetch current prices
+    const priceUrl = `${TWELVEDATA_BASE}/price?symbol=${symbols}&apikey=${TWELVEDATA_API_KEY}`
+    const priceResponse = await fetch(priceUrl)
+    const priceData = await priceResponse.json()
+
+    const results: PairResult[] = topPairs.map((pairInput) => {
+      const sym = toTwelveDataSymbol(pairInput.pair)
+      
+      // Get candle data - handle single vs multi symbol response
+      let candles: any[] = []
+      if (topPairs.length === 1) {
+        candles = tsData?.values || []
+      } else {
+        candles = tsData?.[sym]?.values || []
+      }
+
+      // Filter NY session candles (13:00-22:00 UTC yesterday)
+      const nyCandles = candles.filter((c: any) => {
+        const dt = c.datetime
+        return dt >= nyWindow.start && dt <= nyWindow.end
+      })
+
+      if (nyCandles.length === 0) {
+        return {
+          pair: pairInput.pair,
+          direction: pairInput.direction,
+          nyHigh: null,
+          nyLow: null,
+          currentPrice: null,
+          breakStatus: 'No Data' as const,
+        }
+      }
+
+      const nyHigh = Math.max(...nyCandles.map((c: any) => parseFloat(c.high)))
+      const nyLow = Math.min(...nyCandles.map((c: any) => parseFloat(c.low)))
+
+      // Get current price
+      let currentPrice: number | null = null
+      if (topPairs.length === 1) {
+        currentPrice = priceData?.price ? parseFloat(priceData.price) : null
+      } else {
+        currentPrice = priceData?.[sym]?.price ? parseFloat(priceData[sym].price) : null
+      }
+
+      const breakStatus = currentPrice !== null
+        ? determineBreakStatus(pairInput.direction, nyHigh, nyLow, currentPrice)
+        : 'No Data' as const
+
+      return {
+        pair: pairInput.pair,
+        direction: pairInput.direction,
+        nyHigh,
+        nyLow,
+        currentPrice,
+        breakStatus,
+      }
+    })
+
+    return new Response(JSON.stringify({ pairs: results }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  } catch (error) {
+    console.error('NY Session Breaks error:', error)
+    return new Response(JSON.stringify({ error: String(error) }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+})
