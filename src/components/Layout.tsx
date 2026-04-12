@@ -25,6 +25,7 @@ interface NotificationItem {
   time: string;
   unread: boolean;
   source: 'local' | 'db';
+  url?: string;
 }
 
 const staticNotifications: NotificationItem[] = [
