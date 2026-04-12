@@ -6,13 +6,14 @@ const MAJOR_PAIRS = [
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'USD/CAD', 'AUD/USD', 'NZD/USD'
 ];
 
-const ALL_PAIRS = [
-  'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'USD/CAD', 'AUD/USD', 'NZD/USD',
-  'EUR/GBP', 'EUR/JPY', 'GBP/JPY', 'AUD/JPY', 'NZD/JPY', 'CAD/JPY', 'CHF/JPY',
-  'EUR/AUD', 'GBP/AUD', 'EUR/CAD', 'GBP/CHF', 'EUR/CHF', 'AUD/NZD',
-  'EUR/NZD', 'GBP/NZD', 'AUD/CAD', 'GBP/CAD', 'NZD/CAD', 'NZD/CHF', 'AUD/CHF',
-  'XAU/USD'
-];
+// Split into 3 groups of max 8 pairs each (TwelveData free: 8 credits/min)
+const GROUP_A = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'USD/CAD', 'AUD/USD', 'NZD/USD', 'XAU/USD']; // majors + gold
+const GROUP_B = ['EUR/GBP', 'EUR/JPY', 'GBP/JPY', 'AUD/JPY', 'NZD/JPY', 'CAD/JPY', 'CHF/JPY', 'EUR/AUD']; // crosses 1
+const GROUP_C = ['GBP/AUD', 'EUR/CAD', 'GBP/CHF', 'EUR/CHF', 'AUD/NZD', 'EUR/NZD', 'GBP/NZD', 'AUD/CAD']; // crosses 2
+const GROUP_D = ['GBP/CAD', 'NZD/CAD', 'NZD/CHF', 'AUD/CHF']; // crosses 3
+
+const ALL_GROUPS = [GROUP_A, GROUP_B, GROUP_C, GROUP_D];
+const ALL_PAIRS = [...GROUP_A, ...GROUP_B, ...GROUP_C, ...GROUP_D];
 
 function getPairCategory(pair: string): 'major' | 'cross' | 'gold' {
   if (pair === 'XAU/USD') return 'gold';
@@ -43,8 +44,6 @@ function getBdTime(): string {
 function isWeekend(): boolean {
   const now = new Date();
   const bdDay = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Dhaka' })).getDay();
-  // Friday market closes ~BD Sat 5AM, Sunday opens ~BD Mon 1AM
-  // Simplified: skip Saturday and Sunday BD time
   return bdDay === 6 || bdDay === 0;
 }
 
@@ -151,59 +150,58 @@ Deno.serve(async (req) => {
     const twelveDataKey = Deno.env.get('TWELVEDATA_API_KEY');
     if (!twelveDataKey) throw new Error('TWELVEDATA_API_KEY not set');
 
+    // Determine which group to fetch this run (rotate based on minute)
+    const minuteNow = new Date().getMinutes();
+    const groupIndex = Math.floor(minuteNow / 2) % ALL_GROUPS.length;
+    const pairsToFetch = ALL_GROUPS[groupIndex];
+
+    console.log(`Fetching group ${groupIndex} (${pairsToFetch.length} pairs): ${pairsToFetch.join(', ')}`);
+
     // Fetch thresholds
     const { data: thresholds } = await supabase.from('spike_thresholds').select('*');
     const thresholdMap: Record<string, { percent: number; cooldown: number }> = {};
     for (const t of thresholds || []) {
       thresholdMap[t.category] = { percent: t.threshold_percent, cooldown: t.cooldown_minutes };
     }
-    // Defaults
     if (!thresholdMap.major) thresholdMap.major = { percent: 0.15, cooldown: 5 };
     if (!thresholdMap.cross) thresholdMap.cross = { percent: 0.20, cooldown: 5 };
     if (!thresholdMap.gold) thresholdMap.gold = { percent: 0.30, cooldown: 5 };
 
-    // Fetch current prices from TwelveData in batches of 8 (free tier: 8 credits/min)
+    // Fetch current prices from TwelveData (single batch, max 8 pairs)
+    const symbols = pairsToFetch.join(',');
+    const priceRes = await fetch(`https://api.twelvedata.com/price?symbol=${symbols}&apikey=${twelveDataKey}`);
+    const priceData = await priceRes.json();
+
+    if (priceData.code === 429) {
+      console.log('Rate limited by TwelveData');
+      return new Response(JSON.stringify({ ok: false, error: 'Rate limited', retryAfter: 60 }), {
+        status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const currentPrices: Record<string, number> = {};
-    const BATCH_SIZE = 8;
-    for (let i = 0; i < ALL_PAIRS.length; i += BATCH_SIZE) {
-      const batch = ALL_PAIRS.slice(i, i + BATCH_SIZE);
-      const symbols = batch.join(',');
-      const priceRes = await fetch(`https://api.twelvedata.com/price?symbol=${symbols}&apikey=${twelveDataKey}`);
-      const priceData = await priceRes.json();
-
-      // Handle rate limit error
-      if (priceData.code === 429) {
-        console.log('Rate limited, waiting 60s...');
-        await new Promise(r => setTimeout(r, 60000));
-        // Retry this batch
-        i -= BATCH_SIZE;
-        continue;
-      }
-
-      // Single symbol returns { price: "..." }, multi returns { "SYM": { price: "..." } }
-      if (batch.length === 1) {
-        if (priceData.price) currentPrices[batch[0]] = parseFloat(priceData.price);
-      } else {
-        for (const pair of batch) {
-          const val = priceData[pair]?.price;
-          if (val) currentPrices[pair] = parseFloat(val);
-        }
-      }
-
-      // Wait between batches to respect rate limits (only if more batches remain)
-      if (i + BATCH_SIZE < ALL_PAIRS.length) {
-        await new Promise(r => setTimeout(r, 62000)); // wait ~62s for next credit window
+    if (pairsToFetch.length === 1) {
+      if (priceData.price) currentPrices[pairsToFetch[0]] = parseFloat(priceData.price);
+    } else {
+      for (const pair of pairsToFetch) {
+        const val = priceData[pair]?.price;
+        if (val) currentPrices[pair] = parseFloat(val);
       }
     }
 
+    console.log(`Fetched ${Object.keys(currentPrices).length} prices`);
+
     if (Object.keys(currentPrices).length === 0) {
-      return new Response(JSON.stringify({ ok: false, error: 'No prices fetched', note: 'Rate limit or API issue' }), {
+      return new Response(JSON.stringify({ ok: false, error: 'No prices fetched', apiResponse: priceData }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Get previous snapshots
-    const { data: snapshots } = await supabase.from('price_snapshots').select('*');
+    // Get previous snapshots for these pairs
+    const { data: snapshots } = await supabase
+      .from('price_snapshots')
+      .select('*')
+      .in('pair', pairsToFetch);
     const snapshotMap: Record<string, number> = {};
     for (const s of snapshots || []) {
       snapshotMap[s.pair] = Number(s.price);
@@ -211,7 +209,7 @@ Deno.serve(async (req) => {
 
     // Detect spikes
     const spikedPairs: SpikedPair[] = [];
-    for (const pair of ALL_PAIRS) {
+    for (const pair of pairsToFetch) {
       const curr = currentPrices[pair];
       const prev = snapshotMap[pair];
       if (!curr || !prev) continue;
@@ -233,17 +231,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Dedup: check cooldown from alert_log
+    // Send alerts if spikes detected
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const TELEGRAM_API_KEY = Deno.env.get('TELEGRAM_API_KEY');
 
     if (spikedPairs.length > 0 && LOVABLE_API_KEY && TELEGRAM_API_KEY) {
-      // Get chat_id from alert_settings
       const { data: alertSettings } = await supabase.from('alert_settings').select('telegram_chat_id').limit(1).single();
       const chatId = alertSettings?.telegram_chat_id;
 
       if (chatId) {
-        // Check recent alerts for cooldown
+        // Check cooldown
         const cooldownMinutes = Math.min(...Object.values(thresholdMap).map(t => t.cooldown));
         const cooldownTime = new Date(Date.now() - cooldownMinutes * 60 * 1000).toISOString();
 
@@ -257,32 +254,20 @@ Deno.serve(async (req) => {
         for (const a of recentAlerts || []) {
           if (a.pair) recentPairs.add(a.pair);
           const meta = a.metadata as any;
-          if (meta?.pairs) {
-            for (const p of meta.pairs) recentPairs.add(p);
-          }
+          if (meta?.pairs) for (const p of meta.pairs) recentPairs.add(p);
         }
 
-        // Filter out recently alerted pairs
         const filteredSpikes = spikedPairs.filter(s => !recentPairs.has(s.pair));
 
         if (filteredSpikes.length >= 2) {
-          // Group by direction
           const bullish = filteredSpikes.filter(s => s.direction === 'BULLISH');
           const bearish = filteredSpikes.filter(s => s.direction === 'BEARISH');
 
           for (const group of [bullish, bearish]) {
             if (group.length === 0) continue;
-
             const direction = group[0].direction;
-            let message: string;
+            const message = group.length >= 2 ? buildGroupedMessage(group, direction) : buildSingleMessage(group[0]);
 
-            if (group.length >= 2) {
-              message = buildGroupedMessage(group, direction);
-            } else {
-              message = buildSingleMessage(group[0]);
-            }
-
-            // Send Telegram
             await fetch(`${GATEWAY_URL}/sendMessage`, {
               method: 'POST',
               headers: {
@@ -290,14 +275,9 @@ Deno.serve(async (req) => {
                 'X-Connection-Api-Key': TELEGRAM_API_KEY,
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({
-                chat_id: chatId,
-                text: message,
-                parse_mode: 'HTML',
-              }),
+              body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'HTML' }),
             });
 
-            // Log to alert_log
             await supabase.from('alert_log').insert({
               alert_type: 'spike_alert',
               pair: group.length === 1 ? group[0].pair : null,
@@ -307,13 +287,7 @@ Deno.serve(async (req) => {
                 pairs: group.map(s => s.pair),
                 direction,
                 urgency: group.length >= 4 ? 'CRITICAL' : group.length >= 2 ? 'HIGH' : 'MEDIUM',
-                details: group.map(s => ({
-                  pair: s.pair,
-                  change: s.change,
-                  prev: s.prev,
-                  curr: s.curr,
-                  pips: s.pips,
-                })),
+                details: group.map(s => ({ pair: s.pair, change: s.change, prev: s.prev, curr: s.curr, pips: s.pips })),
               },
             });
           }
@@ -328,11 +302,7 @@ Deno.serve(async (req) => {
               'X-Connection-Api-Key': TELEGRAM_API_KEY,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              chat_id: chatId,
-              text: message,
-              parse_mode: 'HTML',
-            }),
+            body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'HTML' }),
           });
 
           await supabase.from('alert_log').insert({
@@ -351,8 +321,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Update snapshots (upsert all)
-    const upsertRows = ALL_PAIRS
+    // Upsert snapshots
+    const upsertRows = pairsToFetch
       .filter(pair => currentPrices[pair])
       .map(pair => ({
         pair,
@@ -367,6 +337,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       ok: true,
+      group: groupIndex,
       checked: Object.keys(currentPrices).length,
       spikes: spikedPairs.length,
       pairs: spikedPairs.map(s => s.pair),
