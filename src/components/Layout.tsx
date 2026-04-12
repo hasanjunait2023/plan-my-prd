@@ -143,6 +143,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         time: timeAgo(n.created_at),
         unread: !n.is_read,
         source: 'db' as const,
+        url: '/ema-scanner',
       }));
 
       setNotifications([...dbNotifs, ...staticNotifications]);
