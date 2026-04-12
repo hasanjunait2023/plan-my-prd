@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Anon insert mt5_candles" ON public.mt5_candles;
