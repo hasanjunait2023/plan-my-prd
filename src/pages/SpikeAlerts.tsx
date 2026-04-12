@@ -148,7 +148,7 @@ export default function SpikeAlerts() {
           Price Spike Alerts
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Abnormal price movement detection across 28 forex pairs
+          Abnormal price movement detection across 30 forex, gold &amp; crypto pairs
         </p>
       </div>
 
