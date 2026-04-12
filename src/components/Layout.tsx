@@ -346,7 +346,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       notifications.map((n) => (
                         <div
                           key={n.id}
-                          onClick={() => n.unread && markAsRead(n.id)}
+                          onClick={() => {
+                            if (n.unread) markAsRead(n.id);
+                            if (n.url) {
+                              navigate(n.url);
+                              setShowNotifications(false);
+                            }
+                          }}
                           className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer ${
                             n.unread ? 'bg-primary/[0.03]' : ''
                           }`}
