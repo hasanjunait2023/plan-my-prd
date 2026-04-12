@@ -335,7 +335,26 @@ Deno.serve(async (req) => {
             },
           });
         }
-      }
+
+        // Send push notifications for all spikes
+        if (filteredSpikes.length > 0) {
+          const pushTitle = filteredSpikes.length >= 2
+            ? `🔴 ${filteredSpikes.length} Pairs Spiking!`
+            : `🔴 ${filteredSpikes[0].pair} Spike!`;
+          const pushBody = filteredSpikes.map(s => {
+            const sign = s.change > 0 ? '+' : '';
+            const dir = s.direction === 'BULLISH' ? '📈 বেড়েছে' : '📉 কমেছে';
+            return `${s.pair} ${sign}${s.change.toFixed(2)}% ${dir}`;
+          }).join('\n');
+
+          try {
+            await supabase.functions.invoke('send-push-notification', {
+              body: { title: pushTitle, body: pushBody, tag: 'spike-alert' },
+            });
+          } catch (pushErr) {
+            console.error('Push notification error:', pushErr);
+          }
+        }
     }
 
     // Upsert snapshots
