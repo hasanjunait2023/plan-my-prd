@@ -527,10 +527,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         onOpenChange={setNavEditOpen}
         allItems={ALL_NAV_ITEMS}
         primaryUrls={primaryUrls}
-        onSave={updatePrimaryUrls}
+        onSave={(urls) => updateConfig({ primaryUrls: urls })}
         onReset={resetToDefault}
         defaultUrls={defaultUrls}
-        maxItems={isMobile ? 5 : 6}
+        maxItems={isMobile ? maxMobile : maxDesktop}
+        currentMaxMobile={maxMobile}
+        currentMaxDesktop={maxDesktop}
+        onMaxChange={(mobile, desktop) => updateConfig({ maxMobile: mobile, maxDesktop: desktop })}
+        isMobile={isMobile}
       />
     </div>
   );
