@@ -25,11 +25,12 @@ interface NotificationItem {
   time: string;
   unread: boolean;
   source: 'local' | 'db';
+  url?: string;
 }
 
 const staticNotifications: NotificationItem[] = [
-  { id: 'local-1', icon: CheckCircle2, color: 'text-primary', title: 'Journal saved', desc: 'Trade #47 entry added', time: '2h ago', unread: false, source: 'local' },
-  { id: 'local-2', icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false, source: 'local' },
+  { id: 'local-1', icon: CheckCircle2, color: 'text-primary', title: 'Journal saved', desc: 'Trade #47 entry added', time: '2h ago', unread: false, source: 'local', url: '/journal' },
+  { id: 'local-2', icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false, source: 'local', url: '/analytics' },
 ];
 
 // All available nav items
@@ -142,6 +143,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         time: timeAgo(n.created_at),
         unread: !n.is_read,
         source: 'db' as const,
+        url: '/ema-scanner',
       }));
 
       setNotifications([...dbNotifs, ...staticNotifications]);
@@ -344,7 +346,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       notifications.map((n) => (
                         <div
                           key={n.id}
-                          onClick={() => n.unread && markAsRead(n.id)}
+                          onClick={() => {
+                            if (n.unread) markAsRead(n.id);
+                            if (n.url) {
+                              navigate(n.url);
+                              setShowNotifications(false);
+                            }
+                          }}
                           className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer ${
                             n.unread ? 'bg-primary/[0.03]' : ''
                           }`}
