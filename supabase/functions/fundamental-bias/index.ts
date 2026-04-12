@@ -3,7 +3,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FF_CALENDAR_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
+const FF_THIS_WEEK_URL = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
+const FF_LAST_WEEK_URL = 'https://nfs.faireconomy.media/ff_calendar_lastweek.json';
 
 // Country code → currency mapping
 const COUNTRY_CURRENCY: Record<string, string> = {
