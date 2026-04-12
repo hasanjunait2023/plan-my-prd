@@ -20,7 +20,8 @@ interface PairResult {
 }
 
 function toTwelveDataSymbol(pair: string): string {
-  return pair.replace('/', '')
+  // TwelveData forex uses EUR/USD format
+  return pair.includes('/') ? pair : `${pair.slice(0,3)}/${pair.slice(3)}`
 }
 
 function getLastNySessionWindow(): { start: string; end: string } {

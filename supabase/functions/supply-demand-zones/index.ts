@@ -174,8 +174,8 @@ Deno.serve(async (req) => {
 
     for (const p of pairsToProcess) {
       try {
-        const symbol = p.pair.replace('/', '');
-        const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1h&outputsize=100&apikey=${apiKey}`;
+        const symbol = p.pair; // TwelveData uses EUR/USD format for forex
+        const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=1h&outputsize=100&apikey=${apiKey}`;
         console.log(`Fetching S/D for ${symbol}...`);
         const resp = await fetch(url);
         const json = await resp.json();
