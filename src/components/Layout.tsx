@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap, LogOut, Gem, Bitcoin, GitCompareArrows, Sun, Moon, Cable, LineChart, Shield, Newspaper, Target, Grid3X3
+  LayoutDashboard, BookOpen, PlusCircle, BarChart3, Brain, Settings, Gauge, TrendingUp, Bell, TrendingDown, AlertTriangle, CheckCircle2, Info, Crosshair, Zap, LogOut, Gem, Bitcoin, GitCompareArrows, Sun, Moon, Cable, LineChart, Shield, Newspaper, Target, Grid3X3, Pencil
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavConfig, type NavItem } from '@/hooks/useNavConfig';
+import { NavEditDialog } from '@/components/NavEditDialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -12,6 +14,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPairWithFlags } from '@/lib/pairFlags';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface NotificationItem {
   id: string;
@@ -29,52 +32,46 @@ const staticNotifications: NotificationItem[] = [
   { id: 'local-2', icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false, source: 'local' },
 ];
 
-// Primary nav items — always visible
-const primaryNavItems = [
+// All available nav items
+const ALL_NAV_ITEMS: NavItem[] = [
   { title: 'Dashboard', short: 'Home', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Journal', short: 'Jrnl', url: '/journal', icon: BookOpen },
   { title: 'New Trade', short: 'New', url: '/new-trade', icon: PlusCircle },
   { title: 'Analytics', short: 'Ana', url: '/analytics', icon: BarChart3 },
   { title: 'Strength', short: 'Str', url: '/currency-strength', icon: Gauge },
+  { title: 'Charts', short: 'Chart', url: '/charts', icon: LineChart },
+  { title: 'EMA Scan', short: 'EMA', url: '/ema-scanner', icon: Crosshair },
+  { title: 'Correlation', short: 'Corr', url: '/correlation-pairs', icon: GitCompareArrows },
+  { title: 'News', short: 'News', url: '/news', icon: Newspaper },
+  { title: 'Spike Alerts', short: 'Spike', url: '/spike-alerts', icon: AlertTriangle },
+  { title: 'Intel', short: 'Intel', url: '/trade-intelligence', icon: Zap },
+  { title: 'Psychology', short: 'Psych', url: '/psychology', icon: Brain },
+  { title: 'Rules', short: 'Rules', url: '/rules', icon: Shield },
+  { title: 'MT5', short: 'MT5', url: '/mt5', icon: Cable },
+  { title: 'Commodities', short: 'Cmdty', url: '/commodities', icon: Gem },
+  { title: 'Crypto', short: 'Crypto', url: '/crypto', icon: Bitcoin },
+  { title: 'Habits', short: 'Habit', url: '/habits', icon: Target },
+  { title: 'Settings', short: 'Set', url: '/settings', icon: Settings },
 ];
 
-// Tools dropdown — categorized
-const toolsCategories = [
+// Tools categories for the dropdown/sheet display
+const toolsCategoryDefs = [
   {
     label: 'Market',
     icon: LineChart,
-    items: [
-      { title: 'Charts', url: '/charts', icon: LineChart },
-      { title: 'EMA Scan', url: '/ema-scanner', icon: Crosshair },
-      { title: 'Correlation', url: '/correlation-pairs', icon: GitCompareArrows },
-      { title: 'News', url: '/news', icon: Newspaper },
-      { title: 'Spike Alerts', url: '/spike-alerts', icon: AlertTriangle },
-    ],
+    urls: ['/charts', '/ema-scanner', '/correlation-pairs', '/news', '/spike-alerts'],
   },
   {
     label: 'Analysis',
     icon: Brain,
-    items: [
-      { title: 'Intel', url: '/trade-intelligence', icon: Zap },
-      { title: 'Psychology', url: '/psychology', icon: Brain },
-      { title: 'Rules', url: '/rules', icon: Shield },
-    ],
+    urls: ['/trade-intelligence', '/psychology', '/rules'],
   },
   {
     label: 'Other',
     icon: Settings,
-    items: [
-      { title: 'MT5', url: '/mt5', icon: Cable },
-      { title: 'Commodities', url: '/commodities', icon: Gem },
-      { title: 'Crypto', url: '/crypto', icon: Bitcoin },
-      { title: 'Habits', url: '/habits', icon: Target },
-      { title: 'Settings', url: '/settings', icon: Settings },
-    ],
+    urls: ['/mt5', '/commodities', '/crypto', '/habits', '/settings'],
   },
 ];
-
-const allToolsItems = toolsCategories.flatMap(c => c.items);
-const allNavItems = [...primaryNavItems, ...allToolsItems];
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -103,6 +100,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const isMobile = useIsMobile();
+  const { primaryItems, toolsItems, primaryUrls, updatePrimaryUrls, resetToDefault, defaultUrls } = useNavConfig(ALL_NAV_ITEMS);
+  const [navEditOpen, setNavEditOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(staticNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
@@ -111,7 +111,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const unreadCount = notifications.filter(n => n.unread).length;
 
   // Check if any tools sub-page is active
-  const isToolsActive = allToolsItems.some(item => location.pathname === item.url);
+  const isToolsActive = toolsItems.some(item => location.pathname === item.url);
+
+  // Build tools categories from toolsItems only
+  const toolsCategories = toolsCategoryDefs.map(cat => ({
+    label: cat.label,
+    icon: cat.icon,
+    items: cat.urls
+      .map(url => toolsItems.find(i => i.url === url))
+      .filter(Boolean) as NavItem[],
+  })).filter(cat => cat.items.length > 0);
 
   // Fetch EMA scan notifications from DB
   const fetchDbNotifications = useCallback(async () => {
@@ -210,11 +219,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* Desktop Nav — Primary Tabs + Tools Dropdown */}
+          {/* Desktop Nav — Dynamic Primary Tabs + Tools Dropdown */}
           <nav className="flex-1 hidden md:flex items-center justify-center gap-1">
-            {primaryNavItems.map((item) => (
+            {primaryItems.map((item) => (
               <NavLink
-                key={item.title}
+                key={item.url}
                 to={item.url}
                 className={({ isActive }) =>
                   `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 border ${
@@ -229,60 +238,71 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </NavLink>
             ))}
 
-            {/* Tools Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 border relative ${
-                    isToolsActive
-                      ? 'text-primary bg-primary/15 border-primary/30 shadow-[0_0_12px_hsla(145,63%,49%,0.2)]'
-                      : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-card/60'
-                  }`}
+            {/* Tools Dropdown — only shows non-primary items */}
+            {toolsItems.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 border relative ${
+                      isToolsActive
+                        ? 'text-primary bg-primary/15 border-primary/30 shadow-[0_0_12px_hsla(145,63%,49%,0.2)]'
+                        : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-card/60'
+                    }`}
+                  >
+                    <Grid3X3 className="w-4 h-4 shrink-0" />
+                    <span>Tools</span>
+                    {isToolsActive && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full shadow-[0_0_6px_hsla(145,63%,49%,0.5)]" />
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="center"
+                  className="w-[420px] p-4 bg-card/95 backdrop-blur-xl border-border/40 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
                 >
-                  <Grid3X3 className="w-4 h-4 shrink-0" />
-                  <span>Tools</span>
-                  {isToolsActive && (
-                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full shadow-[0_0_6px_hsla(145,63%,49%,0.5)]" />
-                  )}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="center"
-                className="w-[420px] p-4 bg-card/95 backdrop-blur-xl border-border/40 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
-              >
-                <div className="grid grid-cols-3 gap-4">
-                  {toolsCategories.map((category) => (
-                    <div key={category.label}>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <category.icon className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                          {category.label}
-                        </span>
+                  <div className="grid grid-cols-3 gap-4">
+                    {toolsCategories.map((category) => (
+                      <div key={category.label}>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <category.icon className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                            {category.label}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          {category.items.map((item) => {
+                            const isActive = location.pathname === item.url;
+                            return (
+                              <button
+                                key={item.url}
+                                onClick={() => navigate(item.url)}
+                                className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-all duration-150 text-left w-full ${
+                                  isActive
+                                    ? 'text-primary bg-primary/10'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                                }`}
+                              >
+                                <item.icon className="w-3.5 h-3.5 shrink-0" />
+                                <span>{item.title}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-0.5">
-                        {category.items.map((item) => {
-                          const isActive = location.pathname === item.url;
-                          return (
-                            <button
-                              key={item.title}
-                              onClick={() => navigate(item.url)}
-                              className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-all duration-150 text-left w-full ${
-                                isActive
-                                  ? 'text-primary bg-primary/10'
-                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
-                              }`}
-                            >
-                              <item.icon className="w-3.5 h-3.5 shrink-0" />
-                              <span>{item.title}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    ))}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* Edit Nav Button */}
+            <button
+              onClick={() => setNavEditOpen(true)}
+              className="p-1.5 rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-card/50 transition-all duration-200"
+              title="Customize navigation"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
           </nav>
 
           {/* Right side — Theme Toggle + Bell + Avatar */}
@@ -392,9 +412,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden backdrop-blur-md bg-background/90 border-t border-border/30"
            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex items-center justify-around px-1 h-16">
-          {primaryNavItems.slice(0, 4).map((item) => (
+          {primaryItems.slice(0, 4).map((item) => (
             <NavLink
-              key={item.title}
+              key={item.url}
               to={item.url}
               end={item.url === '/'}
               className={({ isActive }) =>
@@ -456,7 +476,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <Sheet open={mobileToolsOpen} onOpenChange={setMobileToolsOpen}>
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">
           <SheetHeader className="pb-2">
-            <SheetTitle className="text-sm font-semibold text-foreground">Tools</SheetTitle>
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-sm font-semibold text-foreground">Tools</SheetTitle>
+              <button
+                onClick={() => { setMobileToolsOpen(false); setNavEditOpen(true); }}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <Pencil className="w-3 h-3" />
+                Edit Nav
+              </button>
+            </div>
           </SheetHeader>
           <div className="grid grid-cols-3 gap-4 pt-2 pb-4">
             {toolsCategories.map((category) => (
@@ -472,7 +501,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     const isActive = location.pathname === item.url;
                     return (
                       <button
-                        key={item.title}
+                        key={item.url}
                         onClick={() => { navigate(item.url); setMobileToolsOpen(false); }}
                         className={`flex items-center gap-2 px-2 py-2 rounded-md text-xs font-medium transition-all duration-150 text-left w-full ${
                           isActive
@@ -491,6 +520,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Nav Edit Dialog */}
+      <NavEditDialog
+        open={navEditOpen}
+        onOpenChange={setNavEditOpen}
+        allItems={ALL_NAV_ITEMS}
+        primaryUrls={primaryUrls}
+        onSave={updatePrimaryUrls}
+        onReset={resetToDefault}
+        defaultUrls={defaultUrls}
+        maxItems={isMobile ? 5 : 6}
+      />
     </div>
   );
 }
