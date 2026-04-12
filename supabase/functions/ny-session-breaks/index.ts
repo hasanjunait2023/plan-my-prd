@@ -20,20 +20,29 @@ interface PairResult {
 }
 
 function toTwelveDataSymbol(pair: string): string {
-  return pair.replace('/', '')
+  // TwelveData forex uses EUR/USD format
+  return pair.includes('/') ? pair : `${pair.slice(0,3)}/${pair.slice(3)}`
 }
 
-function getNySessionWindow(): { start: string; end: string } {
+function getLastNySessionWindow(): { start: string; end: string } {
   const now = new Date()
-  // Yesterday's NY session: 13:00-22:00 UTC
-  const yesterday = new Date(now)
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1)
+  // Find last weekday (Mon-Fri) — skip weekends
+  const target = new Date(now)
+  target.setUTCDate(target.getUTCDate() - 1) // start from yesterday
   
-  const start = new Date(yesterday)
+  // Walk back to find a weekday (0=Sun, 6=Sat)
+  while (target.getUTCDay() === 0 || target.getUTCDay() === 6) {
+    target.setUTCDate(target.getUTCDate() - 1)
+  }
+  
+  // NY session: 13:00-22:00 UTC on that weekday
+  const start = new Date(target)
   start.setUTCHours(13, 0, 0, 0)
   
-  const end = new Date(yesterday)
+  const end = new Date(target)
   end.setUTCHours(22, 0, 0, 0)
+  
+  console.log(`NY session window: ${start.toISOString()} to ${end.toISOString()}`)
   
   return {
     start: start.toISOString().replace('T', ' ').substring(0, 19),
@@ -83,17 +92,19 @@ Deno.serve(async (req) => {
     // Limit to top 8 pairs
     const topPairs = pairs.slice(0, 8)
     const symbols = topPairs.map(p => toTwelveDataSymbol(p.pair)).join(',')
-    const nyWindow = getNySessionWindow()
+    const nyWindow = getLastNySessionWindow()
 
-    // Fetch 1h candles for last 48 hours
-    const timeSeriesUrl = `${TWELVEDATA_BASE}/time_series?symbol=${symbols}&interval=1h&outputsize=48&apikey=${TWELVEDATA_API_KEY}`
+    // Fetch 1h candles — increase outputsize to cover weekends (up to 120h = 5 days back)
+    const timeSeriesUrl = `${TWELVEDATA_BASE}/time_series?symbol=${encodeURIComponent(symbols)}&interval=1h&outputsize=120&apikey=${TWELVEDATA_API_KEY}`
     const tsResponse = await fetch(timeSeriesUrl)
     const tsData = await tsResponse.json()
+    console.log(`time_series status for ${symbols}:`, tsData?.status || 'ok', 'values count:', topPairs.length === 1 ? tsData?.values?.length : 'multi')
 
-    // Fetch current prices
-    const priceUrl = `${TWELVEDATA_BASE}/price?symbol=${symbols}&apikey=${TWELVEDATA_API_KEY}`
+    // Fetch current prices (on weekends this returns last known price)
+    const priceUrl = `${TWELVEDATA_BASE}/price?symbol=${encodeURIComponent(symbols)}&apikey=${TWELVEDATA_API_KEY}`
     const priceResponse = await fetch(priceUrl)
     const priceData = await priceResponse.json()
+    console.log(`price data for ${symbols}:`, JSON.stringify(priceData).substring(0, 200))
 
     const results: PairResult[] = topPairs.map((pairInput) => {
       const sym = toTwelveDataSymbol(pairInput.pair)
