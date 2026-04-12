@@ -1,69 +1,90 @@
 
 
-## Plan: Notification Icon Fix + Enhanced Push Content
+## Plan: সব Telegram Alert এ Web Push Notification যোগ
 
-### সমস্যা ১: Notification Bar এ Icon দেখাচ্ছে না
-Android notification bar এ `badge` icon হিসেবে monochrome (single color, transparent background) icon দরকার। বর্তমান `icon-192.png` একটা full-color icon যা Android notification bar এ white square হিসেবে দেখায়। 
+### বর্তমান অবস্থা
+শুধু `price-spike-detector` এ push notification আছে। বাকি ৫টা Edge Function এ Telegram message যায় কিন্তু push notification যায় না।
 
-**সমাধান:** একটা monochrome badge icon তৈরি করতে হবে (72x72 বা 96x96, transparent background, white foreground only) এবং `sw.js` এ `badge` property তে সেটা ব্যবহার করতে হবে। এছাড়া `manifest.json` এ `monochrome` purpose icon যোগ করতে হবে।
+### যা যা আপডেট হবে
 
-### সমস্যা ২: Push Notification এ সময় ও বিস্তারিত তথ্য নেই
-বর্তমানে push body তে শুধু pair name আর change % দেখায়। সময় (BD time) নেই।
+#### 1. `telegram-trade-alerts/index.ts` — 6 ধরনের alert এ push যোগ
+- 🟢 Confluence A/A+ setup alert
+- ⚡ EMA alignment shift
+- 🔴 Risk breach warning
+- 🕐 Session reminder (London/NY)
+- 📊 MT5 trade open/close
+- 🔴 High impact calendar event
 
-**সমাধান:** `price-spike-detector` function এ push body তে BD time যোগ করা।
+প্রতিটা alert Telegram এ পাঠানোর পরে `send-push-notification` invoke করবে।
 
----
+#### 2. `news-alert/index.ts` — Economic news alert এ push যোগ
+- High/Medium impact news এর 5-10 min আগে push notification
 
-### পরিবর্তনসমূহ
+#### 3. `habit-reminder/index.ts` — Habit reminder এ push যোগ
+- যে habit complete হয়নি সেটার push reminder
 
-#### 1. Monochrome badge icon তৈরি (public/badge-96.png)
-- বর্তমান icon-192.png থেকে একটা 96x96 monochrome version generate করা
-- Transparent background, white foreground — Android notification bar এর জন্য standard
+#### 4. `habit-daily-summary/index.ts` — Daily summary ও streak break এ push যোগ
+- Streak break alert: "⚠️ X day streak lost!"
+- Daily summary: "✅ 5/7 done (71%)"
 
-#### 2. `public/sw.js` আপডেট
-```js
-// badge এ monochrome icon ব্যবহার
-badge: '/badge-96.png',  // ← ছোট monochrome icon
-icon: '/icon-192.png',   // ← full notification icon (unchanged)
-```
+#### 5. `habit-weekly-recap/index.ts` — Weekly recap এ push যোগ
+- সপ্তাহের summary push notification
 
-#### 3. `public/manifest.json` আপডেট
-- Monochrome purpose icon entry যোগ:
-```json
-{
-  "src": "/badge-96.png",
-  "sizes": "96x96",
-  "type": "image/png",
-  "purpose": "monochrome"
-}
-```
+#### 6. `send-push-notification/index.ts` — Minor improvement
+- `url` parameter support যোগ — notification click করলে specific page এ যাবে
+- `sw.js` এ click handler আপডেট
 
-#### 4. `supabase/functions/price-spike-detector/index.ts` আপডেট
-Push notification body তে BD time যোগ:
+### প্রতিটা function এ যা যোগ হবে (pattern)
 ```typescript
-const { time } = getBdDateTime();
-const pushBody = filteredSpikes.map(s => {
-  const sign = s.change > 0 ? '+' : '';
-  const dir = s.direction === 'BULLISH' ? '📈 বেড়েছে' : '📉 কমেছে';
-  return `${s.pair} ${sign}${s.change.toFixed(2)}% (${s.pips} pips) ${dir}`;
-}).join('\n') + `\n🕐 ${time} (BD)`;
+// Telegram alert পাঠানোর পরে:
+try {
+  await supabase.functions.invoke('send-push-notification', {
+    body: { 
+      title: '🟢 A+ Setup: EUR/USD', 
+      body: 'BUY — Strength 85 | EMA 3/3 ✓\n🕐 02:30 PM (BD)',
+      tag: 'confluence-alert',
+      url: '/trade-intelligence'  // click destination
+    },
+  });
+} catch (e) { console.error('Push error:', e); }
 ```
 
-#### 5. `send-push-notification` Edge Function আপডেট
-Push payload তে timestamp pass করা যাতে notification এ সময় দেখায়।
-
----
+### sw.js আপডেট — Click-to-open
+```js
+self.addEventListener('notificationclick', (event) => {
+  const url = event.notification.data?.url || '/';
+  event.notification.close();
+  event.waitUntil(
+    clients.openWindow(url)
+  );
+});
+```
 
 ### ফাইল পরিবর্তন
 
 | ফাইল | কাজ |
 |---|---|
-| `public/badge-96.png` | নতুন — monochrome notification badge icon |
-| `public/sw.js` | badge icon path পরিবর্তন |
-| `public/manifest.json` | monochrome icon entry যোগ |
-| `supabase/functions/price-spike-detector/index.ts` | Push body তে time + pips যোগ |
+| `supabase/functions/telegram-trade-alerts/index.ts` | 6 alert type এ push যোগ |
+| `supabase/functions/news-alert/index.ts` | News alert এ push যোগ |
+| `supabase/functions/habit-reminder/index.ts` | Habit reminder এ push যোগ |
+| `supabase/functions/habit-daily-summary/index.ts` | Daily summary + streak break এ push যোগ |
+| `supabase/functions/habit-weekly-recap/index.ts` | Weekly recap এ push যোগ |
+| `supabase/functions/send-push-notification/index.ts` | `url` param support যোগ |
+| `public/sw.js` | Notification click → specific page open |
 
-### গুরুত্বপূর্ণ
-- Badge icon fix হলে পরবর্তী push notification থেকে সঠিক icon দেখাবে
-- পুরানো notification cache clear করতে app reinstall বা notification settings clear করতে হতে পারে
+### Notification Click Destinations
+
+| Alert Type | Click করলে যাবে |
+|---|---|
+| Spike Alert | `/spike-alerts` |
+| Confluence | `/trade-intelligence` |
+| EMA Shift | `/ema-scanner` |
+| Risk Breach | `/analytics` |
+| Session Reminder | `/chart-analysis` |
+| MT5 Trade | `/mt5-connection` |
+| Calendar Event | `/market-news` |
+| Habit Reminder | `/habit-tracking` |
+| Daily Summary | `/habit-tracking` |
+| Weekly Recap | `/habit-tracking` |
+| News Alert | `/market-news` |
 
