@@ -70,7 +70,7 @@ function buildGroupedMessage(spikes: SpikedPair[], direction: string): string {
   const majors = spikes.filter(s => isMajor(s.pair));
   const others = spikes.filter(s => !isMajor(s.pair));
   const count = spikes.length;
-  const bdTime = getBdTime();
+  const bd = getBdDateTime();
 
   let urgency: string;
   let header: string;
@@ -83,16 +83,20 @@ function buildGroupedMessage(spikes: SpikedPair[], direction: string): string {
   }
 
   const dirEmoji = direction === 'BULLISH' ? '📈' : '📉';
+  const dirLabel = direction === 'BULLISH'
+    ? '*🟢 BULLISH ▲ — Price বেড়েছে*'
+    : '*🔴 BEARISH ▼ — Price কমেছে*';
 
   let msg = `${urgency} ${header} ${urgency}\n\n`;
-  msg += `⚡ ${count} pairs moving ${direction}!\n\n`;
+  msg += `⚡ ${count} pairs moving together!\n`;
+  msg += `${dirLabel}\n\n`;
 
   if (majors.length > 0) {
     msg += `📊 Major Pairs:\n`;
     for (const s of majors) {
       const sign = s.change > 0 ? '+' : '';
       const pipSign = s.pips > 0 ? '+' : '';
-      msg += `  ${dirEmoji} ${s.pair} ${sign}${s.change.toFixed(2)}% | ${s.prev} → ${s.curr} (${pipSign}${s.pips} pips)\n`;
+      msg += `  ${dirEmoji} *${s.pair}* ${sign}${s.change.toFixed(2)}% | ${s.prev} → ${s.curr} (${pipSign}${s.pips} pips)\n`;
     }
     msg += '\n';
   }
@@ -106,7 +110,7 @@ function buildGroupedMessage(spikes: SpikedPair[], direction: string): string {
     msg += '\n\n';
   }
 
-  msg += `⏰ 🇧🇩 ${bdTime} BST\n`;
+  msg += `⏰ 🇧🇩 *${bd.full}* BST\n`;
   msg += `⚠️ Possible: News event / Central bank action\n`;
   msg += `🎯 Check economic calendar NOW`;
 
@@ -114,10 +118,13 @@ function buildGroupedMessage(spikes: SpikedPair[], direction: string): string {
 }
 
 function buildSingleMessage(s: SpikedPair): string {
-  const bdTime = getBdTime();
+  const bd = getBdDateTime();
   const sign = s.change > 0 ? '+' : '';
   const pipSign = s.pips > 0 ? '+' : '';
   const dirEmoji = s.direction === 'BULLISH' ? '📈' : '📉';
+  const dirLabel = s.direction === 'BULLISH'
+    ? '*🟢 BULLISH ▲ — Price বেড়েছে*'
+    : '*🔴 BEARISH ▼ — Price কমেছে*';
 
   let urgency: string;
   let label: string;
@@ -132,7 +139,7 @@ function buildSingleMessage(s: SpikedPair): string {
     label = '💡 Watch for follow-through';
   }
 
-  return `${urgency}\n\n📊 ${s.pair} — ${sign}${s.change.toFixed(2)}% move!\n${dirEmoji} ${s.prev} → ${s.curr} (${pipSign}${s.pips} pips)\n⚡ Direction: ${s.direction}\n⏰ 🇧🇩 ${bdTime} BST\n\n${label}`;
+  return `${urgency}\n\n📊 *${s.pair}* — ${sign}${s.change.toFixed(2)}% move!\n${dirEmoji} ${s.prev} → ${s.curr} (${pipSign}${s.pips} pips)\n${dirLabel}\n\n⏰ 🇧🇩 *${bd.full}* BST\n\n${label}`;
 }
 
 Deno.serve(async (req) => {
