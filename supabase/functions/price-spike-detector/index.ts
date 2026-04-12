@@ -33,13 +33,21 @@ function calcPips(pair: string, prev: number, curr: number): number {
   return Math.round(diff * 10000);
 }
 
-function getBdTime(): string {
-  return new Date().toLocaleString('en-GB', {
+function getBdDateTime(): { time: string; date: string; full: string } {
+  const now = new Date();
+  const time = now.toLocaleString('en-US', {
     timeZone: 'Asia/Dhaka',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hour12: true,
+  }).toUpperCase();
+  const date = now.toLocaleString('en-GB', {
+    timeZone: 'Asia/Dhaka',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
   });
+  return { time, date, full: `${date}, ${time}` };
 }
 
 function isWeekend(): boolean {
