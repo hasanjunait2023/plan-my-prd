@@ -3,20 +3,21 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/telegram';
 
 const MAJOR_PAIRS = [
-  'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'USD/CAD', 'AUD/USD', 'NZD/USD'
+  'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'USD/CAD', 'AUD/USD', 'NZD/USD',
+  'XAU/USD', 'BTC/USD', 'ETH/USD'
 ];
 
-// Split into 3 groups of max 8 pairs each (TwelveData free: 8 credits/min)
-const GROUP_A = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'USD/CAD', 'AUD/USD', 'NZD/USD', 'XAU/USD']; // majors + gold
-const GROUP_B = ['EUR/GBP', 'EUR/JPY', 'GBP/JPY', 'AUD/JPY', 'NZD/JPY', 'CAD/JPY', 'CHF/JPY', 'EUR/AUD']; // crosses 1
-const GROUP_C = ['GBP/AUD', 'EUR/CAD', 'GBP/CHF', 'EUR/CHF', 'AUD/NZD', 'EUR/NZD', 'GBP/NZD', 'AUD/CAD']; // crosses 2
-const GROUP_D = ['GBP/CAD', 'NZD/CAD', 'NZD/CHF', 'AUD/CHF']; // crosses 3
+// Split into groups of max 8 pairs each (TwelveData free: 8 credits/min)
+const GROUP_A = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'USD/CAD', 'AUD/USD', 'NZD/USD', 'XAU/USD']; // forex majors + gold
+const GROUP_B = ['BTC/USD', 'ETH/USD', 'EUR/GBP', 'EUR/JPY', 'GBP/JPY', 'AUD/JPY', 'NZD/JPY', 'CAD/JPY']; // crypto + crosses 1
+const GROUP_C = ['CHF/JPY', 'EUR/AUD', 'GBP/AUD', 'EUR/CAD', 'GBP/CHF', 'EUR/CHF', 'AUD/NZD', 'EUR/NZD']; // crosses 2
+const GROUP_D = ['GBP/NZD', 'AUD/CAD', 'GBP/CAD', 'NZD/CAD', 'NZD/CHF', 'AUD/CHF']; // crosses 3
 
 const ALL_GROUPS = [GROUP_A, GROUP_B, GROUP_C, GROUP_D];
 const ALL_PAIRS = [...GROUP_A, ...GROUP_B, ...GROUP_C, ...GROUP_D];
 
 function getPairCategory(pair: string): 'major' | 'cross' | 'gold' {
-  if (pair === 'XAU/USD') return 'gold';
+  if (['XAU/USD', 'BTC/USD', 'ETH/USD'].includes(pair)) return 'gold'; // gold/crypto use same threshold
   if (MAJOR_PAIRS.includes(pair)) return 'major';
   return 'cross';
 }
