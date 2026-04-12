@@ -24,14 +24,13 @@ interface NotificationItem {
   desc: string;
   time: string;
   unread: boolean;
-  source: 'local' | 'db';
+  source: 'local' | 'db' | 'alert';
   url?: string;
+  badge?: string;
+  badgeColor?: string;
 }
 
-const staticNotifications: NotificationItem[] = [
-  { id: 'local-1', icon: CheckCircle2, color: 'text-primary', title: 'Journal saved', desc: 'Trade #47 entry added', time: '2h ago', unread: false, source: 'local', url: '/journal' },
-  { id: 'local-2', icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false, source: 'local', url: '/analytics' },
-];
+const staticNotifications: NotificationItem[] = [];
 
 // All available nav items
 const ALL_NAV_ITEMS: NavItem[] = [
@@ -123,40 +122,109 @@ export function Layout({ children }: { children: React.ReactNode }) {
       .filter(Boolean) as NavItem[],
   })).filter(cat => cat.items.length > 0);
 
-  // Fetch EMA scan notifications from DB
-  const fetchDbNotifications = useCallback(async () => {
+  // Alert type config
+  const alertTypeConfig: Record<string, { icon: typeof TrendingUp; color: string; badge: string; badgeColor: string; url: string }> = {
+    news_alert: { icon: Newspaper, color: 'text-orange-400', badge: 'News', badgeColor: 'bg-orange-500/15 text-orange-400', url: '/news' },
+    confluence: { icon: Zap, color: 'text-yellow-400', badge: 'Conf', badgeColor: 'bg-yellow-500/15 text-yellow-400', url: '/trade-intelligence' },
+    ema_shift: { icon: Crosshair, color: 'text-blue-400', badge: 'EMA', badgeColor: 'bg-blue-500/15 text-blue-400', url: '/ema-scanner' },
+    strength_threshold: { icon: Gauge, color: 'text-purple-400', badge: 'STR', badgeColor: 'bg-purple-500/15 text-purple-400', url: '/currency-strength' },
+    spike: { icon: AlertTriangle, color: 'text-red-400', badge: 'Spike', badgeColor: 'bg-red-500/15 text-red-400', url: '/spike-alerts' },
+    risk_breach: { icon: AlertTriangle, color: 'text-red-500', badge: 'Risk', badgeColor: 'bg-red-500/15 text-red-500', url: '/analytics' },
+    session_reminder: { icon: Bell, color: 'text-cyan-400', badge: 'Session', badgeColor: 'bg-cyan-500/15 text-cyan-400', url: '/chart-analysis' },
+    mt5_trade: { icon: Cable, color: 'text-indigo-400', badge: 'MT5', badgeColor: 'bg-indigo-500/15 text-indigo-400', url: '/mt5' },
+    habit_reminder: { icon: Target, color: 'text-primary', badge: 'Habit', badgeColor: 'bg-primary/15 text-primary', url: '/habits' },
+  };
+
+  function parseAlertTitle(alertType: string, message: string, pair: string | null, metadata: any): string {
+    if (metadata?.title) return metadata.title;
+    if (pair) return pair;
+    // Extract from Telegram-formatted message
+    const boldMatch = message.match(/<b>([^<]+)<\/b>/);
+    if (boldMatch) return boldMatch[1];
+    return alertType.replace(/_/g, ' ');
+  }
+
+  function parseAlertDesc(message: string): string {
+    // Strip HTML tags and emojis, take first ~80 chars
+    return message.replace(/<[^>]+>/g, '').replace(/[\u{1F300}-\u{1FAFF}]/gu, '').trim().substring(0, 80);
+  }
+
+  // Fetch all notifications from DB
+  const fetchAllNotifications = useCallback(async () => {
     try {
-      const { data } = await supabase
-        .from('ema_scan_notifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20);
+      // Fetch EMA scan notifications and alert_log in parallel
+      const [emaRes, alertRes] = await Promise.all([
+        supabase
+          .from('ema_scan_notifications')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20),
+        supabase
+          .from('alert_log')
+          .select('*')
+          .order('sent_at', { ascending: false })
+          .limit(30),
+      ]);
 
-      if (!data) return;
+      const notifs: NotificationItem[] = [];
 
-      const dbNotifs: NotificationItem[] = data.map((n: any) => ({
-        id: n.id,
-        icon: n.direction === 'BUY' ? TrendingUp : n.direction === 'SELL' ? TrendingDown : AlertTriangle,
-        color: n.direction === 'BUY' ? 'text-green-400' : n.direction === 'SELL' ? 'text-red-400' : 'text-yellow-400',
-        title: `${formatPairWithFlags(n.pair)} ${n.direction}`,
-        desc: n.message,
-        time: timeAgo(n.created_at),
-        unread: !n.is_read,
-        source: 'db' as const,
-        url: '/ema-scanner',
-      }));
+      // EMA notifications
+      if (emaRes.data) {
+        for (const n of emaRes.data) {
+          notifs.push({
+            id: n.id,
+            icon: n.direction === 'BUY' ? TrendingUp : TrendingDown,
+            color: n.direction === 'BUY' ? 'text-green-400' : 'text-red-400',
+            title: `${formatPairWithFlags(n.pair)} ${n.direction}`,
+            desc: n.message,
+            time: timeAgo(n.created_at),
+            unread: !n.is_read,
+            source: 'db',
+            url: '/ema-scanner',
+            badge: 'EMA',
+            badgeColor: 'bg-primary/10 text-primary',
+          });
+        }
+      }
 
-      setNotifications([...dbNotifs, ...staticNotifications]);
+      // Alert log notifications
+      if (alertRes.data) {
+        for (const a of alertRes.data) {
+          const config = alertTypeConfig[a.alert_type] || { icon: Bell, color: 'text-muted-foreground', badge: 'Alert', badgeColor: 'bg-muted text-muted-foreground', url: '/' };
+          notifs.push({
+            id: `alert-${a.id}`,
+            icon: config.icon,
+            color: config.color,
+            title: parseAlertTitle(a.alert_type, a.message, a.pair, a.metadata),
+            desc: parseAlertDesc(a.message),
+            time: timeAgo(a.sent_at),
+            unread: false, // alert_log doesn't have is_read — show as read
+            source: 'alert',
+            url: config.url,
+            badge: config.badge,
+            badgeColor: config.badgeColor,
+          });
+        }
+      }
+
+      // Sort all by most recent
+      notifs.sort((a, b) => {
+        // Use unread first, then by time string (approximate)
+        if (a.unread !== b.unread) return a.unread ? -1 : 1;
+        return 0; // Keep existing order within groups
+      });
+
+      setNotifications(notifs);
     } catch (e) {
       console.error('Fetch notifications error:', e);
     }
   }, []);
 
   useEffect(() => {
-    fetchDbNotifications();
-    const interval = setInterval(fetchDbNotifications, 60000);
+    fetchAllNotifications();
+    const interval = setInterval(fetchAllNotifications, 60000);
     return () => clearInterval(interval);
-  }, [fetchDbNotifications]);
+  }, [fetchAllNotifications]);
 
   useEffect(() => {
     const channel = supabase
@@ -166,12 +234,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
         schema: 'public',
         table: 'ema_scan_notifications',
       }, () => {
-        fetchDbNotifications();
+        fetchAllNotifications();
+      })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'alert_log',
+      }, () => {
+        fetchAllNotifications();
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [fetchDbNotifications]);
+  }, [fetchAllNotifications]);
 
   const markAsRead = async (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
@@ -363,8 +438,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-semibold text-foreground truncate">{n.title}</span>
-                              {n.source === 'db' && (
-                                <span className="text-[9px] font-medium px-1 py-0.5 rounded bg-primary/10 text-primary shrink-0">EMA</span>
+                              {n.badge && (
+                                <span className={`text-[9px] font-medium px-1 py-0.5 rounded shrink-0 ${n.badgeColor || 'bg-muted text-muted-foreground'}`}>{n.badge}</span>
                               )}
                               {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
                             </div>
