@@ -29,8 +29,8 @@ interface NotificationItem {
 }
 
 const staticNotifications: NotificationItem[] = [
-  { id: 'local-1', icon: CheckCircle2, color: 'text-primary', title: 'Journal saved', desc: 'Trade #47 entry added', time: '2h ago', unread: false, source: 'local' },
-  { id: 'local-2', icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false, source: 'local' },
+  { id: 'local-1', icon: CheckCircle2, color: 'text-primary', title: 'Journal saved', desc: 'Trade #47 entry added', time: '2h ago', unread: false, source: 'local', url: '/journal' },
+  { id: 'local-2', icon: Info, color: 'text-blue-400', title: 'Weekly report ready', desc: 'Win rate 68% — view analytics', time: '5h ago', unread: false, source: 'local', url: '/analytics' },
 ];
 
 // All available nav items
