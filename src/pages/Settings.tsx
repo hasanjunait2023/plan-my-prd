@@ -6,15 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Shield, Plus, Trash2, Bell, Send, ExternalLink } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Plus, Trash2, Bell, Send, ExternalLink, Smartphone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccountSettings, useSaveAccountSettings } from '@/hooks/useAccountSettings';
+import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { defaultAccountSettings } from '@/data/mockData';
+import { registerPushSubscription, unregisterPushSubscription, isPushSubscribed } from '@/lib/pushNotification';
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 
 const Settings = () => {
+  const { user } = useAuth();
   const { data: accountSettings = defaultAccountSettings } = useAccountSettings();
   const saveSettings = useSaveAccountSettings();
   const [balance, setBalance] = useState('');
@@ -35,6 +38,10 @@ const Settings = () => {
   const [savingAlerts, setSavingAlerts] = useState(false);
   const [alertSettingsId, setAlertSettingsId] = useState<string | null>(null);
 
+  // Push notification
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+
   // Sync form state when settings load
   useEffect(() => {
     setBalance(accountSettings.startingBalance.toString());
@@ -46,6 +53,7 @@ const Settings = () => {
 
   useEffect(() => {
     loadAlertSettings();
+    isPushSubscribed().then(setPushEnabled);
   }, []);
 
   const loadAlertSettings = async () => {
@@ -129,7 +137,22 @@ const Settings = () => {
     setSendingTest(false);
   };
 
-
+  const handlePushToggle = async (enabled: boolean) => {
+    setPushLoading(true);
+    try {
+      if (enabled) {
+        if (!user) { toast.error('Please sign in first'); setPushLoading(false); return; }
+        const ok = await registerPushSubscription(user.id);
+        if (ok) { setPushEnabled(true); toast.success('Push notifications enabled!'); }
+        else { toast.error('Failed to enable push notifications. Check browser permissions.'); }
+      } else {
+        await unregisterPushSubscription();
+        setPushEnabled(false);
+        toast.success('Push notifications disabled');
+      }
+    } catch { toast.error('Push notification error'); }
+    setPushLoading(false);
+  };
 
 
   const handleSaveSettings = async () => {
