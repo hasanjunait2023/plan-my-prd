@@ -52,15 +52,19 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const response = await fetch(FF_CALENDAR_URL, {
-      headers: { 'User-Agent': 'TradeVault-Pro/1.0' },
-    });
+    // Fetch both this week and last week in parallel
+    const [thisWeekRes, lastWeekRes] = await Promise.all([
+      fetch(FF_THIS_WEEK_URL, { headers: { 'User-Agent': 'TradeVault-Pro/1.0' } }),
+      fetch(FF_LAST_WEEK_URL, { headers: { 'User-Agent': 'TradeVault-Pro/1.0' } }),
+    ]);
 
-    if (!response.ok) {
-      throw new Error(`FF API returned ${response.status}`);
-    }
+    if (!thisWeekRes.ok) throw new Error(`FF API (this week) returned ${thisWeekRes.status}`);
 
-    const rawEvents: any[] = await response.json();
+    const thisWeekEvents: any[] = await thisWeekRes.json();
+    const lastWeekEvents: any[] = lastWeekRes.ok ? await lastWeekRes.json() : [];
+
+    // Merge: this week first (higher priority), then last week
+    const rawEvents = [...thisWeekEvents, ...lastWeekEvents];
 
     // Filter only High/Medium impact events that have actual values released
     const releasedEvents = rawEvents.filter((e: any) => {
