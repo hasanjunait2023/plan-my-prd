@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { fetchWithRotation } from '../_shared/apiKeyRotator.ts';
 
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/telegram';
 
@@ -163,8 +164,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const twelveDataKey = Deno.env.get('TWELVEDATA_API_KEY');
-    if (!twelveDataKey) throw new Error('TWELVEDATA_API_KEY not set');
+    // API key handled by rotation
 
     // Determine which group to fetch (override with ?group=0..3, else rotate by minute)
     const groupParam = url.searchParams.get('group');
@@ -184,9 +184,9 @@ Deno.serve(async (req) => {
     if (!thresholdMap.cross) thresholdMap.cross = { percent: 0.20, cooldown: 5 };
     if (!thresholdMap.gold) thresholdMap.gold = { percent: 0.30, cooldown: 5 };
 
-    // Fetch current prices from TwelveData (single batch, max 8 pairs)
+    // Fetch current prices from TwelveData with key rotation
     const symbols = pairsToFetch.join(',');
-    const priceRes = await fetch(`https://api.twelvedata.com/price?symbol=${symbols}&apikey=${twelveDataKey}`);
+    const priceRes = await fetchWithRotation(`https://api.twelvedata.com/price?symbol=${symbols}&apikey=__API_KEY__`, "twelvedata", supabase);
     const priceData = await priceRes.json();
 
     if (priceData.code === 429) {
