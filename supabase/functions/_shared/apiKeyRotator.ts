@@ -146,5 +146,13 @@ export async function fetchWithRotation(
     return resp;
   }
 
-  throw new Error("All API keys exhausted for today");
+  // Return a structured fallback response instead of throwing
+  return new Response(
+    JSON.stringify({
+      error: "SERVICE_UNAVAILABLE",
+      fallback: true,
+      message: "All API keys exhausted — please wait a minute and try again"
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } }
+  );
 }
