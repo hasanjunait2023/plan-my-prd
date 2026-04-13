@@ -75,9 +75,22 @@ Deno.serve(async (req) => {
     const tsResponse = await fetchWithRotation(timeSeriesUrl, "twelvedata", sb)
     const tsData = await tsResponse.json()
 
+    // Handle API key exhaustion gracefully
+    if (tsData?.fallback === true) {
+      console.log("All API keys temporarily unavailable for NY session breaks");
+      const fallbackResults = topPairs.map(p => ({ pair: p.pair, direction: p.direction, nyHigh: null, nyLow: null, currentPrice: null, breakStatus: 'No Data' as const }));
+      return new Response(JSON.stringify({ pairs: fallbackResults, warning: tsData.message }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     const priceUrl = `${TWELVEDATA_BASE}/price?symbol=${encodeURIComponent(symbols)}&apikey=__API_KEY__`
     const priceResponse = await fetchWithRotation(priceUrl, "twelvedata", sb)
     const priceData = await priceResponse.json()
+
+    if (priceData?.fallback === true) {
+      console.log("All API keys temporarily unavailable for price fetch");
+      const fallbackResults = topPairs.map(p => ({ pair: p.pair, direction: p.direction, nyHigh: null, nyLow: null, currentPrice: null, breakStatus: 'No Data' as const }));
+      return new Response(JSON.stringify({ pairs: fallbackResults, warning: priceData.message }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
 
     const results: PairResult[] = topPairs.map((pairInput) => {
       const sym = toTwelveDataSymbol(pairInput.pair)
