@@ -732,6 +732,30 @@ export type Database = {
         }
         Relationships: []
       }
+      namaz_reminders: {
+        Row: {
+          date: string
+          id: string
+          quote_sent: string
+          sent_at: string
+          waqt: string
+        }
+        Insert: {
+          date?: string
+          id?: string
+          quote_sent?: string
+          sent_at?: string
+          waqt: string
+        }
+        Update: {
+          date?: string
+          id?: string
+          quote_sent?: string
+          sent_at?: string
+          waqt?: string
+        }
+        Relationships: []
+      }
       price_snapshots: {
         Row: {
           pair: string
