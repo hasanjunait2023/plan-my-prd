@@ -22,6 +22,25 @@ import { SessionPanel } from '@/components/correlation/SessionPanel';
 import { FundamentalBias } from '@/components/correlation/FundamentalBias';
 import { PowerGrabPanel } from '@/components/correlation/PowerGrabPanel';
 import { SupplyDemandPanel } from '@/components/correlation/SupplyDemandPanel';
+import { MARKET_SESSIONS, getSessionHours, isSessionActive, getBDHour, getBDMinute } from '@/lib/timezone';
+
+function getDefaultTab(): string {
+  const now = new Date();
+  const h = now.getUTCHours();
+  const m = now.getUTCMinutes();
+  const sessions = MARKET_SESSIONS.map(s => ({
+    name: s.name,
+    ...getSessionHours(s, now),
+  }));
+  const active = sessions.filter(s => isSessionActive(s.start, s.end, h, m));
+  const priority = ['New York', 'London', 'Tokyo', 'Sydney'];
+  for (const p of priority) {
+    if (active.some(a => a.name === p)) {
+      return p === 'New York' ? 'New York' : '1H';
+    }
+  }
+  return '1H';
+}
 import {
   DndContext,
   closestCenter,
@@ -210,7 +229,7 @@ function getSavedOrder(): string[] {
 }
 
 export default function CurrencyStrength() {
-  const [activeTab, setActiveTab] = useState('1H');
+  const [activeTab, setActiveTab] = useState(getDefaultTab);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [sectionOrder, setSectionOrder] = useState<string[]>(getSavedOrder);
   const queryClient = useQueryClient();
