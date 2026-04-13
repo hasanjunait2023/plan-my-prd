@@ -82,11 +82,11 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
 
 function usePreviousSnapshot(timeframe: string, selectedDate: Date) {
   const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
-  const prevDateKey = format(subDays(selectedDate, 1), 'yyyy-MM-dd');
+  const lookbackKey = format(subDays(selectedDate, 7), 'yyyy-MM-dd');
   return useQuery({
     queryKey: ['currency-strength-prev-snapshot', timeframe, selectedDateKey],
     queryFn: async () => {
-      const rangeStart = `${prevDateKey}T00:00:00.000Z`;
+      const rangeStart = `${lookbackKey}T00:00:00.000Z`;
       const rangeEnd = `${selectedDateKey}T23:59:59.999Z`;
       const timeframeVariants = timeframe === 'New York'
         ? ['New York', 'Strength On New York']
@@ -100,9 +100,7 @@ function usePreviousSnapshot(timeframe: string, selectedDate: Date) {
         .order('recorded_at', { ascending: false });
       if (error) throw error;
       if (!data || data.length === 0) return [] as CurrencyStrengthRecord[];
-      // Find the latest timestamp (current snapshot)
       const latestTime = data[0].recorded_at;
-      // Find the second unique timestamp (previous snapshot)
       const prevTime = data.find(r => r.recorded_at !== latestTime)?.recorded_at;
       if (!prevTime) return [] as CurrencyStrengthRecord[];
       return data.filter(r => r.recorded_at === prevTime) as CurrencyStrengthRecord[];
