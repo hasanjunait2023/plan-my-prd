@@ -185,6 +185,48 @@ export type Database = {
         }
         Relationships: []
       }
+      api_key_pool: {
+        Row: {
+          api_key: string
+          calls_today: number
+          created_at: string
+          daily_limit: number
+          id: string
+          is_active: boolean
+          label: string
+          last_error_at: string | null
+          last_used_at: string | null
+          priority: number
+          provider: string
+        }
+        Insert: {
+          api_key: string
+          calls_today?: number
+          created_at?: string
+          daily_limit?: number
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_error_at?: string | null
+          last_used_at?: string | null
+          priority?: number
+          provider?: string
+        }
+        Update: {
+          api_key?: string
+          calls_today?: number
+          created_at?: string
+          daily_limit?: number
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_error_at?: string | null
+          last_used_at?: string | null
+          priority?: number
+          provider?: string
+        }
+        Relationships: []
+      }
       confluence_scores: {
         Row: {
           active_session: string | null
