@@ -22,6 +22,7 @@ const categoryIcons: Record<string, string> = {
 
 interface NewsCardListProps {
   filter: 'all' | 'forex' | 'gold' | 'crypto';
+  impactFilter?: 'all' | 'high' | 'medium' | 'low';
   news: NewsItem[];
   isLoading: boolean;
 }
@@ -36,8 +37,11 @@ function timeAgo(dateStr: string): string {
   }
 }
 
-export function NewsCardList({ filter, news, isLoading }: NewsCardListProps) {
-  const filtered = filter === 'all' ? news : news.filter(n => n.category === filter);
+export function NewsCardList({ filter, impactFilter = 'all', news, isLoading }: NewsCardListProps) {
+  let filtered = filter === 'all' ? news : news.filter(n => n.category === filter);
+  if (impactFilter !== 'all') {
+    filtered = filtered.filter(n => n.impact.toLowerCase() === impactFilter);
+  }
 
   if (isLoading) {
     return (
