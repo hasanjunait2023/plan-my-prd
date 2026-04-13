@@ -98,7 +98,6 @@ export async function fetchWithRotation(
     if (resp.status === 429) {
       console.log(`Key "${key.label}" (priority ${key.priority}) got 429, switching...`);
       await markKeyFailed(key.id, supabase);
-      // Mark as fully used so it won't be picked again today
       await supabase
         .from("api_key_pool")
         .update({ calls_today: key.daily_limit })
@@ -113,12 +112,30 @@ export async function fetchWithRotation(
       try {
         const json = await cloned.json();
         if (json.code === 429 || (json.status === "error" && json.message?.includes("API credits"))) {
-          console.log(`Key "${key.label}" credits exhausted: ${json.message}`);
-          await markKeyFailed(key.id, supabase);
-          await supabase
-            .from("api_key_pool")
-            .update({ calls_today: key.daily_limit })
-            .eq("id", key.id);
+          const isPerMinute = json.message?.includes("current minute");
+          const isPerDay = json.message?.includes("for the day");
+          
+          if (isPerDay) {
+            // Daily limit — mark key as fully exhausted for today
+            console.log(`Key "${key.label}" DAILY credits exhausted: ${json.message}`);
+            await markKeyFailed(key.id, supabase);
+            await supabase
+              .from("api_key_pool")
+              .update({ calls_today: key.daily_limit })
+              .eq("id", key.id);
+          } else if (isPerMinute) {
+            // Per-minute limit — just skip for now, don't mark as daily exhausted
+            console.log(`Key "${key.label}" per-minute limit hit, skipping to next key: ${json.message}`);
+            await markKeyFailed(key.id, supabase);
+          } else {
+            // Unknown credit error — treat as daily exhaustion to be safe
+            console.log(`Key "${key.label}" credits error: ${json.message}`);
+            await markKeyFailed(key.id, supabase);
+            await supabase
+              .from("api_key_pool")
+              .update({ calls_today: key.daily_limit })
+              .eq("id", key.id);
+          }
           continue;
         }
       } catch { /* not json, continue */ }

@@ -1,0 +1,1 @@
+UPDATE api_key_pool SET calls_today = 0, last_error_at = NULL;
