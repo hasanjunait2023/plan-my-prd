@@ -6,15 +6,30 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Shield, Plus, Trash2, Bell, Send, ExternalLink, Smartphone } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Plus, Trash2, Bell, Send, ExternalLink, Smartphone, Key, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccountSettings, useSaveAccountSettings } from '@/hooks/useAccountSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { defaultAccountSettings } from '@/data/mockData';
 import { registerPushSubscription, unregisterPushSubscription, isPushSubscribed } from '@/lib/pushNotification';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
+
+interface ApiKeyInfo {
+  id: string;
+  provider: string;
+  label: string;
+  is_active: boolean;
+  calls_today: number;
+  daily_limit: number;
+  last_used_at: string | null;
+  last_error_at: string | null;
+  priority: number;
+  created_at: string;
+}
 
 const Settings = () => {
   const { user } = useAuth();
@@ -42,6 +57,13 @@ const Settings = () => {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
 
+  // API Key Management
+  const [apiKeys, setApiKeys] = useState<ApiKeyInfo[]>([]);
+  const [loadingKeys, setLoadingKeys] = useState(false);
+  const [newKeyValue, setNewKeyValue] = useState('');
+  const [newKeyLabel, setNewKeyLabel] = useState('');
+  const [addingKey, setAddingKey] = useState(false);
+
   // Sync form state when settings load
   useEffect(() => {
     setBalance(accountSettings.startingBalance.toString());
@@ -54,6 +76,7 @@ const Settings = () => {
   useEffect(() => {
     loadAlertSettings();
     isPushSubscribed().then(setPushEnabled);
+    loadApiKeys();
   }, []);
 
   const loadAlertSettings = async () => {
@@ -73,6 +96,67 @@ const Settings = () => {
       setSessionReminderAlert(data.session_reminder_alert);
       setMt5TradeAlert(data.mt5_trade_alert);
     }
+  };
+
+  const loadApiKeys = async () => {
+    setLoadingKeys(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-api-keys', {
+        body: null,
+        headers: {},
+      });
+      // Use query param approach
+      const resp = await supabase.functions.invoke('manage-api-keys?action=list', {});
+      if (resp.data?.keys) {
+        setApiKeys(resp.data.keys);
+      }
+    } catch (err) {
+      console.error('Failed to load API keys:', err);
+    }
+    setLoadingKeys(false);
+  };
+
+  const addApiKey = async () => {
+    if (!newKeyValue.trim()) { toast.error('API key দিতে হবে'); return; }
+    setAddingKey(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-api-keys?action=add', {
+        body: {
+          api_key: newKeyValue.trim(),
+          label: newKeyLabel.trim() || `Key ${apiKeys.length + 1}`,
+          provider: 'twelvedata',
+          daily_limit: 800,
+          priority: apiKeys.length,
+        },
+      });
+      if (error) throw error;
+      toast.success('API key যোগ হয়েছে!');
+      setNewKeyValue('');
+      setNewKeyLabel('');
+      await loadApiKeys();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add key');
+    }
+    setAddingKey(false);
+  };
+
+  const deleteApiKey = async (id: string) => {
+    try {
+      await supabase.functions.invoke('manage-api-keys?action=delete', {
+        body: { id },
+      });
+      toast.success('Key মুছে ফেলা হয়েছে');
+      await loadApiKeys();
+    } catch { toast.error('Failed to delete key'); }
+  };
+
+  const toggleApiKey = async (id: string, isActive: boolean) => {
+    try {
+      await supabase.functions.invoke('manage-api-keys?action=toggle', {
+        body: { id, is_active: !isActive },
+      });
+      await loadApiKeys();
+    } catch { toast.error('Failed to toggle key'); }
   };
 
   const saveAlertSettings = async () => {
@@ -182,6 +266,78 @@ const Settings = () => {
           <p className="text-sm text-muted-foreground">Configure your trading account, rules & alerts</p>
         </div>
       </div>
+
+      {/* API Key Management */}
+      <Card className={glassCard}>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-amber-500/10 flex items-center justify-center">
+              <Key className="w-3 h-3 text-amber-400" />
+            </div>
+            API Key Rotation
+          </CardTitle>
+          <CardDescription>TwelveData API keys — multiple keys যোগ করলে auto-rotate করবে</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Existing keys */}
+          {apiKeys.length > 0 && (
+            <div className="space-y-2">
+              {apiKeys.map((key) => {
+                const usagePercent = key.daily_limit > 0 ? (key.calls_today / key.daily_limit) * 100 : 0;
+                const isExhausted = key.calls_today >= key.daily_limit;
+                return (
+                  <div key={key.id} className="flex items-center gap-3 p-3 rounded-lg bg-background/50 border border-border/20">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate">{key.label}</span>
+                        <Badge variant={key.is_active ? (isExhausted ? 'destructive' : 'default') : 'secondary'} className="text-[10px] px-1.5 py-0">
+                          {!key.is_active ? 'Disabled' : isExhausted ? 'Exhausted' : 'Active'}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">P{key.priority}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Progress value={usagePercent} className="h-1.5 flex-1" />
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                          {key.calls_today}/{key.daily_limit}
+                        </span>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={key.is_active}
+                      onCheckedChange={() => toggleApiKey(key.id, key.is_active)}
+                      className="shrink-0"
+                    />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive/60 hover:text-destructive" onClick={() => deleteApiKey(key.id)}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {apiKeys.length === 0 && !loadingKeys && (
+            <p className="text-xs text-muted-foreground text-center py-3">কোনো API key নেই। নিচে নতুন key যোগ করো। Pool empty হলে env variable fallback হিসেবে ব্যবহার হবে।</p>
+          )}
+
+          {loadingKeys && <p className="text-xs text-muted-foreground text-center py-2">Loading...</p>}
+
+          {/* Add new key */}
+          <div className="border-t border-border/20 pt-3 space-y-2">
+            <div className="grid grid-cols-3 gap-2">
+              <Input placeholder="Label (e.g. Key 1)" value={newKeyLabel} onChange={e => setNewKeyLabel(e.target.value)} className="col-span-1 text-xs h-8" />
+              <Input placeholder="TwelveData API Key" value={newKeyValue} onChange={e => setNewKeyValue(e.target.value)} className="col-span-2 text-xs h-8 font-mono" />
+            </div>
+            <Button onClick={addApiKey} disabled={addingKey || !newKeyValue.trim()} size="sm" variant="outline" className="w-full">
+              <Plus className="w-3 h-3 mr-1" />{addingKey ? 'Adding...' : 'Add API Key'}
+            </Button>
+          </div>
+
+          <Button onClick={loadApiKeys} variant="ghost" size="sm" className="w-full text-xs">
+            <RefreshCw className="w-3 h-3 mr-1" />Refresh Status
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Telegram Notifications */}
       <Card className={glassCard}>
