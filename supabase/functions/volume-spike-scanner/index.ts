@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { fetchWithRotation } from '../_shared/apiKeyRotator.ts';
 
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/telegram';
 
@@ -60,8 +61,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const twelveDataKey = Deno.env.get('TWELVEDATA_API_KEY');
-    if (!twelveDataKey) throw new Error('TWELVEDATA_API_KEY not set');
+    // API key handled by rotation
 
     // Determine group — use odd minutes (even minutes = price-spike-detector)
     const groupParam = url.searchParams.get('group');
@@ -79,8 +79,8 @@ Deno.serve(async (req) => {
     // Process sequentially to respect rate limits, but limit to 8 pairs max
     for (const pair of pairsToFetch) {
       try {
-        const tsUrl = `https://api.twelvedata.com/time_series?symbol=${pair}&interval=5min&outputsize=25&apikey=${twelveDataKey}`;
-        const res = await fetch(tsUrl);
+        const tsUrl = `https://api.twelvedata.com/time_series?symbol=${pair}&interval=5min&outputsize=25&apikey=__API_KEY__`;
+        const res = await fetchWithRotation(tsUrl, "twelvedata", supabase);
         const data = await res.json();
 
         if (data.code === 429) {
