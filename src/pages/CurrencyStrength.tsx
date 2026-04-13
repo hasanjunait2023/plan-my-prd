@@ -291,7 +291,7 @@ export default function CurrencyStrength() {
               ))}
             </div>
           ) : hasData ? (
-            <StrengthMeter data={data!} previousData={previousData} />
+            <StrengthMeter data={data!} previousData={prevSessionData?.records} previousSessionLabel={prevSessionData?.sessionLabel} previousTimestamp={prevSessionData?.timestamp} />
           ) : (
             <div className="text-center py-16 text-muted-foreground">
               <div className="w-16 h-16 rounded-2xl bg-muted/10 flex items-center justify-center mx-auto mb-4">
@@ -345,7 +345,7 @@ export default function CurrencyStrength() {
         </CardContent>
       </Card>
     ),
-  }), [data, isLoading, hasData, previousData, londonData, nyData, activeTab]);
+  }), [data, isLoading, hasData, prevSessionData, londonData, nyData, activeTab]);
 
   return (
     <div className="space-y-5 max-w-6xl mx-auto">
