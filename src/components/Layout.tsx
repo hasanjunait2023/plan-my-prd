@@ -48,8 +48,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   
   { title: 'Rules', short: 'Rules', url: '/rules', icon: Shield },
   { title: 'MT5', short: 'MT5', url: '/mt5', icon: Cable },
-  { title: 'Commodities', short: 'Cmdty', url: '/commodities', icon: Gem },
-  { title: 'Crypto', short: 'Crypto', url: '/crypto', icon: Bitcoin },
+  { title: 'Commodities & Crypto', short: 'Assets', url: '/commodities', icon: Gem },
   { title: 'Habits', short: 'Habit', url: '/habits', icon: Target },
   { title: 'Settings', short: 'Set', url: '/settings', icon: Settings },
 ];
