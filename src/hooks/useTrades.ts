@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { TablesUpdate } from '@/integrations/supabase/types';
 import { Trade } from '@/types/trade';
-import { mockTrades } from '@/data/mockTrades';
+
 
 // Map DB row to Trade type
 const mapRow = (r: any): Trade => ({
@@ -128,9 +128,7 @@ export const useTrades = () => {
         .select('*')
         .order('date', { ascending: false });
       if (error) throw error;
-      const mapped = (data || []).map(mapRow);
-      // Fallback to mock data when DB is empty
-      return mapped.length > 0 ? mapped : mockTrades;
+      return (data || []).map(mapRow);
     },
   });
 };
