@@ -351,7 +351,7 @@ Deno.serve(async (req) => {
 
           try {
             await supabase.functions.invoke('send-push-notification', {
-              body: { title: pushTitle, body: pushBody, tag: 'spike-alert' },
+              body: { title: pushTitle, body: pushBody, tag: 'spike-alert', url: '/spike-alerts' },
             });
           } catch (pushErr) {
             console.error('Push notification error:', pushErr);
