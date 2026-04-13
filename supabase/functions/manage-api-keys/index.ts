@@ -14,7 +14,14 @@ Deno.serve(async (req) => {
     const sb = createClient(supabaseUrl, serviceKey);
 
     const url = new URL(req.url);
-    const action = url.searchParams.get("action") || "list";
+    let action = url.searchParams.get("action") || "list";
+    
+    // Also check body for action
+    let bodyData: any = {};
+    try {
+      bodyData = await req.json();
+      if (bodyData?.action) action = bodyData.action;
+    } catch { /* no body */ }
 
     if (action === "list") {
       const { data, error } = await sb
@@ -28,8 +35,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "add") {
-      const body = await req.json();
-      const { api_key, label, provider, daily_limit, priority } = body;
+      const { api_key, label, provider, daily_limit, priority } = bodyData;
       if (!api_key) throw new Error("api_key is required");
 
       const { data, error } = await sb.from("api_key_pool").insert({
@@ -46,8 +52,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "delete") {
-      const body = await req.json();
-      const { id } = body;
+      const { id } = bodyData;
       if (!id) throw new Error("id is required");
       const { error } = await sb.from("api_key_pool").delete().eq("id", id);
       if (error) throw error;
@@ -57,8 +62,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "toggle") {
-      const body = await req.json();
-      const { id, is_active } = body;
+      const { id, is_active } = bodyData;
       if (!id) throw new Error("id is required");
       const { error } = await sb.from("api_key_pool").update({ is_active }).eq("id", id);
       if (error) throw error;
