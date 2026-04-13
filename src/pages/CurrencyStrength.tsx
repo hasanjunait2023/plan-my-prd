@@ -80,30 +80,37 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
   });
 }
 
-function usePreviousSnapshot(timeframe: string, selectedDate: Date) {
+function usePreviousSessionData(activeTab: string, selectedDate: Date) {
   const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
   const lookbackKey = format(subDays(selectedDate, 7), 'yyyy-MM-dd');
+
+  // London selected → fetch previous NY session
+  // NY selected → fetch same-day or latest London session
+  const oppositeTimeframes = activeTab === 'New York'
+    ? ['1H']
+    : ['New York', 'Strength On New York'];
+  const oppositeLabel = activeTab === 'New York' ? 'London' : 'New York';
+
   return useQuery({
-    queryKey: ['currency-strength-prev-snapshot', timeframe, selectedDateKey],
+    queryKey: ['currency-strength-prev-session', activeTab, selectedDateKey],
     queryFn: async () => {
       const rangeStart = `${lookbackKey}T00:00:00.000Z`;
       const rangeEnd = `${selectedDateKey}T23:59:59.999Z`;
-      const timeframeVariants = timeframe === 'New York'
-        ? ['New York', 'Strength On New York']
-        : [timeframe];
       const { data, error } = await supabase
         .from('currency_strength')
         .select('*')
-        .in('timeframe', timeframeVariants)
+        .in('timeframe', oppositeTimeframes)
         .gte('recorded_at', rangeStart)
         .lte('recorded_at', rangeEnd)
         .order('recorded_at', { ascending: false });
       if (error) throw error;
-      if (!data || data.length === 0) return [] as CurrencyStrengthRecord[];
+      if (!data || data.length === 0) return { records: [] as CurrencyStrengthRecord[], sessionLabel: oppositeLabel, timestamp: '' };
       const latestTime = data[0].recorded_at;
-      const prevTime = data.find(r => r.recorded_at !== latestTime)?.recorded_at;
-      if (!prevTime) return [] as CurrencyStrengthRecord[];
-      return data.filter(r => r.recorded_at === prevTime) as CurrencyStrengthRecord[];
+      return {
+        records: data.filter(r => r.recorded_at === latestTime) as CurrencyStrengthRecord[],
+        sessionLabel: oppositeLabel,
+        timestamp: latestTime,
+      };
     },
   });
 }
@@ -208,7 +215,7 @@ export default function CurrencyStrength() {
   const [sectionOrder, setSectionOrder] = useState<string[]>(getSavedOrder);
   const queryClient = useQueryClient();
   const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab, selectedDate);
-  const { data: previousData } = usePreviousSnapshot(activeTab, selectedDate);
+  const { data: prevSessionData } = usePreviousSessionData(activeTab, selectedDate);
   const { londonData, nyData } = useBothSessionData(selectedDate);
 
   const sensors = useSensors(
