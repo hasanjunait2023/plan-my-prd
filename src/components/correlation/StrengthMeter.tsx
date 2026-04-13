@@ -3,20 +3,20 @@ import { CurrencyStrengthRecord, CURRENCY_FLAGS, CATEGORY_COLORS } from '@/types
 interface StrengthMeterProps {
   data: CurrencyStrengthRecord[];
   previousData?: CurrencyStrengthRecord[];
+  previousSessionLabel?: string;
+  previousTimestamp?: string;
 }
 
-// Convert hsl string to hsla with opacity
 function withOpacity(hslColor: string, opacity: number): string {
   const match = hslColor.match(/hsl\(([^)]+)\)/);
   if (match) return `hsla(${match[1]}, ${opacity})`;
   return hslColor;
 }
 
-export function StrengthMeter({ data, previousData }: StrengthMeterProps) {
+export function StrengthMeter({ data, previousData, previousSessionLabel, previousTimestamp }: StrengthMeterProps) {
   const sorted = [...data].sort((a, b) => b.strength - a.strength);
   const maxAbs = 10;
 
-  // Build previous snapshot maps for delta + category
   const prevMap = new Map<string, number>();
   const prevCategoryMap = new Map<string, string>();
   if (previousData) {
@@ -26,6 +26,8 @@ export function StrengthMeter({ data, previousData }: StrengthMeterProps) {
     }
   }
 
+  const hasPrevData = previousData && previousData.length > 0;
+
   return (
     <div className="space-y-1.5">
       {sorted.map((item, index) => {
@@ -33,6 +35,11 @@ export function StrengthMeter({ data, previousData }: StrengthMeterProps) {
         const isPositive = item.strength >= 0;
         const color = CATEGORY_COLORS[item.category] || 'hsl(0, 0%, 50%)';
         const flag = CURRENCY_FLAGS[item.currency] || '🏳️';
+
+        const prevStrength = prevMap.get(item.currency);
+        const prevCategory = prevCategoryMap.get(item.currency);
+        const hasPrev = prevStrength !== undefined && prevCategory !== undefined;
+        const categoryChanged = hasPrev && prevCategory !== item.category;
 
         return (
           <div
@@ -58,18 +65,13 @@ export function StrengthMeter({ data, previousData }: StrengthMeterProps) {
 
             {/* Bar container */}
             <div className="flex-1 relative h-8 rounded-md bg-muted/10 overflow-hidden border border-border/20">
-              {/* Center line */}
               <div className="absolute left-1/2 top-0 bottom-0 w-px bg-muted-foreground/15 z-10" />
-
-              {/* Gradient bar */}
               <div
                 className="absolute top-1 bottom-1 rounded-sm transition-all duration-700 ease-out"
                 style={{
                   background: `linear-gradient(${isPositive ? '90deg' : '270deg'}, ${color}, ${withOpacity(color, 0.5)})`,
                   width: `${percent / 2}%`,
-                  ...(isPositive
-                    ? { left: '50%' }
-                    : { right: '50%' }),
+                  ...(isPositive ? { left: '50%' } : { right: '50%' }),
                   boxShadow: `0 0 12px ${withOpacity(color, 0.3)}`,
                 }}
               />
@@ -77,19 +79,15 @@ export function StrengthMeter({ data, previousData }: StrengthMeterProps) {
 
             {/* Score */}
             <div className="w-12 text-right shrink-0">
-              <span
-                className="font-extrabold text-sm tabular-nums"
-                style={{ color }}
-              >
+              <span className="font-extrabold text-sm tabular-nums" style={{ color }}>
                 {item.strength > 0 ? '+' : ''}{item.strength}
               </span>
             </div>
 
             {/* Delta badge */}
             {(() => {
-              const prev = prevMap.get(item.currency);
-              if (prev === undefined) return <div className="w-12 shrink-0" />;
-              const delta = item.strength - prev;
+              if (!hasPrev) return <div className="w-12 shrink-0" />;
+              const delta = item.strength - prevStrength!;
               if (delta === 0) return <div className="w-12 shrink-0 text-center text-[10px] text-muted-foreground/50">—</div>;
               const deltaColor = delta > 0 ? 'hsl(142, 71%, 45%)' : 'hsl(0, 84%, 60%)';
               return (
@@ -103,10 +101,7 @@ export function StrengthMeter({ data, previousData }: StrengthMeterProps) {
             })()}
 
             {/* Direction arrow */}
-            <span
-              className="w-5 text-center shrink-0 text-sm font-bold"
-              style={{ color }}
-            >
+            <span className="w-5 text-center shrink-0 text-sm font-bold" style={{ color }}>
               {item.strength > 0 ? '▲' : item.strength < 0 ? '▼' : '—'}
             </span>
 
@@ -123,30 +118,51 @@ export function StrengthMeter({ data, previousData }: StrengthMeterProps) {
               {item.category}
             </div>
 
-            {/* Previous snapshot badge */}
+            {/* Previous session badge — distinct pill style */}
             {(() => {
-              const prevStrength = prevMap.get(item.currency);
-              const prevCategory = prevCategoryMap.get(item.currency);
-              if (prevStrength === undefined || prevCategory === undefined) return <div className="shrink-0 w-32" />;
-              const prevColor = CATEGORY_COLORS[prevCategory] || 'hsl(0, 0%, 50%)';
-              const categoryChanged = prevCategory !== item.category;
+              if (!hasPrev) return <div className="shrink-0 w-36" />;
+              const prevColor = CATEGORY_COLORS[prevCategory!] || 'hsl(0, 0%, 50%)';
               return (
                 <div
-                  className="text-[9px] font-bold px-2 py-1 rounded-md shrink-0 w-32 text-center truncate"
+                  className="shrink-0 w-36 flex items-center gap-1.5 px-2 py-1 rounded-full border border-dashed"
                   style={{
-                    color: prevColor,
-                    backgroundColor: withOpacity(prevColor, categoryChanged ? 0.18 : 0.08),
-                    border: `1px solid ${withOpacity(prevColor, categoryChanged ? 0.35 : 0.12)}`,
-                    boxShadow: categoryChanged ? `0 0 10px ${withOpacity(prevColor, 0.15)}` : 'none',
+                    borderColor: withOpacity(prevColor, categoryChanged ? 0.5 : 0.2),
+                    backgroundColor: categoryChanged
+                      ? withOpacity(prevColor, 0.1)
+                      : 'hsla(0,0%,100%,0.03)',
                   }}
                 >
-                  was: {prevCategory} ({prevStrength > 0 ? '+' : ''}{prevStrength})
+                  <div
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: prevColor, boxShadow: categoryChanged ? `0 0 6px ${withOpacity(prevColor, 0.5)}` : 'none' }}
+                  />
+                  <span
+                    className="text-[9px] font-semibold truncate"
+                    style={{ color: categoryChanged ? prevColor : 'hsl(0,0%,60%)' }}
+                  >
+                    {prevCategory} ({prevStrength! > 0 ? '+' : ''}{prevStrength})
+                  </span>
                 </div>
               );
             })()}
           </div>
         );
       })}
+
+      {/* Previous session info footer */}
+      {hasPrevData && previousSessionLabel && (
+        <div className="mt-3 pt-3 border-t border-border/15 flex items-center gap-2 px-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+          <span className="text-[10px] text-muted-foreground/60 font-medium">
+            Previous session: <span className="text-muted-foreground/80 font-bold">{previousSessionLabel}</span>
+            {previousTimestamp && (
+              <span className="ml-1 text-muted-foreground/40">
+                ({new Date(previousTimestamp).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })})
+              </span>
+            )}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
