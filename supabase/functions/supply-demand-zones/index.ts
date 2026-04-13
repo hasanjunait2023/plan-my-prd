@@ -131,6 +131,16 @@ Deno.serve(async (req) => {
     const resp = await fetchWithRotation(urlTemplate, "twelvedata", sb);
     const batchData = await resp.json();
 
+    // Handle API key exhaustion gracefully
+    if (batchData?.fallback === true) {
+      console.log("All API keys temporarily unavailable");
+      const fallbackResults = pairsToProcess.map(p => ({
+        pair: p.pair, direction: p.direction, demandZone: null, supplyZone: null,
+        currentPrice: null, proximity: 'No Data' as const, priceRange: null
+      }));
+      return new Response(JSON.stringify({ zones: fallbackResults, warning: batchData.message }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     const results: ZoneResult[] = pairsToProcess.map((p) => {
       try {
         let values: any[] = [];
