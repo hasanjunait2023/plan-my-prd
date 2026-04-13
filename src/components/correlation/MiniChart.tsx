@@ -70,7 +70,7 @@ function TradingViewWidget({ symbol, interval, height, showRsi = true }: { symbo
   return <div ref={containerRef} className="w-full" style={{ height }} />;
 }
 
-export function MiniChart({ symbol, pair, interval, dimmed, showRsi = true }: MiniChartProps) {
+export function MiniChart({ symbol, pair, interval, dimmed, showRsi = true, chartHeight = '400px' }: MiniChartProps & { chartHeight?: string }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -92,7 +92,7 @@ export function MiniChart({ symbol, pair, interval, dimmed, showRsi = true }: Mi
             <Maximize2 className="h-3.5 w-3.5" />
           </button>
         </div>
-        <TradingViewWidget symbol={symbol} interval={interval} height="400px" showRsi={showRsi} />
+        <TradingViewWidget symbol={symbol} interval={interval} height={chartHeight} showRsi={showRsi} />
       </div>
 
       <Dialog open={expanded} onOpenChange={setExpanded}>
