@@ -229,7 +229,7 @@ function getSavedOrder(): string[] {
 }
 
 export default function CurrencyStrength() {
-  const [activeTab, setActiveTab] = useState('1H');
+  const [activeTab, setActiveTab] = useState(getDefaultTab);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [sectionOrder, setSectionOrder] = useState<string[]>(getSavedOrder);
   const queryClient = useQueryClient();
