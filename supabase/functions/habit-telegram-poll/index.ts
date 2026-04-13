@@ -480,46 +480,6 @@ async function handleCallback(supabase: any, tgBase: string, cb: any) {
       await sendMessage(tgBase, chatId, '🌟🎉 <b>PERFECT DAY!</b> সব habit complete! তুমি একটা legend! 🏆');
     }
 
-  } else if (cbData?.startsWith('done_namaz_') && chatId) {
-    // Namaz completion callback: done_namaz_{waqt}_{habitId}
-    const parts = cbData.replace('done_namaz_', '').split('_');
-    const waqt = parts[0];
-    const habitId = parts.slice(1).join('_');
-    const waqtLabels: Record<string, string> = { fajr: 'ফজর', dhuhr: 'যোহর', asr: 'আসর', maghrib: 'মাগরিব', isha: 'এশা' };
-    
-    const { data: habit } = await supabase.from('habits').select('*').eq('id', habitId).maybeSingle();
-    if (!habit) {
-      await answerCallback(tgBase, cbId, '❌ Habit not found');
-      return;
-    }
-
-    const { data: existing } = await supabase.from('habit_logs').select('id').eq('habit_id', habitId).eq('date', today).limit(1);
-    if (existing && existing.length > 0) {
-      await answerCallback(tgBase, cbId, '✅ ইতিমধ্যে আদায় করা হয়েছে!');
-      if (messageId) await editMessage(tgBase, chatId, messageId, `✅ <b>${waqtLabels[waqt] || waqt} নামাজ</b> — ইতিমধ্যে আদায় করা হয়েছে! মাশাআল্লাহ! 🤲`);
-      return;
-    }
-
-    await supabase.from('habit_logs').insert({ habit_id: habitId, user_id: habit.user_id, date: today, source: 'telegram', notes: `${waqtLabels[waqt] || waqt} নামাজ আদায়` });
-    const newStreak = habit.current_streak + 1;
-    await supabase.from('habits').update({
-      current_streak: newStreak,
-      longest_streak: Math.max(newStreak, habit.longest_streak),
-      total_completions: habit.total_completions + 1,
-    }).eq('id', habitId);
-
-    await answerCallback(tgBase, cbId, `✅ ${waqtLabels[waqt] || waqt} আদায়! 🔥${newStreak}`);
-    let reply = `✅ <b>${waqtLabels[waqt] || waqt} নামাজ আদায় করা হয়েছে!</b>\n🔥 Streak: ${newStreak} দিন\n\n🤲 আলহামদুলিল্লাহ! আল্লাহ কবুল করুন। আমীন।`;
-    if (MILESTONE_MESSAGES[newStreak]) reply += `\n\n${MILESTONE_MESSAGES[newStreak]}`;
-    if (messageId) await editMessage(tgBase, chatId, messageId, reply);
-
-  } else if (cbData?.startsWith('skip_namaz_') && chatId) {
-    const parts = cbData.replace('skip_namaz_', '').split('_');
-    const waqt = parts[0];
-    const waqtLabels: Record<string, string> = { fajr: 'ফজর', dhuhr: 'যোহর', asr: 'আসর', maghrib: 'মাগরিব', isha: 'এশা' };
-    await answerCallback(tgBase, cbId, '😔 ইনশাআল্লাহ পরেরবার');
-    if (messageId) await editMessage(tgBase, chatId, messageId, `😔 <b>${waqtLabels[waqt] || waqt} নামাজ</b> আদায় হয়নি।\n\nইনশাআল্লাহ পরের ওয়াক্তে অবশ্যই আদায় করবে। আল্লাহ তোমাকে তাওফিক দিন। 🤲`);
-
   } else if (cbData?.startsWith('skip_') && chatId) {
     const habitId = cbData.replace('skip_', '');
     const { data: habit } = await supabase.from('habits').select('name').eq('id', habitId).maybeSingle();
