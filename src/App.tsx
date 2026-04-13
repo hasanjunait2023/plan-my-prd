@@ -52,7 +52,7 @@ const App = () => (
                   <Route path="/ema-scanner" element={<EmaScanner />} />
                   <Route path="/trade-intelligence" element={<TradeIntelligence />} />
                   <Route path="/commodities" element={<Commodities />} />
-                  <Route path="/crypto" element={<Crypto />} />
+                  
                   <Route path="/correlation-pairs" element={<CorrelationPairs />} />
                   <Route path="/install" element={<Install />} />
                   <Route path="/mt5" element={<MT5Connection />} />
