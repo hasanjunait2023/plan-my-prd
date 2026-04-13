@@ -9,7 +9,7 @@ import Index from "./pages/Index.tsx";
 import TradeJournal from "./pages/TradeJournal.tsx";
 import NewTrade from "./pages/NewTrade.tsx";
 import Analytics from "./pages/Analytics.tsx";
-import Psychology from "./pages/Psychology.tsx";
+
 import Settings from "./pages/Settings.tsx";
 import CurrencyStrength from "./pages/CurrencyStrength.tsx";
 import EmaScanner from "./pages/EmaScanner.tsx";
@@ -46,7 +46,7 @@ const App = () => (
                   <Route path="/journal" element={<TradeJournal />} />
                   <Route path="/new-trade" element={<NewTrade />} />
                   <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/psychology" element={<Psychology />} />
+                  
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/currency-strength" element={<CurrencyStrength />} />
                   <Route path="/ema-scanner" element={<EmaScanner />} />

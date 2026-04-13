@@ -45,7 +45,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { title: 'News', short: 'News', url: '/news', icon: Newspaper },
   { title: 'Spike Alerts', short: 'Spike', url: '/spike-alerts', icon: AlertTriangle },
   { title: 'Intel', short: 'Intel', url: '/trade-intelligence', icon: Zap },
-  { title: 'Psychology', short: 'Psych', url: '/psychology', icon: Brain },
+  
   { title: 'Rules', short: 'Rules', url: '/rules', icon: Shield },
   { title: 'MT5', short: 'MT5', url: '/mt5', icon: Cable },
   { title: 'Commodities', short: 'Cmdty', url: '/commodities', icon: Gem },
