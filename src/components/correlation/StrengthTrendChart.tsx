@@ -72,16 +72,25 @@ export function StrengthTrendChart({ timeframe }: StrengthTrendChartProps) {
     );
   }
 
-  const timeMap = new Map<string, Record<string, number | string>>();
+  // Aggregate by day — keep latest value per currency per day
+  const dayMap = new Map<string, { label: string; values: Map<string, { strength: number; time: string }> }>();
   for (const row of data) {
-    const key = row.recorded_at;
-    if (!timeMap.has(key)) {
-      timeMap.set(key, { date: formatUtcDayLabel(key) });
+    const d = new Date(row.recorded_at);
+    const dayKey = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+    if (!dayMap.has(dayKey)) {
+      dayMap.set(dayKey, { label: formatUtcDayLabel(row.recorded_at), values: new Map() });
     }
-    timeMap.get(key)![row.currency] = row.strength;
+    const existing = dayMap.get(dayKey)!.values.get(row.currency);
+    if (!existing || row.recorded_at > existing.time) {
+      dayMap.get(dayKey)!.values.set(row.currency, { strength: row.strength, time: row.recorded_at });
+    }
   }
 
-  const chartData = Array.from(timeMap.values());
+  const chartData = Array.from(dayMap.values()).map(entry => {
+    const point: Record<string, number | string> = { date: entry.label };
+    entry.values.forEach((v, currency) => { point[currency] = v.strength; });
+    return point;
+  });
   const currencies = [...new Set(data.map(d => d.currency))];
 
   return (
