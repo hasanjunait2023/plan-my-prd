@@ -131,8 +131,7 @@ Deno.serve(async (req) => {
 
   const quote = getQuote(waqtIndex);
 
-  // Find the namaz habit to get habit_id for callback buttons
-  // Look for habits with names matching waqt
+  // Find whether a matching namaz habit exists for this waqt
   const waqtNames: Record<string, string[]> = {
     fajr: ['ফজর', 'Fajr', 'fajr'],
     dhuhr: ['যোহর', 'Dhuhr', 'dhuhr', 'Zuhr', 'zuhr'],
@@ -141,43 +140,23 @@ Deno.serve(async (req) => {
     isha: ['এশা', 'Isha', 'isha'],
   };
 
-  const { data: allHabits } = await supabase.from('habits').select('id, name, user_id').eq('active', true);
-  
-  // Find habit matching this waqt
-  let matchedHabit: any = null;
+  const { data: allHabits } = await supabase
+    .from('habits')
+    .select('name')
+    .eq('active', true)
+    .order('created_at', { ascending: false });
+
   const searchNames = waqtNames[triggered] || [];
-  if (allHabits) {
-    matchedHabit = allHabits.find((h: any) => 
-      searchNames.some(n => h.name.toLowerCase().includes(n.toLowerCase()))
-    );
-  }
-
-  // --- TELEGRAM ---
-  if (BOT_TOKEN) {
-    const { data: alertSettings } = await supabase
-      .from('alert_settings')
-      .select('telegram_chat_id')
-      .limit(1)
-      .maybeSingle();
-
-    const chatId = alertSettings?.telegram_chat_id;
-    if (chatId) {
-      const timeStr = `${String(pt.hour).padStart(2, '0')}:${String(pt.minute).padStart(2, '0')}`;
-      let msg = `🕌 <b>${pt.emoji} ${pt.label} নামাজের সময় হয়ে আসছে!</b>\n\n`;
-      msg += `⏰ জামাত: ${timeStr} (১৫ মিনিট বাকি)\n\n`;
-      msg += `📖 <i>${quote}</i>\n\n`;
-      msg += `🤲 আল্লাহর কাছে পৌঁছানোর সময় — এখনই প্রস্তুতি নাও।`;
-
-      const tgBase = `https://api.telegram.org/bot${BOT_TOKEN}`;
-      
-      // Build keyboard
-      const keyboard: any[][] = [];
-      if (matchedHabit) {
-        keyboard.push([
-          { text: '✅ আদায় করেছি', callback_data: `done_namaz_${triggered}_${matchedHabit.id}` },
-          { text: '❌ পারিনি', callback_data: `skip_namaz_${triggered}_${matchedHabit.id}` },
-        ]);
-      }
+  const hasMatchingHabit = Boolean(allHabits?.some((h: any) =>
+    searchNames.some(n => h.name.toLowerCase().includes(n.toLowerCase()))
+  ));
+...
+        if (hasMatchingHabit) {
+          keyboard.push([
+            { text: '✅ আদায় করেছি', callback_data: `done_namaz_${triggered}` },
+            { text: '❌ পারিনি', callback_data: `skip_namaz_${triggered}` },
+          ]);
+        }
 
       const body: Record<string, unknown> = {
         chat_id: chatId,
