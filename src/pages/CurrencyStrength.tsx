@@ -80,13 +80,14 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
   });
 }
 
-function usePreviousDayStrength(timeframe: string, selectedDate: Date) {
+function usePreviousSnapshot(timeframe: string, selectedDate: Date) {
+  const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
   const prevDateKey = format(subDays(selectedDate, 1), 'yyyy-MM-dd');
   return useQuery({
-    queryKey: ['currency-strength-prev', timeframe, prevDateKey],
+    queryKey: ['currency-strength-prev-snapshot', timeframe, selectedDateKey],
     queryFn: async () => {
-      const dayStart = `${prevDateKey}T00:00:00.000Z`;
-      const dayEnd = `${prevDateKey}T23:59:59.999Z`;
+      const rangeStart = `${prevDateKey}T00:00:00.000Z`;
+      const rangeEnd = `${selectedDateKey}T23:59:59.999Z`;
       const timeframeVariants = timeframe === 'New York'
         ? ['New York', 'Strength On New York']
         : [timeframe];
@@ -94,13 +95,17 @@ function usePreviousDayStrength(timeframe: string, selectedDate: Date) {
         .from('currency_strength')
         .select('*')
         .in('timeframe', timeframeVariants)
-        .gte('recorded_at', dayStart)
-        .lte('recorded_at', dayEnd)
+        .gte('recorded_at', rangeStart)
+        .lte('recorded_at', rangeEnd)
         .order('recorded_at', { ascending: false });
       if (error) throw error;
       if (!data || data.length === 0) return [] as CurrencyStrengthRecord[];
+      // Find the latest timestamp (current snapshot)
       const latestTime = data[0].recorded_at;
-      return data.filter((row) => row.recorded_at === latestTime) as CurrencyStrengthRecord[];
+      // Find the second unique timestamp (previous snapshot)
+      const prevTime = data.find(r => r.recorded_at !== latestTime)?.recorded_at;
+      if (!prevTime) return [] as CurrencyStrengthRecord[];
+      return data.filter(r => r.recorded_at === prevTime) as CurrencyStrengthRecord[];
     },
   });
 }
@@ -205,7 +210,7 @@ export default function CurrencyStrength() {
   const [sectionOrder, setSectionOrder] = useState<string[]>(getSavedOrder);
   const queryClient = useQueryClient();
   const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab, selectedDate);
-  const { data: previousData } = usePreviousDayStrength(activeTab, selectedDate);
+  const { data: previousData } = usePreviousSnapshot(activeTab, selectedDate);
   const { londonData, nyData } = useBothSessionData(selectedDate);
 
   const sensors = useSensors(
