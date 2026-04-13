@@ -101,12 +101,9 @@ const Settings = () => {
   const loadApiKeys = async () => {
     setLoadingKeys(true);
     try {
-      const { data, error } = await supabase.functions.invoke('manage-api-keys', {
-        body: null,
-        headers: {},
+      const resp = await supabase.functions.invoke('manage-api-keys', {
+        body: { action: 'list' },
       });
-      // Use query param approach
-      const resp = await supabase.functions.invoke('manage-api-keys?action=list', {});
       if (resp.data?.keys) {
         setApiKeys(resp.data.keys);
       }
@@ -120,8 +117,9 @@ const Settings = () => {
     if (!newKeyValue.trim()) { toast.error('API key দিতে হবে'); return; }
     setAddingKey(true);
     try {
-      const { data, error } = await supabase.functions.invoke('manage-api-keys?action=add', {
+      const { data, error } = await supabase.functions.invoke('manage-api-keys', {
         body: {
+          action: 'add',
           api_key: newKeyValue.trim(),
           label: newKeyLabel.trim() || `Key ${apiKeys.length + 1}`,
           provider: 'twelvedata',
@@ -142,8 +140,8 @@ const Settings = () => {
 
   const deleteApiKey = async (id: string) => {
     try {
-      await supabase.functions.invoke('manage-api-keys?action=delete', {
-        body: { id },
+      await supabase.functions.invoke('manage-api-keys', {
+        body: { action: 'delete', id },
       });
       toast.success('Key মুছে ফেলা হয়েছে');
       await loadApiKeys();
@@ -152,8 +150,8 @@ const Settings = () => {
 
   const toggleApiKey = async (id: string, isActive: boolean) => {
     try {
-      await supabase.functions.invoke('manage-api-keys?action=toggle', {
-        body: { id, is_active: !isActive },
+      await supabase.functions.invoke('manage-api-keys', {
+        body: { action: 'toggle', id, is_active: !isActive },
       });
       await loadApiKeys();
     } catch { toast.error('Failed to toggle key'); }
