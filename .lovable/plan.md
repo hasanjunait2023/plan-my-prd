@@ -1,71 +1,52 @@
 
 
-## Plan: নামাজ Reminder System — ৫ ওয়াক্ত নামাজের ১৫ মিনিট আগে Notification + Islamic Quote
+## Plan: Correlation Pairs Page — Running Correlation Numbers + Single Screen UI
 
 ### তুমি যা চাও
-- ৫ ওয়াক্ত নামাজের জামাতের সময় ১৫ মিনিট আগে **Web Push Notification** + **Telegram message** পাঠাবে
-- প্রতিটা notification এ একটা **Islamic/emotional quote** থাকবে যা নামাজে যাওয়ার আগ্রহ তৈরি করবে
-- প্রতিবার নতুন quote আসবে (repeat হবে না সহজে)
-- Telegram এ নামাজ আদায় করেছো কিনা track করার button থাকবে (habit formation)
+- Correlation Pairs page এ **running session এর currency strength numbers** দেখাবে (যেটা Currency Strength page এ আছে)
+- পুরো page টা **একটা screen এ fit** করবে — scroll minimize
+- UI finalize করো premium look এ
 
-### Architecture
-
-```text
-pg_cron (every minute)
-  → namaz-reminder edge function
-    → Check: BD time এখন কোন নামাজের ১৫ মিনিট আগে?
-    → Already sent today for this waqt? Skip
-    → Pick random Islamic quote
-    → Send Telegram message (✅ Done / ❌ Missed buttons)
-    → Send Web Push notification
-    → Log to namaz_reminders table
-```
+### Current সমস্যা
+- Page এ শুধু charts আছে, কোনো correlation number / strength data নেই
+- 6টা TradingView chart scroll করতে হয় — one screen এ দেখা যায় না
+- Session panel অনেক জায়গা নিচ্ছে
 
 ### Changes
 
-**1. New DB table: `namaz_reminders`** (migration)
-- Tracks which waqt এর reminder আজকে পাঠানো হয়েছে
-- Columns: `id`, `waqt` (text), `date` (date), `quote_sent` (text), `sent_at` (timestamptz)
-- RLS: service_role full access, authenticated read
+**1. Compact Session Bar** — `SessionPanel` কে replace করবো একটা slim single-row bar দিয়ে
+- শুধু active session highlight + BD time — horizontal one-liner
+- পুরো panel না, শুধু `🟢 London LIVE • 5h 37m left • 🇧🇩 19:23` এরকম
 
-**2. New Edge Function: `supabase/functions/namaz-reminder/index.ts`**
-- Hardcoded prayer times: Fajr 05:10, Dhuhr 13:15, Asr 17:00, Maghrib 18:27, Isha 20:30 (BD time)
-- Every minute check: current BD time == prayer_time - 15 min?
-- 30+ Islamic quotes pool embedded in the function — Quran ayat, Hadith, emotional quotes about নামাজ ও আল্লাহর নৈকট্য
-- Quote selection: `(dayOfYear * waqtIndex + dateHash) % quotes.length` — প্রতিবার unique
-- Telegram: 🕌 emoji + waqt name + quote + ✅ আদায় করেছি / ❌ পারিনি buttons
-- Web Push: title "🕌 নামাজের সময় হয়ে এসেছে", body = quote, url = `/habit-tracking`
-- Check `namaz_reminders` table — আজকে এই waqt এর reminder পাঠানো হলে skip
+**2. Running Strength Numbers Strip** — নতুন component
+- Currency selector এর নিচে, charts এর উপরে
+- Horizontal bar এ 8টা currency র strength number দেখাবে — sorted by strength
+- Color coded (STRONG = green, WEAK = red, NEUTRAL = yellow)
+- Data source: `currency_strength` table থেকে latest fetch (same query as CurrencyStrength page)
+- Selected currency টা highlighted/glowing
+- Format: `🇪🇺 EUR +7.2` `🇬🇧 GBP +5.1` ... inline badges
 
-**3. Telegram callback handling** — existing `habit-telegram-poll` function update
-- `done_namaz_fajr`, `skip_namaz_fajr` etc. callback_data handle করবে
-- Done হলে সেই waqt এর habit log এ entry করবে
+**3. Chart Grid — Compact Height**
+- Chart height 400px → **250px** (2-col) বা **220px** (3-col)
+- এতে 6টা chart একটা screen এ fit করবে
+- RSI panel এর জন্য showRsi=false default করলে আরো compact হবে
 
-**4. pg_cron schedule** (SQL insert, not migration)
-- `namaz-reminder` function কে every minute call করবে
-
-**5. Habit page এ নামাজ section** (optional UI enhancement)
-- Existing habit cards এই নামাজ habits দেখাবে — no separate UI needed
-- User কে ৫টা habit create করতে হবে (Fajr, Dhuhr, Asr, Maghrib, Isha) with matching `submission_time`
-
-### Islamic Quotes Pool (sample)
-
-> "নিশ্চয়ই নামাজ মুমিনদের উপর নির্দিষ্ট সময়ে ফরজ।" — সূরা নিসা ৪:১০৩
-> "নামাজ হলো মুমিনের মি'রাজ।" — হাদীস
-> "যে ব্যক্তি ফজরের নামাজ পড়লো, সে আল্লাহর জিম্মায় রইলো।" — মুসলিম
-> "তোমরা নামাজ কায়েম করো, নিশ্চয়ই নামাজ অশ্লীল ও মন্দ কাজ থেকে বিরত রাখে।" — সূরা আনকাবুত ২৯:৪৫
-
-৩০+ এরকম quotes থাকবে — Quran, Hadith, এবং emotional Islamic quotes mix
+**4. One-Screen Layout**
+- Header + Currency selector + Strength strip + Compact session + Charts = all in viewport
+- `space-y-5` → `space-y-2` to reduce gaps
+- Timeframe/Layout/Chart controls একটা row তে compact করবো
 
 ### Files
 
 | File | Action |
 |------|--------|
-| Migration SQL | New `namaz_reminders` table |
-| `supabase/functions/namaz-reminder/index.ts` | New — core reminder logic |
-| `supabase/functions/habit-telegram-poll/index.ts` | Edit — namaz callback handling |
-| pg_cron SQL (insert tool) | Schedule every minute |
+| `src/pages/CorrelationPairs.tsx` | Edit — add strength data fetch, compact layout, integrate new components |
+| `src/components/correlation/CorrelationStrengthStrip.tsx` | New — horizontal strength numbers bar |
+| `src/components/correlation/MiniChart.tsx` | Edit — reduce default chart height |
+| `src/components/correlation/SessionPanel.tsx` | No change (reuse existing, but page will use compact inline version instead) |
 
-### No UI change needed
-Existing habit system ই নামাজ track করবে। শুধু backend reminder + Telegram integration।
+### Technical Details
+- `useQuery` দিয়ে `currency_strength` table থেকে latest data fetch — same pattern as `CurrencyStrength.tsx`
+- Strength strip auto-refreshes every 60s
+- Chart height prop যোগ করবো MiniChart এ — page থেকে pass করবো
 
