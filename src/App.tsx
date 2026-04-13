@@ -15,7 +15,7 @@ import CurrencyStrength from "./pages/CurrencyStrength.tsx";
 import EmaScanner from "./pages/EmaScanner.tsx";
 import TradeIntelligence from "./pages/TradeIntelligence.tsx";
 import Commodities from "./pages/Commodities.tsx";
-import Crypto from "./pages/Crypto.tsx";
+
 import CorrelationPairs from "./pages/CorrelationPairs.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Install from "./pages/Install.tsx";
