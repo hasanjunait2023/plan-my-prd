@@ -23,12 +23,22 @@ const TIMEFRAMES = [
 export function TradingViewChart({ symbol, title }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [interval, setInterval] = useState('60');
+  const [showRsi, setShowRsi] = useState(true);
 
   useEffect(() => {
     if (!containerRef.current) return;
     containerRef.current.innerHTML = '';
 
     const tvSymbol = TV_SYMBOLS[symbol] || symbol;
+
+    const studies: any[] = [
+      { id: "MAExp@tv-basicstudies", inputs: { length: 9 } },
+      { id: "MAExp@tv-basicstudies", inputs: { length: 15 } },
+      { id: "MAExp@tv-basicstudies", inputs: { length: 200 } },
+    ];
+    if (showRsi) {
+      studies.push({ id: "RSI@tv-basicstudies" });
+    }
 
     const widgetContainer = document.createElement('div');
     widgetContainer.className = 'tradingview-widget-container';
@@ -52,12 +62,7 @@ export function TradingViewChart({ symbol, title }: TradingViewChartProps) {
       style: '1',
       locale: 'en',
       timezone: 'Etc/UTC',
-      studies: [
-        { id: "MAExp@tv-basicstudies", inputs: { length: 9 } },
-        { id: "MAExp@tv-basicstudies", inputs: { length: 15 } },
-        { id: "MAExp@tv-basicstudies", inputs: { length: 200 } },
-        { id: "RSI@tv-basicstudies" },
-      ],
+      studies,
       hide_top_toolbar: true,
       hide_legend: false,
       enable_publishing: false,
@@ -77,13 +82,23 @@ export function TradingViewChart({ symbol, title }: TradingViewChartProps) {
 
     widgetContainer.appendChild(script);
     containerRef.current.appendChild(widgetContainer);
-  }, [symbol, interval]);
+  }, [symbol, interval, showRsi]);
 
   return (
     <Card className="border-border/30 bg-card/50 backdrop-blur-sm">
       <CardHeader className="pb-2 pt-4 px-4 flex flex-row items-center justify-between">
         <CardTitle className="text-sm font-semibold text-foreground">{title}</CardTitle>
-        <div className="flex gap-1">
+        <div className="flex gap-1 items-center">
+          {/* RSI toggle */}
+          <Button
+            size="sm"
+            variant={showRsi ? 'default' : 'ghost'}
+            className={`h-7 px-2.5 text-xs ${showRsi ? 'bg-accent/20 text-accent-foreground' : 'text-muted-foreground'}`}
+            onClick={() => setShowRsi(v => !v)}
+          >
+            {showRsi ? 'EMA+RSI' : 'EMA Only'}
+          </Button>
+          <div className="w-px h-5 bg-border/40 mx-1" />
           {TIMEFRAMES.map(tf => (
             <Button
               key={tf.value}
@@ -98,7 +113,7 @@ export function TradingViewChart({ symbol, title }: TradingViewChartProps) {
         </div>
       </CardHeader>
       <CardContent className="p-0 px-2 pb-2">
-        <div ref={containerRef} className="w-full h-[350px] md:h-[420px] rounded-lg overflow-hidden" />
+        <div ref={containerRef} className="w-full h-[500px] md:h-[600px] rounded-lg overflow-hidden" />
       </CardContent>
     </Card>
   );
