@@ -6,11 +6,15 @@ import { NewsCardList } from '@/components/news/NewsCard';
 import type { NewsItem } from '@/components/news/NewsCard';
 import { CentralBankRates } from '@/components/news/CentralBankRates';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Newspaper, RefreshCw } from 'lucide-react';
+import { Newspaper, RefreshCw, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+
+type ImpactFilter = 'all' | 'high' | 'medium' | 'low';
 
 export default function MarketNews() {
   const [newsFilter, setNewsFilter] = useState<'all' | 'forex' | 'gold' | 'crypto'>('all');
+  const [impactFilter, setImpactFilter] = useState<ImpactFilter>('all');
 
   const { data: calendarData, isLoading: calendarLoading, refetch: refetchCalendar, isFetching: calendarFetching } = useQuery({
     queryKey: ['forex-calendar'],
@@ -85,10 +89,36 @@ export default function MarketNews() {
               <TabsTrigger value="crypto" className="text-[11px] px-2.5 h-6">₿ Crypto</TabsTrigger>
             </TabsList>
           </div>
-          <TabsContent value="all"><NewsCardList filter="all" news={newsData?.news || []} isLoading={newsLoading} /></TabsContent>
-          <TabsContent value="forex"><NewsCardList filter="forex" news={newsData?.news || []} isLoading={newsLoading} /></TabsContent>
-          <TabsContent value="gold"><NewsCardList filter="gold" news={newsData?.news || []} isLoading={newsLoading} /></TabsContent>
-          <TabsContent value="crypto"><NewsCardList filter="crypto" news={newsData?.news || []} isLoading={newsLoading} /></TabsContent>
+
+          {/* Impact / Priority Filter */}
+          <div className="flex items-center gap-2 mb-3">
+            <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-[11px] text-muted-foreground mr-1">Priority:</span>
+            {([
+              { value: 'all', label: 'All', dot: 'bg-muted-foreground' },
+              { value: 'high', label: '🔴 High', dot: 'bg-destructive' },
+              { value: 'medium', label: '🟡 Medium', dot: 'bg-warning' },
+              { value: 'low', label: '⚪ Low', dot: 'bg-muted-foreground' },
+            ] as const).map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setImpactFilter(opt.value)}
+                className={cn(
+                  'text-[11px] px-2.5 py-1 rounded-full border transition-all font-medium',
+                  impactFilter === opt.value
+                    ? 'bg-primary/20 border-primary/40 text-primary'
+                    : 'bg-card/60 border-border/30 text-muted-foreground hover:border-primary/20'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <TabsContent value="all"><NewsCardList filter="all" impactFilter={impactFilter} news={newsData?.news || []} isLoading={newsLoading} /></TabsContent>
+          <TabsContent value="forex"><NewsCardList filter="forex" impactFilter={impactFilter} news={newsData?.news || []} isLoading={newsLoading} /></TabsContent>
+          <TabsContent value="gold"><NewsCardList filter="gold" impactFilter={impactFilter} news={newsData?.news || []} isLoading={newsLoading} /></TabsContent>
+          <TabsContent value="crypto"><NewsCardList filter="crypto" impactFilter={impactFilter} news={newsData?.news || []} isLoading={newsLoading} /></TabsContent>
         </Tabs>
       </div>
 
