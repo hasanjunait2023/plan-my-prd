@@ -16,11 +16,13 @@ export function StrengthMeter({ data, previousData }: StrengthMeterProps) {
   const sorted = [...data].sort((a, b) => b.strength - a.strength);
   const maxAbs = 10;
 
-  // Build previous day map for delta calculation
+  // Build previous snapshot maps for delta + category
   const prevMap = new Map<string, number>();
+  const prevCategoryMap = new Map<string, string>();
   if (previousData) {
     for (const p of previousData) {
       prevMap.set(p.currency, p.strength);
+      prevCategoryMap.set(p.currency, p.category);
     }
   }
 
@@ -120,6 +122,28 @@ export function StrengthMeter({ data, previousData }: StrengthMeterProps) {
             >
               {item.category}
             </div>
+
+            {/* Previous snapshot badge */}
+            {(() => {
+              const prevStrength = prevMap.get(item.currency);
+              const prevCategory = prevCategoryMap.get(item.currency);
+              if (prevStrength === undefined || prevCategory === undefined) return <div className="shrink-0 w-32" />;
+              const prevColor = CATEGORY_COLORS[prevCategory] || 'hsl(0, 0%, 50%)';
+              const categoryChanged = prevCategory !== item.category;
+              return (
+                <div
+                  className="text-[9px] font-bold px-2 py-1 rounded-md shrink-0 w-32 text-center truncate"
+                  style={{
+                    color: prevColor,
+                    backgroundColor: withOpacity(prevColor, categoryChanged ? 0.18 : 0.08),
+                    border: `1px solid ${withOpacity(prevColor, categoryChanged ? 0.35 : 0.12)}`,
+                    boxShadow: categoryChanged ? `0 0 10px ${withOpacity(prevColor, 0.15)}` : 'none',
+                  }}
+                >
+                  was: {prevCategory} ({prevStrength > 0 ? '+' : ''}{prevStrength})
+                </div>
+              );
+            })()}
           </div>
         );
       })}
