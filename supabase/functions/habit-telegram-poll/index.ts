@@ -381,37 +381,68 @@ async function handleCallback(supabase: any, tgBase: string, cb: any) {
   const chatId = cb.message?.chat?.id;
   const messageId = cb.message?.message_id;
   const today = new Date().toISOString().split('T')[0];
+  const waqtLabels: Record<string, string> = { fajr: 'ফজর', dhuhr: 'যোহর', asr: 'আসর', maghrib: 'মাগরিব', isha: 'এশা' };
+  const waqtNames: Record<string, string[]> = {
+    fajr: ['ফজর', 'Fajr', 'fajr'],
+    dhuhr: ['যোহর', 'Dhuhr', 'dhuhr', 'Zuhr', 'zuhr'],
+    asr: ['আসর', 'Asr', 'asr'],
+    maghrib: ['মাগরিব', 'Maghrib', 'maghrib'],
+    isha: ['এশা', 'Isha', 'isha'],
+  };
+
+  const parseNamazCallback = (prefix: string) => {
+    const raw = cbData?.replace(prefix, '') ?? '';
+    const [waqt, ...rest] = raw.split('_');
+    return { waqt, embeddedHabitId: rest.join('_') || null };
+  };
+
+  const resolveNamazHabit = async (waqt: string, embeddedHabitId?: string | null) => {
+    if (embeddedHabitId) {
+      const { data: directHabit } = await supabase.from('habits').select('*').eq('id', embeddedHabitId).maybeSingle();
+      if (directHabit) return directHabit;
+    }
+
+    const aliases = waqtNames[waqt] || [];
+    if (aliases.length === 0) return null;
+
+    const { data: activeHabits = [] } = await supabase
+      .from('habits')
+      .select('*')
+      .eq('active', true)
+      .order('created_at', { ascending: false });
+
+    return activeHabits.find((habit: any) =>
+      aliases.some(alias => habit.name?.toLowerCase().includes(alias.toLowerCase()))
+    ) ?? null;
+  };
 
   if (cbData?.startsWith('done_namaz_') && chatId) {
-    // Namaz completion callback: done_namaz_{waqt}_{habitId}
-    const parts = cbData.replace('done_namaz_', '').split('_');
-    const waqt = parts[0];
-    const habitId = parts.slice(1).join('-');
-    const waqtLabels: Record<string, string> = { fajr: 'ফজর', dhuhr: 'যোহর', asr: 'আসর', maghrib: 'মাগরিব', isha: 'এশা' };
-    
-    const { data: habit } = await supabase.from('habits').select('*').eq('id', habitId).maybeSingle();
+    const { waqt, embeddedHabitId } = parseNamazCallback('done_namaz_');
+    const habit = await resolveNamazHabit(waqt, embeddedHabitId);
+
     if (!habit) {
+      console.error('Namaz habit not found for callback', JSON.stringify({ cbData, waqt, embeddedHabitId, chatId }));
       await answerCallback(tgBase, cbId, '❌ Habit not found');
       return;
     }
 
-    const { data: existing } = await supabase.from('habit_logs').select('id').eq('habit_id', habitId).eq('date', today).limit(1);
+    const { data: existing } = await supabase.from('habit_logs').select('id').eq('habit_id', habit.id).eq('date', today).limit(1);
     if (existing && existing.length > 0) {
       await answerCallback(tgBase, cbId, '✅ ইতিমধ্যে আদায় করা হয়েছে!');
       if (messageId) await editMessage(tgBase, chatId, messageId, `✅ <b>${waqtLabels[waqt] || waqt} নামাজ</b> — ইতিমধ্যে আদায় করা হয়েছে!`);
       return;
     }
 
-    await supabase.from('habit_logs').insert({ habit_id: habitId, user_id: habit.user_id, date: today, source: 'telegram', notes: `${waqtLabels[waqt] || waqt} নামাজ আদায়` });
+    await supabase.from('habit_logs').insert({ habit_id: habit.id, user_id: habit.user_id, date: today, source: 'telegram', notes: `${waqtLabels[waqt] || waqt} নামাজ আদায়` });
 
     const newStreak = habit.current_streak + 1;
     await supabase.from('habits').update({
       current_streak: newStreak,
       longest_streak: Math.max(newStreak, habit.longest_streak),
       total_completions: habit.total_completions + 1,
-    }).eq('id', habitId);
+    }).eq('id', habit.id);
 
-    await supabase.from('habit_reminders').update({ responded: true }).eq('habit_id', habitId).eq('date', today);
+    await supabase.from('habit_reminders').update({ responded: true }).eq('habit_id', habit.id).eq('date', today);
     await answerCallback(tgBase, cbId, `✅ ${waqtLabels[waqt] || waqt} আদায় করা হয়েছে!`);
 
     let reply = `✅ <b>${waqtLabels[waqt] || waqt} নামাজ</b> আদায় করা হয়েছে!\n🔥 Streak: ${newStreak} days\n\n`;
@@ -423,12 +454,15 @@ async function handleCallback(supabase: any, tgBase: string, cb: any) {
     if (messageId) await editMessage(tgBase, chatId, messageId, reply);
 
   } else if (cbData?.startsWith('skip_namaz_') && chatId) {
-    const parts = cbData.replace('skip_namaz_', '').split('_');
-    const waqt = parts[0];
-    const habitId = parts.slice(1).join('-');
-    const waqtLabels: Record<string, string> = { fajr: 'ফজর', dhuhr: 'যোহর', asr: 'আসর', maghrib: 'মাগরিব', isha: 'এশা' };
-    
-    await supabase.from('habit_reminders').update({ responded: true }).eq('habit_id', habitId).eq('date', today);
+    const { waqt, embeddedHabitId } = parseNamazCallback('skip_namaz_');
+    const habit = await resolveNamazHabit(waqt, embeddedHabitId);
+
+    if (habit) {
+      await supabase.from('habit_reminders').update({ responded: true }).eq('habit_id', habit.id).eq('date', today);
+    } else if (embeddedHabitId) {
+      await supabase.from('habit_reminders').update({ responded: true }).eq('habit_id', embeddedHabitId).eq('date', today);
+    }
+
     await answerCallback(tgBase, cbId, `⏭️ ${waqtLabels[waqt] || waqt} skipped`);
     if (messageId) await editMessage(tgBase, chatId, messageId, `⏭️ <b>${waqtLabels[waqt] || waqt} নামাজ</b> — আজ আদায় করা হয়নি।\n\n🤲 পরের ওয়াক্তে ইনশাআল্লাহ।`);
 
@@ -461,7 +495,6 @@ async function handleCallback(supabase: any, tgBase: string, cb: any) {
     await supabase.from('habit_reminders').update({ responded: true }).eq('habit_id', habitId).eq('date', today);
     await answerCallback(tgBase, cbId, `✅ Done! Streak: ${newStreak}`);
 
-    // Build reply with motivation
     let reply = `✅ <b>"${habit.name}"</b> marked complete!\n🔥 Streak: ${newStreak} days\n\n`;
     if (MILESTONE_MESSAGES[newStreak]) {
       reply += MILESTONE_MESSAGES[newStreak];
@@ -471,7 +504,6 @@ async function handleCallback(supabase: any, tgBase: string, cb: any) {
 
     if (messageId) await editMessage(tgBase, chatId, messageId, reply);
 
-    // Check perfect day
     const { data: habits = [] } = await supabase.from('habits').select('id').eq('active', true);
     const { data: todayLogs = [] } = await supabase.from('habit_logs').select('habit_id').eq('date', today);
     const completedIds = new Set((todayLogs || []).map((l: any) => l.habit_id));
@@ -490,7 +522,6 @@ async function handleCallback(supabase: any, tgBase: string, cb: any) {
     }
 
   } else if (cbData?.startsWith('proof_') && chatId) {
-    // Photo proof: user selected which habit the photo is for
     const habitId = cbData.replace('proof_', '');
     const { data: habit } = await supabase.from('habits').select('name').eq('id', habitId).maybeSingle();
     await answerCallback(tgBase, cbId, `📸 Photo saved for ${habit?.name || 'habit'}`);
