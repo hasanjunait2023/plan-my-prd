@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
     .limit(1)
     .single();
   const mindChatId = (alertSettings as any)?.mind_journal_chat_id;
+  console.log('Mind journal chat ID:', mindChatId, 'User ID:', accountSettings?.user_id);
 
   // Get user_id for mind journal inserts
   const { data: accountSettings } = await supabase
@@ -183,8 +184,10 @@ Deno.serve(async (req) => {
       if (!chatId) continue;
 
       // --- MIND JOURNAL DETECTION ---
+      console.log(`Message from chat ${chatId} (type: ${msg.chat?.type}), mindChatId: ${mindChatId}, match: ${String(chatId) === String(mindChatId)}`);
       // If message is from the mind journal chat, save to mind_thoughts
       if (mindChatId && String(chatId) === String(mindChatId) && mindUserId) {
+        console.log('MIND JOURNAL: Saving thought from telegram msg', msg.message_id);
         await saveMindThought(supabase, tgBase, BOT_TOKEN, msg, mindUserId);
         totalProcessed++;
         continue;
