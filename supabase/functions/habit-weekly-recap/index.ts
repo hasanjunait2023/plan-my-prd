@@ -14,6 +14,16 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
   const tgBase = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
+  // Check if habit reminder is enabled
+  const { data: alertCheck } = await supabase
+    .from('alert_settings')
+    .select('habit_reminder_alert')
+    .limit(1)
+    .single();
+  if (alertCheck && !alertCheck.habit_reminder_alert) {
+    return json({ skipped: true, reason: 'habit_reminder_alert disabled' });
+  }
+
   // Get telegram chat_id
   const { data: settings } = await supabase
     .from('alert_settings')

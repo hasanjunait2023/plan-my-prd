@@ -78,6 +78,18 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+  // Check if namaz reminder is enabled
+  const { data: alertSettings } = await supabase
+    .from('alert_settings')
+    .select('namaz_reminder_alert')
+    .limit(1)
+    .single();
+  if (alertSettings && !alertSettings.namaz_reminder_alert) {
+    return new Response(JSON.stringify({ skipped: true, reason: 'namaz_reminder_alert disabled' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   // Current time in BD (UTC+6)
   const nowUTC = new Date();
   const bdTime = new Date(nowUTC.getTime() + 6 * 60 * 60 * 1000);
