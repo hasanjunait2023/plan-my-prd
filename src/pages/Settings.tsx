@@ -413,7 +413,6 @@ const Settings = () => {
               <div><p className="text-sm font-medium">📊 MT5 Trade Updates</p><p className="text-xs text-muted-foreground">Trade open/close notifications</p></div>
               <Switch checked={mt5TradeAlert} onCheckedChange={setMt5TradeAlert} />
             </div>
-          </div>
 
             {/* Separator */}
             <div className="border-t border-border/20 pt-2 mt-1">
