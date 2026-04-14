@@ -61,6 +61,7 @@ const App = () => (
                   <Route path="/news" element={<MarketNews />} />
                   <Route path="/habits" element={<HabitTracking />} />
                   <Route path="/spike-alerts" element={<SpikeAlerts />} />
+                  <Route path="/mind-journal" element={<MindJournal />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>
