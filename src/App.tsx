@@ -26,6 +26,7 @@ import TradingRules from "./pages/TradingRules.tsx";
 import MarketNews from "./pages/MarketNews.tsx";
 import HabitTracking from "./pages/HabitTracking.tsx";
 import SpikeAlerts from "./pages/SpikeAlerts.tsx";
+import MindJournal from "./pages/MindJournal.tsx";
 
 const queryClient = new QueryClient();
 
