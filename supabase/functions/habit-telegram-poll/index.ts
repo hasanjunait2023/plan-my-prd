@@ -682,14 +682,16 @@ async function checkPerfectDay(supabase: any, tgBase: string, chatId: number, ba
 
 async function saveMindThought(supabase: any, tgBase: string, botToken: string, msg: any, userId: string) {
   const messageId = msg.message_id;
+  console.log(`saveMindThought called: msg_id=${messageId}, userId=${userId}`);
 
   // Check for duplicate
-  const { data: existing } = await supabase
+  const { data: existing, error: dupError } = await supabase
     .from('mind_thoughts')
     .select('id')
     .eq('telegram_message_id', messageId)
     .limit(1);
 
+  console.log(`Duplicate check: existing=${JSON.stringify(existing)}, error=${dupError?.message}`);
   if (existing && existing.length > 0) return;
 
   let imageUrl: string | null = null;
