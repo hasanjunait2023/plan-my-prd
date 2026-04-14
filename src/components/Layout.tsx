@@ -69,7 +69,7 @@ const toolsCategoryDefs = [
   {
     label: 'Other',
     icon: Settings,
-    urls: ['/mt5', '/commodities', '/crypto', '/habits', '/settings'],
+    urls: ['/mt5', '/commodities', '/crypto', '/habits', '/mind-journal', '/settings'],
   },
 ];
 
