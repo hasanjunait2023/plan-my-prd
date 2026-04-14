@@ -445,7 +445,22 @@ const Settings = () => {
             </div>
           </div>
 
-          {/* Push Notification Toggle */}
+          {/* Mind Journal Telegram Group */}
+          <div className="border-t border-border/30 pt-3 mt-3">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center">
+                  <Bell className="w-3 h-3 text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">🧠 Mind Journal Group</p>
+                  <p className="text-xs text-muted-foreground">Telegram group ID — thoughts auto-sync হবে</p>
+                </div>
+              </div>
+              <Input placeholder="e.g. -1001234567890" value={mindJournalChatId} onChange={e => setMindJournalChatId(e.target.value)} />
+            </div>
+          </div>
+
           <div className="border-t border-border/30 pt-3 mt-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
