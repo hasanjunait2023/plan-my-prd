@@ -1,7 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const GATEWAY_URL = 'https://connector-gateway.lovable.dev/telegram';
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -12,21 +10,19 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  const TELEGRAM_API_KEY = Deno.env.get('TELEGRAM_API_KEY');
-  console.log('LOVABLE_API_KEY set:', !!LOVABLE_API_KEY);
-  console.log('TELEGRAM_API_KEY set:', !!TELEGRAM_API_KEY);
-  console.log('TELEGRAM_API_KEY length:', TELEGRAM_API_KEY?.length);
+  const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN');
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  if (!LOVABLE_API_KEY || !TELEGRAM_API_KEY) {
-    return new Response(JSON.stringify({ error: 'Missing API keys' }), {
+  if (!BOT_TOKEN) {
+    return new Response(JSON.stringify({ error: 'TELEGRAM_BOT_TOKEN not configured' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+
+  const tgBase = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -34,7 +30,6 @@ Deno.serve(async (req) => {
 
     // === ACTION: POST (Web → Telegram) ===
     if (action === 'post') {
-      // Get mind_journal_chat_id from alert_settings
       const { data: settings } = await supabase
         .from('alert_settings')
         .select('mind_journal_chat_id')
@@ -49,22 +44,15 @@ Deno.serve(async (req) => {
       }
 
       const today = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+        year: 'numeric', month: 'long', day: 'numeric',
       });
 
       const text = `📝 Mind Journal — ${today}\n\n${body.content || '(image)'}\n\n#MindJournal #TradingThoughts`;
 
       if (body.image_url) {
-        // Send photo with caption
-        await fetch(`${GATEWAY_URL}/sendPhoto`, {
+        await fetch(`${tgBase}/sendPhoto`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'X-Connection-Api-Key': TELEGRAM_API_KEY,
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId,
             photo: body.image_url,
@@ -73,13 +61,9 @@ Deno.serve(async (req) => {
           }),
         });
       } else {
-        await fetch(`${GATEWAY_URL}/sendMessage`, {
+        await fetch(`${tgBase}/sendMessage`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'X-Connection-Api-Key': TELEGRAM_API_KEY,
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId,
             text,
@@ -107,9 +91,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get offset from telegram_bot_state (reuse existing row)
-    // We'll use a separate key approach — store offset in mind_thoughts context
-    // For simplicity, use getUpdates with the existing bot state offset
     const { data: state } = await supabase
       .from('telegram_bot_state')
       .select('update_offset')
@@ -118,13 +99,9 @@ Deno.serve(async (req) => {
 
     const offset = state?.update_offset || 0;
 
-    const response = await fetch(`${GATEWAY_URL}/getUpdates`, {
+    const response = await fetch(`${tgBase}/getUpdates`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'X-Connection-Api-Key': TELEGRAM_API_KEY,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         offset,
         timeout: 5,
@@ -169,26 +146,16 @@ Deno.serve(async (req) => {
       if (msg.photo && msg.photo.length > 0) {
         const largestPhoto = msg.photo[msg.photo.length - 1];
         try {
-          // Get file path
-          const fileResp = await fetch(`${GATEWAY_URL}/getFile`, {
+          const fileResp = await fetch(`${tgBase}/getFile`, {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-              'X-Connection-Api-Key': TELEGRAM_API_KEY,
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ file_id: largestPhoto.file_id }),
           });
 
           const fileData = await fileResp.json();
           if (fileResp.ok && fileData.result?.file_path) {
-            // Download file
-            const downloadResp = await fetch(`${GATEWAY_URL}/file/${fileData.result.file_path}`, {
-              headers: {
-                'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-                'X-Connection-Api-Key': TELEGRAM_API_KEY,
-              },
-            });
+            const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileData.result.file_path}`;
+            const downloadResp = await fetch(downloadUrl);
 
             if (downloadResp.ok) {
               const fileBytes = await downloadResp.arrayBuffer();
@@ -209,14 +176,11 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Skip messages without content or photo
       if (!caption && !imageUrl) continue;
 
       const msgDate = new Date(msg.date * 1000);
       const dateStr = msgDate.toISOString().split('T')[0];
 
-      // We need a user_id — get the first user from alert_settings or use a default
-      // For single-user app, get the user who set up mind_journal_chat_id
       const { data: allSettings } = await supabase
         .from('account_settings')
         .select('user_id')
