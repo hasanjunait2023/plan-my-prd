@@ -675,6 +675,75 @@ async function checkPerfectDay(supabase: any, tgBase: string, chatId: number, ba
   await sendMessage(tgBase, chatId, baseReply);
 }
 
+// ============ MIND JOURNAL HELPER ============
+
+async function saveMindThought(supabase: any, tgBase: string, botToken: string, msg: any, userId: string) {
+  const messageId = msg.message_id;
+
+  // Check for duplicate
+  const { data: existing } = await supabase
+    .from('mind_thoughts')
+    .select('id')
+    .eq('telegram_message_id', messageId)
+    .limit(1);
+
+  if (existing && existing.length > 0) return;
+
+  let imageUrl: string | null = null;
+  const caption = msg.caption || msg.text || '';
+
+  // Handle photo
+  if (msg.photo && msg.photo.length > 0) {
+    const largestPhoto = msg.photo[msg.photo.length - 1];
+    try {
+      const fileResp = await fetch(`${tgBase}/getFile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_id: largestPhoto.file_id }),
+      });
+      const fileData = await fileResp.json();
+      if (fileResp.ok && fileData.result?.file_path) {
+        const downloadUrl = `https://api.telegram.org/file/bot${botToken}/${fileData.result.file_path}`;
+        const downloadResp = await fetch(downloadUrl);
+        if (downloadResp.ok) {
+          const fileBytes = await downloadResp.arrayBuffer();
+          const fileName = `tg_${messageId}_${Date.now()}.jpg`;
+          const { error: uploadError } = await supabase.storage
+            .from('mind-images')
+            .upload(fileName, fileBytes, { contentType: 'image/jpeg' });
+          if (!uploadError) {
+            const { data: urlData } = supabase.storage.from('mind-images').getPublicUrl(fileName);
+            imageUrl = urlData.publicUrl;
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to download telegram photo for mind journal:', err);
+    }
+  }
+
+  if (!caption && !imageUrl) return;
+
+  const msgDate = new Date(msg.date * 1000);
+  const dateStr = msgDate.toISOString().split('T')[0];
+
+  const { error } = await supabase.from('mind_thoughts').insert({
+    user_id: userId,
+    content: caption,
+    image_url: imageUrl,
+    source: 'telegram',
+    telegram_message_id: messageId,
+    tags: [],
+    date: dateStr,
+  });
+
+  if (!error) {
+    console.log(`Mind thought saved from telegram: msg_id=${messageId}`);
+  } else {
+    console.error('Failed to save mind thought:', error.message);
+  }
+}
+
 // ============ TELEGRAM HELPERS ============
 
 function json(data: unknown, status = 200) {
