@@ -1,94 +1,60 @@
 
 
-## Plan: Market Session Notification System (Push + Telegram)
+## Plan: Notification Master Control Panel in Settings
 
-### তুমি যা চাও
-1. প্রতিটি trading session (Sydney, Tokyo, London, New York) **open হওয়ার ১৫ মিনিট আগে** — notification পাঠাবে (কোন session আসছে + motivational quote)
-2. প্রতিটি session **open হওয়ার ঠিক মুহূর্তে** — notification পাঠাবে (session NOW OPEN acknowledge)
-3. দুটো channel: **Push Notification** + **Telegram**
-4. Quote theme: discipline, analysis, consistency — long-term trading habit building
+### বর্তমান অবস্থা
+Settings page এ **5টা** notification toggle আছে: Confluence, EMA Shift, Risk Breach, Session Reminder, MT5 Trade।  
+কিন্তু আরও **5টা** notification system চলছে যেগুলোর **কোনো on/off toggle নেই**:
+1. **Namaz Reminder** — নামাজের সময় Telegram alert
+2. **Habit Reminder** — Daily habit reminder + weekly recap
+3. **News Alert** — High-impact economic news alert
+4. **Price Spike Alert** — Sudden price movement alert
+5. **Volume Spike Alert** — Volume spike detection alert
 
-### Architecture
+### যা করবো
 
-```text
-pg_cron (every minute)
-    ↓
-session-reminder (Edge Function)
-    ↓
-    ├── Check: কোনো session 15 min পরে open হচ্ছে?
-    │     → Yes → Send "15 min আগে" alert (Push + Telegram)
-    │
-    └── Check: কোনো session এইমাত্র open হলো?
-          → Yes → Send "NOW OPEN" alert (Push + Telegram)
-    ↓
-session_reminders table (log — duplicate prevention)
-```
-
-### Step 1: Database Table — `session_reminders`
-Migration তৈরি করবো duplicate notification prevent করতে:
+**Step 1: Database — `alert_settings` table এ নতুন columns যোগ**
 ```sql
-CREATE TABLE session_reminders (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_name text NOT NULL,
-  alert_type text NOT NULL, -- 'pre_15min' or 'session_open'
-  date text NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
-CREATE UNIQUE INDEX ON session_reminders(session_name, alert_type, date);
-ALTER TABLE session_reminders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE alert_settings
+  ADD COLUMN namaz_reminder_alert boolean NOT NULL DEFAULT true,
+  ADD COLUMN habit_reminder_alert boolean NOT NULL DEFAULT true,
+  ADD COLUMN news_alert boolean NOT NULL DEFAULT true,
+  ADD COLUMN price_spike_alert boolean NOT NULL DEFAULT true,
+  ADD COLUMN volume_spike_alert boolean NOT NULL DEFAULT true;
 ```
 
-### Step 2: Edge Function — `session-reminder/index.ts`
-- DST-aware session timing (same logic as `timezone.ts` — Sydney/Tokyo/London/NY)
-- প্রতি minute check করবে:
-  - **15 min আগে**: session start time - 15 min = current UTC hour:min → alert
-  - **Session open**: session start time = current UTC hour:min → alert
-- `session_reminders` table চেক করবে duplicate এড়াতে
-- **Telegram**: `alert_settings` থেকে `telegram_chat_id` নিয়ে message পাঠাবে (Telegram connector gateway ব্যবহার করবে)
-- **Push**: existing `send-push-notification` function call করবে
+**Step 2: Settings UI আপডেট**
+Settings page এ Telegram Alerts section এ নতুন 5টা toggle যোগ করবো:
+- 🕌 Namaz Reminders — ওয়াক্ত ভিত্তিক আজান reminder
+- ✅ Habit Reminders — Daily habit + weekly recap alerts
+- 📰 News Alerts — High-impact economic news notifications
+- 📈 Price Spike Alerts — Sudden price movement alerts
+- 📊 Volume Spike Alerts — Unusual volume detection alerts
 
-### Step 3: Trading Quotes (30+ motivational quotes)
-Theme গুলো:
-- "Discipline is the bridge between goals and accomplishment"
-- "Consistency beats intensity — every session, every day"
-- "The market rewards patience and punishes impulse"
-- Bengali + English mix quotes, trading-focused
+প্রতিটার জন্য Switch toggle + description।
 
-### Step 4: pg_cron Schedule
-SQL insert (not migration) — প্রতি মিনিটে `session-reminder` call করবে:
-```sql
-SELECT cron.schedule('session-reminder-cron', '* * * * *', $$ ... $$);
-```
-
-### Notification Format
-
-**15 min আগে (Pre-alert)**:
-```
-⏰ London Session 15 মিনিটে শুরু হচ্ছে!
-🕐 BD Time: 14:00 — 22:00
-💡 Best Pairs: EUR/USD, GBP/USD, EUR/GBP
-
-📖 "Discipline is doing what needs to be done, even when you don't feel like it."
-
-🔔 চার্ট সেটআপ করো, analysis শেষ করো!
-```
-
-**Session open (NOW)**:
-```
-🟢 London Session NOW OPEN! 🔵
-🕐 BD Time: 14:00 — 22:00
-💡 Best Pairs: EUR/USD, GBP/USD, EUR/GBP
-
-⚡ Market is live — execute with discipline!
-```
+**Step 3: Edge Functions আপডেট — প্রতিটা function এ toggle check যোগ**
+প্রতিটা edge function শুরুতে `alert_settings` থেকে নিজের toggle চেক করবে — `false` হলে skip করবে:
+- `namaz-reminder` → `namaz_reminder_alert` চেক
+- `habit-reminder` + `habit-daily-summary` + `habit-weekly-recap` → `habit_reminder_alert` চেক
+- `news-alert` → `news_alert` চেক
+- `price-spike-detector` → `price_spike_alert` চেক
+- `volume-spike-scanner` → `volume_spike_alert` চেক
 
 ### Files Changed
 | File | Change |
 |---|---|
-| `supabase/functions/session-reminder/index.ts` | New edge function |
-| Migration | `session_reminders` table |
-| SQL insert | pg_cron schedule |
+| Migration | `alert_settings` table এ 5 নতুন boolean columns |
+| `src/pages/Settings.tsx` | 5 নতুন toggle + state + save logic |
+| `src/integrations/supabase/types.ts` | Auto-updated |
+| `supabase/functions/namaz-reminder/index.ts` | Toggle check যোগ |
+| `supabase/functions/habit-reminder/index.ts` | Toggle check যোগ |
+| `supabase/functions/habit-daily-summary/index.ts` | Toggle check যোগ |
+| `supabase/functions/habit-weekly-recap/index.ts` | Toggle check যোগ |
+| `supabase/functions/news-alert/index.ts` | Toggle check যোগ |
+| `supabase/functions/price-spike-detector/index.ts` | Toggle check যোগ |
+| `supabase/functions/volume-spike-scanner/index.ts` | Toggle check যোগ |
 
-### Weekend/Holiday Handling
-- `isForexClosed()` logic replicate করবো — Saturday, Friday 21:00+ UTC, Sunday before 22:00 UTC, holidays → skip
+### Result
+Settings page থেকে **সব 10টা** notification system individually on/off করা যাবে। Toggle save করলে instantly edge functions সেই অনুযায়ী behave করবে।
 
