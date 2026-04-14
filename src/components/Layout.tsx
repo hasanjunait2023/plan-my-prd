@@ -50,6 +50,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { title: 'MT5', short: 'MT5', url: '/mt5', icon: Cable },
   { title: 'Commodities & Crypto', short: 'Assets', url: '/commodities', icon: Gem },
   { title: 'Habits', short: 'Habit', url: '/habits', icon: Target },
+  { title: 'Mind Journal', short: 'Mind', url: '/mind-journal', icon: Brain },
   { title: 'Settings', short: 'Set', url: '/settings', icon: Settings },
 ];
 
@@ -68,7 +69,7 @@ const toolsCategoryDefs = [
   {
     label: 'Other',
     icon: Settings,
-    urls: ['/mt5', '/commodities', '/crypto', '/habits', '/settings'],
+    urls: ['/mt5', '/commodities', '/crypto', '/habits', '/mind-journal', '/settings'],
   },
 ];
 

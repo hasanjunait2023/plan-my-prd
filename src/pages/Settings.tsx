@@ -54,6 +54,7 @@ const Settings = () => {
   const [newsAlert, setNewsAlert] = useState(true);
   const [priceSpikeAlert, setPriceSpikeAlert] = useState(true);
   const [volumeSpikeAlert, setVolumeSpikeAlert] = useState(true);
+  const [mindJournalChatId, setMindJournalChatId] = useState('');
   const [sendingTest, setSendingTest] = useState(false);
   const [savingAlerts, setSavingAlerts] = useState(false);
   const [alertSettingsId, setAlertSettingsId] = useState<string | null>(null);
@@ -105,6 +106,7 @@ const Settings = () => {
       setNewsAlert((data as any).news_alert ?? true);
       setPriceSpikeAlert((data as any).price_spike_alert ?? true);
       setVolumeSpikeAlert((data as any).volume_spike_alert ?? true);
+      setMindJournalChatId((data as any).mind_journal_chat_id || '');
     }
   };
 
@@ -186,6 +188,7 @@ const Settings = () => {
             news_alert: newsAlert,
             price_spike_alert: priceSpikeAlert,
             volume_spike_alert: volumeSpikeAlert,
+            mind_journal_chat_id: mindJournalChatId || null,
             updated_at: new Date().toISOString(),
           } as any)
           .eq('id', alertSettingsId);
@@ -205,6 +208,7 @@ const Settings = () => {
             news_alert: newsAlert,
             price_spike_alert: priceSpikeAlert,
             volume_spike_alert: volumeSpikeAlert,
+            mind_journal_chat_id: mindJournalChatId || null,
           } as any)
           .select()
           .single();
@@ -441,7 +445,22 @@ const Settings = () => {
             </div>
           </div>
 
-          {/* Push Notification Toggle */}
+          {/* Mind Journal Telegram Group */}
+          <div className="border-t border-border/30 pt-3 mt-3">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center">
+                  <Bell className="w-3 h-3 text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">🧠 Mind Journal Group</p>
+                  <p className="text-xs text-muted-foreground">Telegram group ID — thoughts auto-sync হবে</p>
+                </div>
+              </div>
+              <Input placeholder="e.g. -1001234567890" value={mindJournalChatId} onChange={e => setMindJournalChatId(e.target.value)} />
+            </div>
+          </div>
+
           <div className="border-t border-border/30 pt-3 mt-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">

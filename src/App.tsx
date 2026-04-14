@@ -26,6 +26,7 @@ import TradingRules from "./pages/TradingRules.tsx";
 import MarketNews from "./pages/MarketNews.tsx";
 import HabitTracking from "./pages/HabitTracking.tsx";
 import SpikeAlerts from "./pages/SpikeAlerts.tsx";
+import MindJournal from "./pages/MindJournal.tsx";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const App = () => (
                   <Route path="/news" element={<MarketNews />} />
                   <Route path="/habits" element={<HabitTracking />} />
                   <Route path="/spike-alerts" element={<SpikeAlerts />} />
+                  <Route path="/mind-journal" element={<MindJournal />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>

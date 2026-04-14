@@ -154,6 +154,7 @@ export type Database = {
           habit_reminder_alert: boolean
           id: string
           min_confluence_grade: string
+          mind_journal_chat_id: string | null
           mt5_trade_alert: boolean
           namaz_reminder_alert: boolean
           news_alert: boolean
@@ -171,6 +172,7 @@ export type Database = {
           habit_reminder_alert?: boolean
           id?: string
           min_confluence_grade?: string
+          mind_journal_chat_id?: string | null
           mt5_trade_alert?: boolean
           namaz_reminder_alert?: boolean
           news_alert?: boolean
@@ -188,6 +190,7 @@ export type Database = {
           habit_reminder_alert?: boolean
           id?: string
           min_confluence_grade?: string
+          mind_journal_chat_id?: string | null
           mt5_trade_alert?: boolean
           namaz_reminder_alert?: boolean
           news_alert?: boolean
@@ -591,6 +594,42 @@ export type Database = {
           pair?: string
           previous_close?: number
           scan_id?: string
+        }
+        Relationships: []
+      }
+      mind_thoughts: {
+        Row: {
+          content: string
+          created_at: string
+          date: string
+          id: string
+          image_url: string | null
+          source: string
+          tags: string[]
+          telegram_message_id: number | null
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          date: string
+          id?: string
+          image_url?: string | null
+          source?: string
+          tags?: string[]
+          telegram_message_id?: number | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          date?: string
+          id?: string
+          image_url?: string | null
+          source?: string
+          tags?: string[]
+          telegram_message_id?: number | null
+          user_id?: string
         }
         Relationships: []
       }
