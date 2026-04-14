@@ -108,15 +108,15 @@ Deno.serve(async (req) => {
     .limit(1)
     .single();
   const mindChatId = (alertSettings as any)?.mind_journal_chat_id;
-  console.log('Mind journal chat ID:', mindChatId, 'User ID:', accountSettings?.user_id);
 
   // Get user_id for mind journal inserts
-  const { data: accountSettings } = await supabase
+  const { data: mindAccountData } = await supabase
     .from('account_settings')
     .select('user_id')
     .limit(1)
     .single();
-  const mindUserId = accountSettings?.user_id;
+  const mindUserId = mindAccountData?.user_id;
+  console.log('Mind journal chat ID:', mindChatId, 'User ID:', mindUserId);
 
   const { data: state, error: stateError } = await supabase
     .from('telegram_bot_state')
@@ -682,14 +682,16 @@ async function checkPerfectDay(supabase: any, tgBase: string, chatId: number, ba
 
 async function saveMindThought(supabase: any, tgBase: string, botToken: string, msg: any, userId: string) {
   const messageId = msg.message_id;
+  console.log(`saveMindThought called: msg_id=${messageId}, userId=${userId}`);
 
   // Check for duplicate
-  const { data: existing } = await supabase
+  const { data: existing, error: dupError } = await supabase
     .from('mind_thoughts')
     .select('id')
     .eq('telegram_message_id', messageId)
     .limit(1);
 
+  console.log(`Duplicate check: existing=${JSON.stringify(existing)}, error=${dupError?.message}`);
   if (existing && existing.length > 0) return;
 
   let imageUrl: string | null = null;
