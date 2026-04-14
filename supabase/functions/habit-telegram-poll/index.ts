@@ -101,6 +101,22 @@ Deno.serve(async (req) => {
     runOnce = false;
   }
 
+  // Fetch mind_journal_chat_id for mind journal detection
+  const { data: alertSettings } = await supabase
+    .from('alert_settings')
+    .select('mind_journal_chat_id')
+    .limit(1)
+    .single();
+  const mindChatId = (alertSettings as any)?.mind_journal_chat_id;
+
+  // Get user_id for mind journal inserts
+  const { data: accountSettings } = await supabase
+    .from('account_settings')
+    .select('user_id')
+    .limit(1)
+    .single();
+  const mindUserId = accountSettings?.user_id;
+
   const { data: state, error: stateError } = await supabase
     .from('telegram_bot_state')
     .select('update_offset')
