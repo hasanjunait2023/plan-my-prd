@@ -1,60 +1,111 @@
 
 
-## Plan: Notification Master Control Panel in Settings
+## Plan: Mind Journal — Trading Thoughts & Ideas Page (Web + Telegram Sync)
 
-### বর্তমান অবস্থা
-Settings page এ **5টা** notification toggle আছে: Confluence, EMA Shift, Risk Breach, Session Reminder, MT5 Trade।  
-কিন্তু আরও **5টা** notification system চলছে যেগুলোর **কোনো on/off toggle নেই**:
-1. **Namaz Reminder** — নামাজের সময় Telegram alert
-2. **Habit Reminder** — Daily habit reminder + weekly recap
-3. **News Alert** — High-impact economic news alert
-4. **Price Spike Alert** — Sudden price movement alert
-5. **Volume Spike Alert** — Volume spike detection alert
+### তুমি যা চাও
+একটা **Mind Journal** page যেখানে trading-related thoughts, ideas, screenshots store করবে। দুইভাবে entry হবে:
+1. **Web UI** থেকে directly — text + image দিয়ে thought entry
+2. **Telegram Group** থেকে — ছবি + caption পাঠালে auto-store হবে
 
-### যা করবো
+**Bi-directional sync**: Telegram → Web DB, Web → Telegram group auto-post।
 
-**Step 1: Database — `alert_settings` table এ নতুন columns যোগ**
-```sql
-ALTER TABLE alert_settings
-  ADD COLUMN namaz_reminder_alert boolean NOT NULL DEFAULT true,
-  ADD COLUMN habit_reminder_alert boolean NOT NULL DEFAULT true,
-  ADD COLUMN news_alert boolean NOT NULL DEFAULT true,
-  ADD COLUMN price_spike_alert boolean NOT NULL DEFAULT true,
-  ADD COLUMN volume_spike_alert boolean NOT NULL DEFAULT true;
+### Architecture
+
+```text
+Web UI (Mind Journal page)
+    ↕ Supabase (mind_thoughts table + storage)
+    ↕
+Telegram Group ←→ mind-telegram-sync (Edge Function)
+    ↑
+pg_cron (every minute) → polls new messages from group
 ```
 
-**Step 2: Settings UI আপডেট**
-Settings page এ Telegram Alerts section এ নতুন 5টা toggle যোগ করবো:
-- 🕌 Namaz Reminders — ওয়াক্ত ভিত্তিক আজান reminder
-- ✅ Habit Reminders — Daily habit + weekly recap alerts
-- 📰 News Alerts — High-impact economic news notifications
-- 📈 Price Spike Alerts — Sudden price movement alerts
-- 📊 Volume Spike Alerts — Unusual volume detection alerts
+### Step 1: Database — `mind_thoughts` table
 
-প্রতিটার জন্য Switch toggle + description।
+```sql
+CREATE TABLE mind_thoughts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  content text NOT NULL DEFAULT '',
+  image_url text,
+  source text NOT NULL DEFAULT 'web',  -- 'web' or 'telegram'
+  telegram_message_id bigint,
+  tags text[] NOT NULL DEFAULT '{}',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  date text NOT NULL  -- YYYY-MM-DD for date grouping
+);
 
-**Step 3: Edge Functions আপডেট — প্রতিটা function এ toggle check যোগ**
-প্রতিটা edge function শুরুতে `alert_settings` থেকে নিজের toggle চেক করবে — `false` হলে skip করবে:
-- `namaz-reminder` → `namaz_reminder_alert` চেক
-- `habit-reminder` + `habit-daily-summary` + `habit-weekly-recap` → `habit_reminder_alert` চেক
-- `news-alert` → `news_alert` চেক
-- `price-spike-detector` → `price_spike_alert` চেক
-- `volume-spike-scanner` → `volume_spike_alert` চেক
+CREATE INDEX idx_mind_thoughts_date ON mind_thoughts(date DESC);
+CREATE INDEX idx_mind_thoughts_user ON mind_thoughts(user_id);
+```
+RLS: user_id based CRUD for authenticated users + service_role full access।
+
+### Step 2: Storage Bucket — `mind-images`
+ছবি store করার জন্য public bucket তৈরি করবো (journal screenshots pattern follow করবো)।
+
+### Step 3: Mind Journal Page — `/mind-journal`
+Trade Journal page এর **exact same layout pattern** follow করবো:
+
+- **Left Sidebar**: Date-wise grouping (Month → Date collapsible), search bar
+- **Middle Panel**: Selected date এর thoughts list (card format — text + image preview + timestamp)
+- **Right Panel / Detail View**: Full thought view with image zoom
+- **Top Bar**: "New Thought" button, filter options, export
+
+**New Thought Form:**
+- Text area (markdown support optional)
+- Image upload (drag & drop)
+- Tags input (optional — e.g., "setup", "lesson", "idea", "mistake")
+- Save button → Supabase insert + auto Telegram post
+
+### Step 4: Edge Function — `mind-telegram-sync/index.ts`
+**Telegram → DB (Polling)**:
+- pg_cron প্রতি মিনিটে call করবে
+- Designated group/chat থেকে `getUpdates` poll করবে
+- Photo + caption messages detect করবে
+- Photo download → `mind-images` bucket এ upload
+- Caption → `content` field, image URL → `image_url`
+- `source: 'telegram'`, `telegram_message_id` save করবে (duplicate prevention)
+
+**DB → Telegram (Auto-post)**:
+- Web UI থেকে new thought save হলে, edge function call করবে
+- Text + image Telegram group এ send করবে with date
+- Format: `📝 Mind Journal — {date}\n\n{content}`
+
+### Step 5: Settings Integration
+Settings page এ **Mind Journal Telegram Group ID** input field যোগ করবো `alert_settings` table এ `mind_journal_chat_id` column হিসেবে।
+
+### Step 6: Navigation
+Nav config এ `/mind-journal` route যোগ করবো — Brain/Lightbulb icon সহ।
+
+### Notification Format (Telegram Auto-post)
+
+```
+📝 Mind Journal — April 14, 2026
+
+{thought content}
+
+#MindJournal #TradingThoughts
+```
 
 ### Files Changed
 | File | Change |
 |---|---|
-| Migration | `alert_settings` table এ 5 নতুন boolean columns |
-| `src/pages/Settings.tsx` | 5 নতুন toggle + state + save logic |
-| `src/integrations/supabase/types.ts` | Auto-updated |
-| `supabase/functions/namaz-reminder/index.ts` | Toggle check যোগ |
-| `supabase/functions/habit-reminder/index.ts` | Toggle check যোগ |
-| `supabase/functions/habit-daily-summary/index.ts` | Toggle check যোগ |
-| `supabase/functions/habit-weekly-recap/index.ts` | Toggle check যোগ |
-| `supabase/functions/news-alert/index.ts` | Toggle check যোগ |
-| `supabase/functions/price-spike-detector/index.ts` | Toggle check যোগ |
-| `supabase/functions/volume-spike-scanner/index.ts` | Toggle check যোগ |
+| Migration | `mind_thoughts` table + storage bucket |
+| `src/pages/MindJournal.tsx` | New page — journal-style layout |
+| `src/components/mind/ThoughtCard.tsx` | Individual thought card component |
+| `src/components/mind/ThoughtForm.tsx` | New thought entry form |
+| `src/components/mind/MindSidebar.tsx` | Date-wise sidebar (NotebookSidebar pattern) |
+| `src/components/mind/ThoughtDetail.tsx` | Full thought detail view |
+| `src/hooks/useMindThoughts.ts` | CRUD hook for mind_thoughts table |
+| `supabase/functions/mind-telegram-sync/index.ts` | Bi-directional Telegram sync |
+| `src/App.tsx` | Route যোগ |
+| `src/hooks/useNavConfig.ts` | Nav item যোগ |
+| `src/pages/Settings.tsx` | Mind Journal chat ID field |
+| Migration | `alert_settings` এ `mind_journal_chat_id` column |
 
 ### Result
-Settings page থেকে **সব 10টা** notification system individually on/off করা যাবে। Toggle save করলে instantly edge functions সেই অনুযায়ী behave করবে।
+- Web UI তে journal-style Mind Journal page পাবে — date-wise thoughts browse, search, filter
+- Telegram group এ photo+caption দিলে auto-store হবে
+- Web থেকে entry দিলে auto-post হবে Telegram group এ
+- Tags দিয়ে thoughts categorize করা যাবে
 
