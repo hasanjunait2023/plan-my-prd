@@ -111,12 +111,12 @@ Deno.serve(async (req) => {
   console.log('Mind journal chat ID:', mindChatId, 'User ID:', accountSettings?.user_id);
 
   // Get user_id for mind journal inserts
-  const { data: accountSettings } = await supabase
+  const { data: mindAccountData } = await supabase
     .from('account_settings')
     .select('user_id')
     .limit(1)
     .single();
-  const mindUserId = accountSettings?.user_id;
+  const mindUserId = mindAccountData?.user_id;
 
   const { data: state, error: stateError } = await supabase
     .from('telegram_bot_state')
