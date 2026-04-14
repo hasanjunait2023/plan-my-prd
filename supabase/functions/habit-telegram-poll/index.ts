@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
     .limit(1)
     .single();
   const mindChatId = (alertSettings as any)?.mind_journal_chat_id;
+  console.log('Mind journal chat ID:', mindChatId, 'User ID:', accountSettings?.user_id);
 
   // Get user_id for mind journal inserts
   const { data: accountSettings } = await supabase
