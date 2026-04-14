@@ -59,6 +59,18 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // Check if news alert is enabled
+    const { data: alertCheck } = await supabase
+      .from('alert_settings')
+      .select('news_alert')
+      .limit(1)
+      .single();
+    if (alertCheck && !alertCheck.news_alert) {
+      return new Response(JSON.stringify({ skipped: true, reason: 'news_alert disabled' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Get Telegram config
     const { data: alertSettings } = await supabase
       .from('alert_settings')

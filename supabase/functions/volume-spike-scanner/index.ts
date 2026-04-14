@@ -61,6 +61,18 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Check if volume spike alert is enabled
+    const { data: alertCheck } = await supabase
+      .from('alert_settings')
+      .select('volume_spike_alert')
+      .limit(1)
+      .single();
+    if (alertCheck && !alertCheck.volume_spike_alert) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'volume_spike_alert disabled' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // API key handled by rotation
 
     // Determine group — use odd minutes (even minutes = price-spike-detector)

@@ -151,37 +151,52 @@ export type Database = {
           confluence_alert: boolean
           created_at: string
           ema_shift_alert: boolean
+          habit_reminder_alert: boolean
           id: string
           min_confluence_grade: string
           mt5_trade_alert: boolean
+          namaz_reminder_alert: boolean
+          news_alert: boolean
+          price_spike_alert: boolean
           risk_breach_alert: boolean
           session_reminder_alert: boolean
           telegram_chat_id: string | null
           updated_at: string
+          volume_spike_alert: boolean
         }
         Insert: {
           confluence_alert?: boolean
           created_at?: string
           ema_shift_alert?: boolean
+          habit_reminder_alert?: boolean
           id?: string
           min_confluence_grade?: string
           mt5_trade_alert?: boolean
+          namaz_reminder_alert?: boolean
+          news_alert?: boolean
+          price_spike_alert?: boolean
           risk_breach_alert?: boolean
           session_reminder_alert?: boolean
           telegram_chat_id?: string | null
           updated_at?: string
+          volume_spike_alert?: boolean
         }
         Update: {
           confluence_alert?: boolean
           created_at?: string
           ema_shift_alert?: boolean
+          habit_reminder_alert?: boolean
           id?: string
           min_confluence_grade?: string
           mt5_trade_alert?: boolean
+          namaz_reminder_alert?: boolean
+          news_alert?: boolean
+          price_spike_alert?: boolean
           risk_breach_alert?: boolean
           session_reminder_alert?: boolean
           telegram_chat_id?: string | null
           updated_at?: string
+          volume_spike_alert?: boolean
         }
         Relationships: []
       }
