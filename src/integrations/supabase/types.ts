@@ -849,6 +849,30 @@ export type Database = {
         }
         Relationships: []
       }
+      session_reminders: {
+        Row: {
+          alert_type: string
+          created_at: string | null
+          date: string
+          id: string
+          session_name: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string | null
+          date: string
+          id?: string
+          session_name: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          session_name?: string
+        }
+        Relationships: []
+      }
       spike_thresholds: {
         Row: {
           category: string
