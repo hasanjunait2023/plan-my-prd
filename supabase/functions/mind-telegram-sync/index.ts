@@ -28,6 +28,24 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = body.action || 'poll';
 
+    // === ACTION: DEBUG — raw getUpdates ===
+    if (action === 'debug') {
+      const offset = body.offset || 0;
+      const response = await fetch(`${tgBase}/getUpdates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ offset, timeout: 2, allowed_updates: ['message'] }),
+      });
+      const data = await response.json();
+      const resultCount = data.result?.length || 0;
+      const chatIds = (data.result || [])
+        .filter((u: any) => u.message)
+        .map((u: any) => ({ update_id: u.update_id, chat_id: u.message.chat.id, chat_type: u.message.chat.type, has_photo: !!u.message.photo, text: u.message.text?.substring(0, 50) || u.message.caption?.substring(0, 50) || '' }));
+      return new Response(JSON.stringify({ ok: data.ok, resultCount, updates: chatIds, offset }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // === ACTION: POST (Web → Telegram) ===
     if (action === 'post') {
       const { data: settings } = await supabase
@@ -127,10 +145,8 @@ Deno.serve(async (req) => {
       const msg = update.message;
       if (!msg) continue;
 
-      // Only process messages from the target chat
       if (String(msg.chat.id) !== String(targetChatId)) continue;
 
-      // Check for duplicate
       const { data: existing } = await supabase
         .from('mind_thoughts')
         .select('id')
@@ -142,7 +158,6 @@ Deno.serve(async (req) => {
       let imageUrl: string | null = null;
       const caption = msg.caption || msg.text || '';
 
-      // Handle photo
       if (msg.photo && msg.photo.length > 0) {
         const largestPhoto = msg.photo[msg.photo.length - 1];
         try {
@@ -151,20 +166,16 @@ Deno.serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ file_id: largestPhoto.file_id }),
           });
-
           const fileData = await fileResp.json();
           if (fileResp.ok && fileData.result?.file_path) {
             const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${fileData.result.file_path}`;
             const downloadResp = await fetch(downloadUrl);
-
             if (downloadResp.ok) {
               const fileBytes = await downloadResp.arrayBuffer();
               const fileName = `tg_${msg.message_id}_${Date.now()}.jpg`;
-
               const { error: uploadError } = await supabase.storage
                 .from('mind-images')
                 .upload(fileName, fileBytes, { contentType: 'image/jpeg' });
-
               if (!uploadError) {
                 const { data: urlData } = supabase.storage.from('mind-images').getPublicUrl(fileName);
                 imageUrl = urlData.publicUrl;
@@ -203,7 +214,6 @@ Deno.serve(async (req) => {
       processed++;
     }
 
-    // Update offset
     if (newOffset > offset) {
       await supabase
         .from('telegram_bot_state')
