@@ -49,6 +49,11 @@ const Settings = () => {
   const [riskBreachAlert, setRiskBreachAlert] = useState(true);
   const [sessionReminderAlert, setSessionReminderAlert] = useState(true);
   const [mt5TradeAlert, setMt5TradeAlert] = useState(true);
+  const [namazReminderAlert, setNamazReminderAlert] = useState(true);
+  const [habitReminderAlert, setHabitReminderAlert] = useState(true);
+  const [newsAlert, setNewsAlert] = useState(true);
+  const [priceSpikeAlert, setPriceSpikeAlert] = useState(true);
+  const [volumeSpikeAlert, setVolumeSpikeAlert] = useState(true);
   const [sendingTest, setSendingTest] = useState(false);
   const [savingAlerts, setSavingAlerts] = useState(false);
   const [alertSettingsId, setAlertSettingsId] = useState<string | null>(null);
@@ -95,6 +100,11 @@ const Settings = () => {
       setRiskBreachAlert(data.risk_breach_alert);
       setSessionReminderAlert(data.session_reminder_alert);
       setMt5TradeAlert(data.mt5_trade_alert);
+      setNamazReminderAlert((data as any).namaz_reminder_alert ?? true);
+      setHabitReminderAlert((data as any).habit_reminder_alert ?? true);
+      setNewsAlert((data as any).news_alert ?? true);
+      setPriceSpikeAlert((data as any).price_spike_alert ?? true);
+      setVolumeSpikeAlert((data as any).volume_spike_alert ?? true);
     }
   };
 
@@ -171,8 +181,13 @@ const Settings = () => {
             risk_breach_alert: riskBreachAlert,
             session_reminder_alert: sessionReminderAlert,
             mt5_trade_alert: mt5TradeAlert,
+            namaz_reminder_alert: namazReminderAlert,
+            habit_reminder_alert: habitReminderAlert,
+            news_alert: newsAlert,
+            price_spike_alert: priceSpikeAlert,
+            volume_spike_alert: volumeSpikeAlert,
             updated_at: new Date().toISOString(),
-          })
+          } as any)
           .eq('id', alertSettingsId);
       } else {
         const { data } = await supabase
@@ -185,7 +200,12 @@ const Settings = () => {
             risk_breach_alert: riskBreachAlert,
             session_reminder_alert: sessionReminderAlert,
             mt5_trade_alert: mt5TradeAlert,
-          })
+            namaz_reminder_alert: namazReminderAlert,
+            habit_reminder_alert: habitReminderAlert,
+            news_alert: newsAlert,
+            price_spike_alert: priceSpikeAlert,
+            volume_spike_alert: volumeSpikeAlert,
+          } as any)
           .select()
           .single();
         if (data) setAlertSettingsId(data.id);
@@ -392,6 +412,33 @@ const Settings = () => {
             <div className="flex items-center justify-between">
               <div><p className="text-sm font-medium">📊 MT5 Trade Updates</p><p className="text-xs text-muted-foreground">Trade open/close notifications</p></div>
               <Switch checked={mt5TradeAlert} onCheckedChange={setMt5TradeAlert} />
+            </div>
+          </div>
+
+            {/* Separator */}
+            <div className="border-t border-border/20 pt-2 mt-1">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Other Notifications</p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div><p className="text-sm font-medium">🕌 Namaz Reminders</p><p className="text-xs text-muted-foreground">ওয়াক্ত ভিত্তিক আজান reminder</p></div>
+              <Switch checked={namazReminderAlert} onCheckedChange={setNamazReminderAlert} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div><p className="text-sm font-medium">✅ Habit Reminders</p><p className="text-xs text-muted-foreground">Daily habit + weekly recap alerts</p></div>
+              <Switch checked={habitReminderAlert} onCheckedChange={setHabitReminderAlert} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div><p className="text-sm font-medium">📰 News Alerts</p><p className="text-xs text-muted-foreground">High-impact economic news notifications</p></div>
+              <Switch checked={newsAlert} onCheckedChange={setNewsAlert} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div><p className="text-sm font-medium">📈 Price Spike Alerts</p><p className="text-xs text-muted-foreground">Sudden price movement alerts</p></div>
+              <Switch checked={priceSpikeAlert} onCheckedChange={setPriceSpikeAlert} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div><p className="text-sm font-medium">📊 Volume Spike Alerts</p><p className="text-xs text-muted-foreground">Unusual volume detection alerts</p></div>
+              <Switch checked={volumeSpikeAlert} onCheckedChange={setVolumeSpikeAlert} />
             </div>
           </div>
 
