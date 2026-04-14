@@ -14,6 +14,9 @@ Deno.serve(async (req) => {
 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   const TELEGRAM_API_KEY = Deno.env.get('TELEGRAM_API_KEY');
+  console.log('LOVABLE_API_KEY set:', !!LOVABLE_API_KEY);
+  console.log('TELEGRAM_API_KEY set:', !!TELEGRAM_API_KEY);
+  console.log('TELEGRAM_API_KEY length:', TELEGRAM_API_KEY?.length);
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
