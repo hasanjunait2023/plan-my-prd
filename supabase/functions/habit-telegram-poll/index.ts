@@ -182,6 +182,14 @@ Deno.serve(async (req) => {
       const chatId = msg.chat?.id;
       if (!chatId) continue;
 
+      // --- MIND JOURNAL DETECTION ---
+      // If message is from the mind journal chat, save to mind_thoughts
+      if (mindChatId && String(chatId) === String(mindChatId) && mindUserId) {
+        await saveMindThought(supabase, tgBase, BOT_TOKEN, msg, mindUserId);
+        totalProcessed++;
+        continue;
+      }
+
       // --- PHOTO HANDLING ---
       if (msg.photo && msg.photo.length > 0) {
         await handlePhoto(supabase, tgBase, BOT_TOKEN, chatId, msg);
