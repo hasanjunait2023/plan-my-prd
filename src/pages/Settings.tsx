@@ -392,7 +392,42 @@ const Settings = () => {
         </CardContent>
       </Card>
 
-      {/* Telegram Notifications */}
+      {/* TwelveData Feature Toggles */}
+      <Card className={glassCard}>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-orange-500/10 flex items-center justify-center">
+              <Zap className="w-3 h-3 text-orange-400" />
+            </div>
+            TwelveData Features
+          </CardTitle>
+          <CardDescription>API ব্যবহারকারী features — off করলে API call হবে না, daily limit বাঁচবে</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {[
+            { label: '💱 Currency Strength Scanner', desc: 'EMA(200) দিয়ে currency strength calculate করে', state: featureCurrencyScanner, setter: setFeatureCurrencyScanner },
+            { label: '📈 Price Spike Detector', desc: 'Sudden price movement detect করে', state: featurePriceSpike, setter: setFeaturePriceSpike },
+            { label: '📊 EMA Alignment Scanner', desc: 'Multi-timeframe EMA alignment check করে', state: featureEmaScanner, setter: setFeatureEmaScanner },
+            { label: '📏 ADR Calculator', desc: 'Average Daily Range calculate করে', state: featureAdr, setter: setFeatureAdr },
+            { label: '🟦 Supply & Demand Zones', desc: 'Key zone identify করে candle data থেকে', state: featureSupplyDemand, setter: setFeatureSupplyDemand },
+            { label: '🗽 NY Session Breaks', desc: 'NY session এ structure break detect করে', state: featureNyBreaks, setter: setFeatureNyBreaks },
+            { label: '🔊 Volume Spike Scanner', desc: 'Unusual volume detect করে', state: featureVolumeSpike, setter: setFeatureVolumeSpike },
+          ].map((feature) => (
+            <div key={feature.label} className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">{feature.label}</p>
+                <p className="text-xs text-muted-foreground">{feature.desc}</p>
+              </div>
+              <Switch checked={feature.state} onCheckedChange={feature.setter} />
+            </div>
+          ))}
+          <p className="text-[10px] text-muted-foreground pt-2 border-t border-border/20">
+            ⚠️ পরিবর্তন সেভ করতে নিচে "Save Alert Settings" বাটন চাপুন
+          </p>
+        </CardContent>
+      </Card>
+
+
       <Card className={glassCard}>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">
