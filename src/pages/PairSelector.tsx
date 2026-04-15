@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -521,8 +521,53 @@ function PremiumPairCard({ pair, isTop }: { pair: QualifiedPair; isTop: boolean 
             <StatusBadge icon={<Zap className="h-2.5 w-2.5" />} label="PRIMARY" variant="primary" />
           )}
         </div>
+
+        {/* Row 5: TradingView Mini Chart */}
+        <div className="mt-3 rounded-lg overflow-hidden border border-border/30">
+          <MiniTradingViewChart symbol={`FX:${base}${quote}`} />
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ====================================================================
+// TRADINGVIEW MINI CHART
+// ====================================================================
+function MiniTradingViewChart({ symbol }: { symbol: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    containerRef.current.innerHTML = "";
+
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
+    script.async = true;
+    script.type = "text/javascript";
+    script.innerHTML = JSON.stringify({
+      symbol,
+      width: "100%",
+      height: 160,
+      locale: "en",
+      dateRange: "1D",
+      colorTheme: "dark",
+      isTransparent: true,
+      autosize: false,
+      largeChartUrl: "",
+      noTimeScale: false,
+      chartOnly: false,
+    });
+
+    containerRef.current.appendChild(script);
+  }, [symbol]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="tradingview-widget-container"
+      style={{ height: 160, pointerEvents: "none" }}
+    />
   );
 }
 
