@@ -121,6 +121,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const action = body.action || "scan";
     const timeframe = body.timeframe || "1H";
+    const session = body.session || null; // "London", "New York", "Asian" or null
     const interval = TIMEFRAME_MAP[timeframe] || "1h";
 
     if (action === "status") {
@@ -200,11 +201,17 @@ Deno.serve(async (req) => {
       currencyScores[currency] = { score: totalScore, category };
     }
 
+    // Determine storage timeframe label based on session
+    let storageTimeframe = timeframe;
+    if (session === "New York") storageTimeframe = "New York";
+    else if (session === "Asian") storageTimeframe = "Asian";
+    else if (session === "London") storageTimeframe = "1H";
+
     const strengthRecords = Object.entries(currencyScores).map(([currency, { score, category }]) => ({
       currency,
       strength: score,
       category,
-      timeframe,
+      timeframe: storageTimeframe,
       recorded_at,
     }));
 
@@ -226,7 +233,8 @@ Deno.serve(async (req) => {
     const bdNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
     const timeStr = bdNow.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
-    let message = `*💱 FX Co-Relation Strength On ${timeframe}*\n⏰ *${timeStr}*\n📊 _EMA(200) Pure Math_\n\n`;
+    const sessionLabel = session || timeframe;
+    let message = `*💱 FX Co-Relation Strength On ${sessionLabel}*\n⏰ *${timeStr}*\n📊 _EMA(200) Pure Math_\n\n`;
 
     for (const [label, items] of Object.entries(groups)) {
       if (items.length === 0) continue;
