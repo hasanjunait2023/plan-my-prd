@@ -121,6 +121,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const action = body.action || "scan";
     const timeframe = body.timeframe || "1H";
+    const session = body.session || null; // "London", "New York", "Asian" or null
     const interval = TIMEFRAME_MAP[timeframe] || "1h";
 
     if (action === "status") {
