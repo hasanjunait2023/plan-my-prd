@@ -65,7 +65,7 @@ const toolsCategoryDefs = [
   {
     label: 'Analysis',
     icon: Brain,
-    urls: ['/trade-intelligence', '/psychology', '/rules'],
+    urls: ['/trade-intelligence', '/psychology', '/rules', '/ai-scanner'],
   },
   {
     label: 'Other',
