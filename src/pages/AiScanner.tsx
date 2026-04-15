@@ -87,8 +87,8 @@ function getDefaultTab(): string {
 function getTimeframeVariants(session: string): string[] {
   switch (session) {
     case 'New York': return ['New York', 'Strength On New York'];
-    case 'London': return ['1H'];
-    case 'Asian': return ['Asian', '1H_Asian'];
+    case 'London': return ['1H', 'London'];
+    case 'Asian': return ['Asian', '1H_Asian', '1H'];
     default: return ['1H'];
   }
 }
