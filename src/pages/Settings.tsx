@@ -116,6 +116,14 @@ const Settings = () => {
       setPriceSpikeAlert((data as any).price_spike_alert ?? true);
       setVolumeSpikeAlert((data as any).volume_spike_alert ?? true);
       setMindJournalChatId((data as any).mind_journal_chat_id || '');
+      // Feature toggles
+      setFeatureCurrencyScanner((data as any).feature_currency_scanner ?? true);
+      setFeaturePriceSpike((data as any).feature_price_spike ?? true);
+      setFeatureEmaScanner((data as any).feature_ema_scanner ?? true);
+      setFeatureAdr((data as any).feature_adr ?? true);
+      setFeatureSupplyDemand((data as any).feature_supply_demand ?? true);
+      setFeatureNyBreaks((data as any).feature_ny_breaks ?? true);
+      setFeatureVolumeSpike((data as any).feature_volume_spike ?? true);
     }
   };
 
