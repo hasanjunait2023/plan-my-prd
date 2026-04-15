@@ -5,6 +5,7 @@ import { Columns2 } from 'lucide-react';
 const CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
 
 interface TimeframeComparisonProps {
+  asianData?: CurrencyStrengthRecord[];
   londonData: CurrencyStrengthRecord[];
   nyData: CurrencyStrengthRecord[];
 }
@@ -15,21 +16,29 @@ function withOpacity(hslColor: string, opacity: number): string {
   return hslColor;
 }
 
-export function TimeframeComparison({ londonData, nyData }: TimeframeComparisonProps) {
+export function TimeframeComparison({ asianData = [], londonData, nyData }: TimeframeComparisonProps) {
+  const asianMap = new Map<string, CurrencyStrengthRecord>();
   const londonMap = new Map<string, CurrencyStrengthRecord>();
   const nyMap = new Map<string, CurrencyStrengthRecord>();
+  for (const d of asianData) asianMap.set(d.currency, d);
   for (const d of londonData) londonMap.set(d.currency, d);
   for (const d of nyData) nyMap.set(d.currency, d);
 
+  const hasAsian = asianData.length > 0;
+
   const rows = CURRENCIES.map(c => {
+    const ad = asianMap.get(c);
     const ld = londonMap.get(c);
     const nd = nyMap.get(c);
+    const asianStr = ad?.strength ?? null;
     const londonStr = ld?.strength ?? null;
     const nyStr = nd?.strength ?? null;
     const shift = londonStr !== null && nyStr !== null ? nyStr - londonStr : null;
     return {
       currency: c,
       flag: CURRENCY_FLAGS[c] || '🏳️',
+      asianStr,
+      asianCat: ad?.category || '-',
       londonStr,
       londonCat: ld?.category || '-',
       nyStr,
@@ -42,7 +51,7 @@ export function TimeframeComparison({ londonData, nyData }: TimeframeComparisonP
     return bShift - aShift;
   });
 
-  if (londonData.length === 0 && nyData.length === 0) return null;
+  if (asianData.length === 0 && londonData.length === 0 && nyData.length === 0) return null;
 
   return (
     <Card className="border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
@@ -60,15 +69,18 @@ export function TimeframeComparison({ londonData, nyData }: TimeframeComparisonP
             <thead>
               <tr className="border-b border-border/20">
                 <th className="text-left py-2 px-2 text-[11px] font-bold text-muted-foreground">Currency</th>
+                {hasAsian && <th className="text-center py-2 px-2 text-[11px] font-bold text-muted-foreground">🌏 Asian</th>}
+                {hasAsian && <th className="text-center py-2 px-2 text-[11px] font-bold text-muted-foreground">Cat</th>}
                 <th className="text-center py-2 px-2 text-[11px] font-bold text-muted-foreground">🇬🇧 London</th>
-                <th className="text-center py-2 px-2 text-[11px] font-bold text-muted-foreground">Category</th>
+                <th className="text-center py-2 px-2 text-[11px] font-bold text-muted-foreground">Cat</th>
                 <th className="text-center py-2 px-2 text-[11px] font-bold text-muted-foreground">🇺🇸 New York</th>
-                <th className="text-center py-2 px-2 text-[11px] font-bold text-muted-foreground">Category</th>
+                <th className="text-center py-2 px-2 text-[11px] font-bold text-muted-foreground">Cat</th>
                 <th className="text-center py-2 px-2 text-[11px] font-bold text-muted-foreground">Shift</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(row => {
+            {rows.map(row => {
+                const asianColor = CATEGORY_COLORS[row.asianCat] || 'hsl(0,0%,50%)';
                 const londonColor = CATEGORY_COLORS[row.londonCat] || 'hsl(0,0%,50%)';
                 const nyColor = CATEGORY_COLORS[row.nyCat] || 'hsl(0,0%,50%)';
                 const shiftColor = row.shift !== null
@@ -81,16 +93,27 @@ export function TimeframeComparison({ londonData, nyData }: TimeframeComparisonP
                       <span className="text-base mr-1.5">{row.flag}</span>
                       <span className="font-bold text-foreground text-xs">{row.currency}</span>
                     </td>
+                    {hasAsian && (
+                      <td className="text-center py-2 px-2">
+                        <span className="font-extrabold text-sm" style={{ color: asianColor }}>
+                          {row.asianStr !== null ? (row.asianStr > 0 ? '+' : '') + row.asianStr : '—'}
+                        </span>
+                      </td>
+                    )}
+                    {hasAsian && (
+                      <td className="text-center py-2 px-2">
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ color: asianColor, backgroundColor: withOpacity(asianColor, 0.12) }}>
+                          {row.asianCat}
+                        </span>
+                      </td>
+                    )}
                     <td className="text-center py-2 px-2">
                       <span className="font-extrabold text-sm" style={{ color: londonColor }}>
                         {row.londonStr !== null ? (row.londonStr > 0 ? '+' : '') + row.londonStr : '—'}
                       </span>
                     </td>
                     <td className="text-center py-2 px-2">
-                      <span
-                        className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded"
-                        style={{ color: londonColor, backgroundColor: withOpacity(londonColor, 0.12) }}
-                      >
+                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ color: londonColor, backgroundColor: withOpacity(londonColor, 0.12) }}>
                         {row.londonCat}
                       </span>
                     </td>
@@ -100,10 +123,7 @@ export function TimeframeComparison({ londonData, nyData }: TimeframeComparisonP
                       </span>
                     </td>
                     <td className="text-center py-2 px-2">
-                      <span
-                        className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded"
-                        style={{ color: nyColor, backgroundColor: withOpacity(nyColor, 0.12) }}
-                      >
+                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ color: nyColor, backgroundColor: withOpacity(nyColor, 0.12) }}>
                         {row.nyCat}
                       </span>
                     </td>
