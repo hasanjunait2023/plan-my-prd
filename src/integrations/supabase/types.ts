@@ -957,6 +957,66 @@ export type Database = {
         }
         Relationships: []
       }
+      session_pair_recommendations: {
+        Row: {
+          adr_remaining: number
+          atr_status: string
+          bias_4h: string
+          created_at: string
+          daily_structure: string
+          differential: number
+          direction: string
+          id: string
+          is_qualified: boolean
+          overextension_pct: number
+          pair: string
+          rank: number
+          reasoning: string
+          scan_batch_id: string
+          scanned_at: string
+          session: string
+          total_score: number
+        }
+        Insert: {
+          adr_remaining?: number
+          atr_status?: string
+          bias_4h?: string
+          created_at?: string
+          daily_structure?: string
+          differential?: number
+          direction?: string
+          id?: string
+          is_qualified?: boolean
+          overextension_pct?: number
+          pair: string
+          rank?: number
+          reasoning?: string
+          scan_batch_id?: string
+          scanned_at?: string
+          session: string
+          total_score?: number
+        }
+        Update: {
+          adr_remaining?: number
+          atr_status?: string
+          bias_4h?: string
+          created_at?: string
+          daily_structure?: string
+          differential?: number
+          direction?: string
+          id?: string
+          is_qualified?: boolean
+          overextension_pct?: number
+          pair?: string
+          rank?: number
+          reasoning?: string
+          scan_batch_id?: string
+          scanned_at?: string
+          session?: string
+          total_score?: number
+        }
+        Relationships: []
+      }
       session_reminders: {
         Row: {
           alert_type: string
