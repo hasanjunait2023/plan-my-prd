@@ -90,16 +90,19 @@ function calculateEMA(prices: number[], period: number): number {
   return ema;
 }
 
-// Pure math: compare price vs EMA(200)
+// Pure math: compare price vs EMA(200) — strict above/below like original sheet
 function analyzePair(price: number, ema200: number): { result: number; strength: string } {
   const diffPercent = ((price - ema200) / ema200) * 100;
 
-  if (diffPercent > 0.1) {
-    return { result: 1, strength: "STRONG" };
-  } else if (diffPercent < -0.1) {
-    return { result: -1, strength: "WEAK" };
-  } else {
+  // Only truly neutral if within 0.01% (essentially touching EMA)
+  if (Math.abs(diffPercent) < 0.01) {
     return { result: 0, strength: "NEUTRAL" };
+  }
+  
+  if (price > ema200) {
+    return { result: 1, strength: "BULLISH" };
+  } else {
+    return { result: -1, strength: "BEARISH" };
   }
 }
 
