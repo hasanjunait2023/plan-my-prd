@@ -36,7 +36,9 @@ function getDefaultTab(): string {
   const priority = ['New York', 'London', 'Tokyo', 'Sydney'];
   for (const p of priority) {
     if (active.some(a => a.name === p)) {
-      return p === 'New York' ? 'New York' : '1H';
+      if (p === 'New York') return 'New York';
+      if (p === 'Tokyo' || p === 'Sydney') return 'Asian';
+      return '1H';
     }
   }
   return '1H';
@@ -82,6 +84,8 @@ function useCurrencyStrength(timeframe: string, selectedDate: Date) {
       const dayEnd = `${selectedDateKey}T23:59:59.999Z`;
       const timeframeVariants = timeframe === 'New York'
         ? ['New York', 'Strength On New York']
+        : timeframe === 'Asian'
+        ? ['Asian']
         : [timeframe];
       const { data, error } = await supabase
         .from('currency_strength')
@@ -103,12 +107,13 @@ function usePreviousSessionData(activeTab: string, selectedDate: Date) {
   const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
   const lookbackKey = format(subDays(selectedDate, 7), 'yyyy-MM-dd');
 
-  // London selected → fetch previous NY session
-  // NY selected → fetch same-day or latest London session
+  // Asian → previous NY, London → previous Asian, NY → previous London
   const oppositeTimeframes = activeTab === 'New York'
     ? ['1H']
+    : activeTab === '1H'
+    ? ['Asian']
     : ['New York', 'Strength On New York'];
-  const oppositeLabel = activeTab === 'New York' ? 'London' : 'New York';
+  const oppositeLabel = activeTab === 'New York' ? 'London' : activeTab === '1H' ? 'Asian' : 'New York';
 
   return useQuery({
     queryKey: ['currency-strength-prev-session', activeTab, selectedDateKey],
@@ -134,46 +139,41 @@ function usePreviousSessionData(activeTab: string, selectedDate: Date) {
   });
 }
 
-function useBothSessionData(selectedDate: Date) {
+function useAllSessionData(selectedDate: Date) {
   const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
   const dayStart = `${selectedDateKey}T00:00:00.000Z`;
   const dayEnd = `${selectedDateKey}T23:59:59.999Z`;
 
+  const fetchLatest = async (timeframes: string[]) => {
+    const { data, error } = await supabase
+      .from('currency_strength')
+      .select('*')
+      .in('timeframe', timeframes)
+      .gte('recorded_at', dayStart)
+      .lte('recorded_at', dayEnd)
+      .order('recorded_at', { ascending: false });
+    if (error) throw error;
+    if (!data || data.length === 0) return [] as CurrencyStrengthRecord[];
+    const latestTime = data[0].recorded_at;
+    return data.filter(r => r.recorded_at === latestTime) as CurrencyStrengthRecord[];
+  };
+
+  const asian = useQuery({
+    queryKey: ['currency-strength-asian-cmp', selectedDateKey],
+    queryFn: () => fetchLatest(['Asian']),
+  });
+
   const london = useQuery({
     queryKey: ['currency-strength-london-cmp', selectedDateKey],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('currency_strength')
-        .select('*')
-        .eq('timeframe', '1H')
-        .gte('recorded_at', dayStart)
-        .lte('recorded_at', dayEnd)
-        .order('recorded_at', { ascending: false });
-      if (error) throw error;
-      if (!data || data.length === 0) return [] as CurrencyStrengthRecord[];
-      const latestTime = data[0].recorded_at;
-      return data.filter(r => r.recorded_at === latestTime) as CurrencyStrengthRecord[];
-    },
+    queryFn: () => fetchLatest(['1H']),
   });
 
   const ny = useQuery({
     queryKey: ['currency-strength-ny-cmp', selectedDateKey],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('currency_strength')
-        .select('*')
-        .in('timeframe', ['New York', 'Strength On New York'])
-        .gte('recorded_at', dayStart)
-        .lte('recorded_at', dayEnd)
-        .order('recorded_at', { ascending: false });
-      if (error) throw error;
-      if (!data || data.length === 0) return [] as CurrencyStrengthRecord[];
-      const latestTime = data[0].recorded_at;
-      return data.filter(r => r.recorded_at === latestTime) as CurrencyStrengthRecord[];
-    },
+    queryFn: () => fetchLatest(['New York', 'Strength On New York']),
   });
 
-  return { londonData: london.data || [], nyData: ny.data || [] };
+  return { asianData: asian.data || [], londonData: london.data || [], nyData: ny.data || [] };
 }
 
 // --- Sortable wrapper ---
@@ -235,7 +235,7 @@ export default function CurrencyStrength() {
   const queryClient = useQueryClient();
   const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab, selectedDate);
   const { data: prevSessionData } = usePreviousSessionData(activeTab, selectedDate);
-  const { londonData, nyData } = useBothSessionData(selectedDate);
+  const { asianData, londonData, nyData } = useAllSessionData(selectedDate);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -296,6 +296,7 @@ export default function CurrencyStrength() {
             </div>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="bg-muted/20 border border-border/30">
+                <TabsTrigger value="Asian" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">Asian</TabsTrigger>
                 <TabsTrigger value="1H" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">London</TabsTrigger>
                 <TabsTrigger value="New York" className="text-xs font-bold data-[state=active]:bg-primary/20 data-[state=active]:text-primary">New York</TabsTrigger>
               </TabsList>
@@ -324,7 +325,7 @@ export default function CurrencyStrength() {
       </Card>
     ),
     'heatmap': hasData ? <StrengthHeatmap data={data!} /> : null,
-    'comparison': <TimeframeComparison londonData={londonData} nyData={nyData} />,
+    'comparison': <TimeframeComparison asianData={asianData} londonData={londonData} nyData={nyData} />,
     'pair-suggestions': hasData ? <PairSuggestions data={data!} /> : null,
     'trend-chart': (
       <Card className="border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
@@ -364,7 +365,7 @@ export default function CurrencyStrength() {
         </CardContent>
       </Card>
     ),
-  }), [data, isLoading, hasData, prevSessionData, londonData, nyData, activeTab]);
+  }), [data, isLoading, hasData, prevSessionData, asianData, londonData, nyData, activeTab]);
 
   return (
     <div className="space-y-5 max-w-6xl mx-auto">
