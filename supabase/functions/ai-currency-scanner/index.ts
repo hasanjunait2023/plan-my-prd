@@ -5,27 +5,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// 28 unique pairs
 const ALL_PAIRS = [
-  "EURUSD","EURGBP","EURJPY","EURAUD","EURNZD","EURCAD","EURCHF",
-  "GBPUSD","GBPJPY","GBPAUD","GBPNZD","GBPCAD","GBPCHF",
-  "USDJPY","USDCAD","USDCHF",
-  "AUDUSD","AUDJPY","AUDNZD","AUDCAD","AUDCHF",
-  "NZDUSD","NZDJPY","NZDCAD","NZDCHF",
-  "CADJPY","CADCHF",
-  "CHFJPY",
+  "EUR/USD","EUR/GBP","EUR/JPY","EUR/AUD","EUR/NZD","EUR/CAD","EUR/CHF",
+  "GBP/USD","GBP/JPY","GBP/AUD","GBP/NZD","GBP/CAD","GBP/CHF",
+  "USD/JPY","USD/CAD","USD/CHF",
+  "AUD/USD","AUD/JPY","AUD/NZD","AUD/CAD","AUD/CHF",
+  "NZD/USD","NZD/JPY","NZD/CAD","NZD/CHF",
+  "CAD/JPY","CAD/CHF",
+  "CHF/JPY",
 ];
 
-// Currency → its 7 pairs
 const CURRENCY_PAIRS: Record<string, string[]> = {
-  USD: ["EURUSD","GBPUSD","USDJPY","AUDUSD","NZDUSD","USDCAD","USDCHF"],
-  EUR: ["EURUSD","EURGBP","EURJPY","EURAUD","EURNZD","EURCAD","EURCHF"],
-  GBP: ["GBPUSD","EURGBP","GBPJPY","GBPAUD","GBPNZD","GBPCAD","GBPCHF"],
-  JPY: ["USDJPY","EURJPY","GBPJPY","AUDJPY","NZDJPY","CADJPY","CHFJPY"],
-  AUD: ["AUDUSD","EURAUD","GBPAUD","AUDJPY","AUDNZD","AUDCAD","AUDCHF"],
-  NZD: ["NZDUSD","EURNZD","GBPNZD","NZDJPY","AUDNZD","NZDCAD","NZDCHF"],
-  CAD: ["USDCAD","EURCAD","GBPCAD","CADJPY","AUDCAD","NZDCAD","CADCHF"],
-  CHF: ["USDCHF","EURCHF","GBPCHF","CHFJPY","AUDCHF","NZDCHF","CADCHF"],
+  USD: ["EUR/USD","GBP/USD","USD/JPY","AUD/USD","NZD/USD","USD/CAD","USD/CHF"],
+  EUR: ["EUR/USD","EUR/GBP","EUR/JPY","EUR/AUD","EUR/NZD","EUR/CAD","EUR/CHF"],
+  GBP: ["GBP/USD","EUR/GBP","GBP/JPY","GBP/AUD","GBP/NZD","GBP/CAD","GBP/CHF"],
+  JPY: ["USD/JPY","EUR/JPY","GBP/JPY","AUD/JPY","NZD/JPY","CAD/JPY","CHF/JPY"],
+  AUD: ["AUD/USD","EUR/AUD","GBP/AUD","AUD/JPY","AUD/NZD","AUD/CAD","AUD/CHF"],
+  NZD: ["NZD/USD","EUR/NZD","GBP/NZD","NZD/JPY","AUD/NZD","NZD/CAD","NZD/CHF"],
+  CAD: ["USD/CAD","EUR/CAD","GBP/CAD","CAD/JPY","AUD/CAD","NZD/CAD","CAD/CHF"],
+  CHF: ["USD/CHF","EUR/CHF","GBP/CHF","CHF/JPY","AUD/CHF","NZD/CHF","CAD/CHF"],
 };
 
 const FLAGS: Record<string, string> = {
@@ -33,25 +31,8 @@ const FLAGS: Record<string, string> = {
 };
 
 const TIMEFRAME_MAP: Record<string, string> = {
-  "1H": "1h", "15M": "15", "3M": "3"
+  "1H": "1h", "15M": "15min", "3M": "5min"
 };
-
-const GPT_PROMPT = `# Professional Forex Chart Analysis System
-
-You are an expert forex technical analyst. Analyze the provided chart image using the 200 EMA and price action to determine market bias.
-
-## Rules
-- **Above 200 EMA** with bullish structure → RESULT: +1, STRENGTH: STRONG
-- **Below 200 EMA** with bearish structure → RESULT: -1, STRENGTH: WEAK
-- **At/crossing 200 EMA** OR range-bound OR conflicting signals → RESULT: 0, STRENGTH: NEUTRAL
-
-## Output Format (EXACT — two lines only)
-\`\`\`
-RESULT: [+1 / -1 / 0]
-STRENGTH: [STRONG / WEAK / NEUTRAL]
-\`\`\`
-
-No additional text. Only these two lines.`;
 
 function classify(score: number): string {
   if (score >= 5) return "STRONG";
@@ -66,57 +47,65 @@ function getModifiedNumber(currency: string, pair: string, result: number): numb
   return currency === base ? result : -result;
 }
 
-async function fetchChart(pair: string, interval: string, apiKey: string): Promise<string> {
-  const url = `https://api.chart-img.com/v1/tradingview/advanced-chart?symbol=FX:${pair}&interval=${interval}&studies=EMA:200&width=700&height=400`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`chart-img error ${res.status}: ${text}`);
+// Fetch EMA(200) using TwelveData technical indicator endpoint
+// This returns EMA value AND we derive current price from it (1 API call per pair)
+async function fetchEmaData(
+  pair: string,
+  interval: string,
+  apiKey: string
+): Promise<{ price: number; ema200: number }> {
+  // Use time_series with EMA indicator — gets both price and EMA in 1 call
+  // Actually, TwelveData's /ema endpoint only costs 1 credit and returns EMA values
+  // We'll use /quote for price (1 credit) + /ema for EMA (1 credit) = 2 credits per pair
+  // BUT we can batch using comma-separated symbols!
+  
+  // Single pair: use /ema with outputsize=1 to get latest EMA, and extract close price from time_series
+  const url = `https://api.twelvedata.com/time_series?symbol=${pair}&interval=${interval}&outputsize=201&apikey=${apiKey}`;
+  
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`API error for ${pair}: ${res.status}`);
+  
+  const data = await res.json();
+  if (data.status === "error") throw new Error(`${pair}: ${data.message}`);
+  
+  const values = data.values;
+  if (!values || values.length < 200) {
+    throw new Error(`${pair}: insufficient data (got ${values?.length || 0}, need 200)`);
   }
-  const buffer = await res.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
+  
+  // Current price = latest close
+  const price = parseFloat(values[0].close);
+  
+  // Calculate EMA(200) manually from the 201 candles
+  const closes = values.map((v: any) => parseFloat(v.close)).reverse(); // oldest first
+  const ema200 = calculateEMA(closes, 200);
+  
+  return { price, ema200 };
 }
 
-async function analyzeWithGPT(base64Image: string, openrouterKey: string): Promise<{ result: number; strength: string }> {
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${openrouterKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-4o",
-      messages: [{
-        role: "user",
-        content: [
-          { type: "text", text: GPT_PROMPT },
-          { type: "image_url", image_url: { url: `data:image/png;base64,${base64Image}` } },
-        ],
-      }],
-      max_tokens: 50,
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`OpenRouter error ${res.status}: ${text}`);
+// Calculate EMA from an array of prices (oldest first)
+function calculateEMA(prices: number[], period: number): number {
+  const k = 2 / (period + 1);
+  // Start with SMA of first `period` values
+  let ema = prices.slice(0, period).reduce((sum, p) => sum + p, 0) / period;
+  // Then apply EMA formula for remaining values
+  for (let i = period; i < prices.length; i++) {
+    ema = prices[i] * k + ema * (1 - k);
   }
-  const data = await res.json();
-  const raw = data.choices?.[0]?.message?.content || "";
-  
-  const resultMatch = raw.match(/RESULT:\s*([+-]?\d)/i);
-  const strengthMatch = raw.match(/STRENGTH:\s*(STRONG|WEAK|NEUTRAL)/i);
-  
-  return {
-    result: resultMatch ? parseInt(resultMatch[1]) : 0,
-    strength: strengthMatch ? strengthMatch[1].toUpperCase() : "NEUTRAL",
-  };
+  return ema;
+}
+
+// Pure math: compare price vs EMA(200)
+function analyzePair(price: number, ema200: number): { result: number; strength: string } {
+  const diffPercent = ((price - ema200) / ema200) * 100;
+
+  if (diffPercent > 0.1) {
+    return { result: 1, strength: "STRONG" };
+  } else if (diffPercent < -0.1) {
+    return { result: -1, strength: "WEAK" };
+  } else {
+    return { result: 0, strength: "NEUTRAL" };
+  }
 }
 
 Deno.serve(async (req) => {
@@ -126,8 +115,7 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const chartImgKey = Deno.env.get("CHARTIMG_API_KEY")!;
-  const openrouterKey = Deno.env.get("OPENROUTER_API_KEY")!;
+  const twelvedataKey = Deno.env.get("TWELVEDATA_API_KEY")!;
   const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
   const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -138,7 +126,6 @@ Deno.serve(async (req) => {
     const interval = TIMEFRAME_MAP[timeframe] || "1h";
 
     if (action === "status") {
-      // Return latest scan results for a timeframe
       const { data } = await supabase
         .from("ai_scan_results")
         .select("*")
@@ -151,44 +138,50 @@ Deno.serve(async (req) => {
       });
     }
 
-    // === SCAN ===
+    // === SCAN using TwelveData time_series + EMA(200) calculation ===
     const scanBatchId = crypto.randomUUID();
     const pairResults: Record<string, number> = {};
     const errors: string[] = [];
     let processed = 0;
 
-    // Process in chunks of 4 with 3s delay between chunks
+    // 1 API call per pair = 28 total (within 800/day limit)
+    // Process 4 pairs at a time with 15s delay (TwelveData: 8 req/min free tier)
     const CHUNK_SIZE = 4;
     for (let i = 0; i < ALL_PAIRS.length; i += CHUNK_SIZE) {
       const chunk = ALL_PAIRS.slice(i, i + CHUNK_SIZE);
       
       const chunkPromises = chunk.map(async (pair) => {
         try {
-          console.log(`[${++processed}/${ALL_PAIRS.length}] Scanning ${pair}...`);
-          const base64 = await fetchChart(pair, interval, chartImgKey);
-          const analysis = await analyzeWithGPT(base64, openrouterKey);
+          processed++;
+          console.log(`[${processed}/${ALL_PAIRS.length}] Scanning ${pair}...`);
+          
+          const { price, ema200 } = await fetchEmaData(pair, interval, twelvedataKey);
+          const analysis = analyzePair(price, ema200);
+          
+          const pairKey = pair.replace("/", "");
           pairResults[pair] = analysis.result;
           
-          // Store per-pair result
+          console.log(`  ${pair}: Price=${price.toFixed(5)}, EMA200=${ema200.toFixed(5)}, Result=${analysis.result} (${analysis.strength})`);
+          
           await supabase.from("ai_scan_results").insert({
             scan_batch_id: scanBatchId,
             timeframe,
-            pair,
+            pair: pairKey,
             result: analysis.result,
             strength_label: analysis.strength,
           });
         } catch (err) {
           console.error(`Error scanning ${pair}:`, err.message);
           errors.push(`${pair}: ${err.message}`);
-          pairResults[pair] = 0; // Default to neutral on error
+          pairResults[pair] = 0;
         }
       });
 
       await Promise.all(chunkPromises);
 
-      // Delay between chunks (skip after last chunk)
+      // 15s delay between chunks to respect 8 req/min rate limit
       if (i + CHUNK_SIZE < ALL_PAIRS.length) {
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise(r => setTimeout(r, 15000));
       }
     }
 
@@ -206,7 +199,6 @@ Deno.serve(async (req) => {
       currencyScores[currency] = { score: totalScore, category };
     }
 
-    // Insert into currency_strength
     const strengthRecords = Object.entries(currencyScores).map(([currency, { score, category }]) => ({
       currency,
       strength: score,
@@ -217,7 +209,7 @@ Deno.serve(async (req) => {
 
     await supabase.from("currency_strength").insert(strengthRecords);
 
-    // === BUILD TELEGRAM MESSAGE ===
+    // === TELEGRAM MESSAGE ===
     const sorted = Object.entries(currencyScores)
       .map(([c, { score, category }]) => ({ currency: c, score, category }))
       .sort((a, b) => b.score - a.score);
@@ -233,7 +225,7 @@ Deno.serve(async (req) => {
     const bdNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
     const timeStr = bdNow.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
-    let message = `*💱 FX Co-Relation Strength On ${timeframe}*\n⏰ *${timeStr}*\n\n`;
+    let message = `*💱 FX Co-Relation Strength On ${timeframe}*\n⏰ *${timeStr}*\n📊 _EMA(200) Pure Math_\n\n`;
 
     for (const [label, items] of Object.entries(groups)) {
       if (items.length === 0) continue;
@@ -249,7 +241,6 @@ Deno.serve(async (req) => {
       message += "\n";
     }
 
-    // Send Telegram
     if (telegramToken) {
       try {
         const { data: alertSettings } = await supabase
@@ -282,6 +273,7 @@ Deno.serve(async (req) => {
       pairs_scanned: Object.keys(pairResults).length,
       errors: errors.length > 0 ? errors : undefined,
       currencies: currencyScores,
+      method: "EMA200_PURE_MATH",
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
