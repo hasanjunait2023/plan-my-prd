@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const twelvedataKey = Deno.env.get("TWELVEDATA_API_KEY")!;
+  // twelvedataKey no longer needed — fetchWithRotation handles key selection from api_key_pool
   const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
   const supabase = createClient(supabaseUrl, supabaseKey);
 
