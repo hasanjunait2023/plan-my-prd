@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,8 +6,10 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Brain, Play, Loader2, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { Brain, Play, Loader2, CheckCircle2, AlertTriangle, Clock, Activity } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+const TOTAL_PAIRS = 28;
 
 const FLAGS: Record<string, string> = {
   USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵',
@@ -32,6 +34,9 @@ export default function AiScanner() {
   const [timeframe, setTimeframe] = useState('1H');
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null);
+  const [pairsScanned, setPairsScanned] = useState(0);
+  const [lastPair, setLastPair] = useState('');
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const { toast } = useToast();
 
   // Fetch latest scan history
@@ -48,23 +53,108 @@ export default function AiScanner() {
     },
   });
 
+  // Clean up realtime subscription on unmount
+  useEffect(() => {
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, []);
+
   const runScan = async () => {
     setScanning(true);
     setScanResult(null);
+    setPairsScanned(0);
+    setLastPair('');
+
+    // Subscribe to ai_scan_results inserts for real-time progress
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    const channel = supabase
+      .channel('scan-progress')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ai_scan_results',
+        },
+        (payload) => {
+          setPairsScanned((prev) => prev + 1);
+          setLastPair(payload.new.pair || '');
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
     try {
       const { data, error } = await supabase.functions.invoke('ai-currency-scanner', {
         body: { action: 'scan', timeframe },
       });
       if (error) throw error;
       setScanResult(data as ScanResponse);
+      setPairsScanned(data.pairs_scanned || TOTAL_PAIRS);
       refetchHistory();
-      toast({ title: 'Scan Complete', description: `${data.pairs_scanned} pairs analyzed for ${timeframe}` });
+      toast({ title: 'Scan Complete ✅', description: `${data.pairs_scanned} pairs analyzed for ${timeframe}` });
     } catch (err: any) {
+      // Edge function timeout — check if scan is still running via DB
+      if (err.message?.includes('context canceled') || err.message?.includes('timed out')) {
+        toast({
+          title: 'Scan Running in Background',
+          description: 'Edge function timed out but scan continues. Results will appear automatically.',
+        });
+        // Poll for completion
+        pollForResults();
+        return;
+      }
       toast({ title: 'Scan Failed', description: err.message, variant: 'destructive' });
+      setScanning(false);
     } finally {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
       setScanning(false);
     }
   };
+
+  const pollForResults = async () => {
+    // Poll every 10s for up to 6 minutes
+    for (let i = 0; i < 36; i++) {
+      await new Promise((r) => setTimeout(r, 10000));
+      
+      const { data } = await supabase
+        .from('currency_strength')
+        .select('*')
+        .eq('timeframe', timeframe)
+        .order('recorded_at', { ascending: false })
+        .limit(8);
+      
+      if (data && data.length > 0) {
+        const latestTime = new Date(data[0].recorded_at).getTime();
+        const now = Date.now();
+        // If recorded within last 2 minutes, scan is done
+        if (now - latestTime < 2 * 60 * 1000) {
+          refetchHistory();
+          setPairsScanned(TOTAL_PAIRS);
+          toast({ title: 'Scan Complete ✅', description: `Results ready for ${timeframe}` });
+          break;
+        }
+      }
+    }
+    
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+    setScanning(false);
+  };
+
+  const progressPercent = Math.round((pairsScanned / TOTAL_PAIRS) * 100);
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -95,7 +185,7 @@ export default function AiScanner() {
             AI Currency Scanner
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            GPT-4o Vision analyzes 28 forex pairs using 200 EMA + Price Action
+            EMA(200) Pure Math — 28 pairs currency strength analysis
           </p>
         </div>
       </div>
@@ -103,41 +193,60 @@ export default function AiScanner() {
       {/* Controls */}
       <Card className="border-primary/20">
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-            <Select value={timeframe} onValueChange={setTimeframe}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1H">1H</SelectItem>
-                <SelectItem value="15M">15M</SelectItem>
-                <SelectItem value="3M">3M</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-row gap-3 items-center">
+              <Select value={timeframe} onValueChange={setTimeframe}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1H">1H</SelectItem>
+                  <SelectItem value="15M">15M</SelectItem>
+                  <SelectItem value="3M">3M</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Button
-              onClick={runScan}
-              disabled={scanning}
-              className="gap-2"
-              size="lg"
-            >
-              {scanning ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Scanning 28 Pairs...
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4" />
-                  Run AI Scan
-                </>
-              )}
-            </Button>
+              <Button
+                onClick={runScan}
+                disabled={scanning}
+                className="gap-2"
+                size="lg"
+              >
+                {scanning ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Scanning...
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4" />
+                    Run Scan
+                  </>
+                )}
+              </Button>
+            </div>
 
+            {/* Real-time Progress Bar */}
             {scanning && (
-              <div className="flex-1 min-w-[200px]">
-                <p className="text-xs text-muted-foreground mb-1">Processing... (~2-3 min)</p>
-                <Progress className="h-2" />
+              <div className="space-y-2 animate-in fade-in duration-300">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Activity className="h-3.5 w-3.5 text-primary animate-pulse" />
+                    Scanning pairs...
+                  </span>
+                  <span className="font-mono font-semibold text-primary">
+                    {pairsScanned}/{TOTAL_PAIRS}
+                  </span>
+                </div>
+                <Progress value={progressPercent} className="h-3" />
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{progressPercent}% complete</span>
+                  {lastPair && (
+                    <span className="font-mono text-foreground/70">
+                      Latest: {lastPair}
+                    </span>
+                  )}
+                </div>
               </div>
             )}
           </div>
