@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Shield, Plus, Trash2, Bell, Send, ExternalLink, Smartphone, Key, RefreshCw } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Plus, Trash2, Bell, Send, ExternalLink, Smartphone, Key, RefreshCw, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccountSettings, useSaveAccountSettings } from '@/hooks/useAccountSettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -59,6 +59,15 @@ const Settings = () => {
   const [savingAlerts, setSavingAlerts] = useState(false);
   const [alertSettingsId, setAlertSettingsId] = useState<string | null>(null);
 
+  // TwelveData Feature Toggles
+  const [featureCurrencyScanner, setFeatureCurrencyScanner] = useState(true);
+  const [featurePriceSpike, setFeaturePriceSpike] = useState(true);
+  const [featureEmaScanner, setFeatureEmaScanner] = useState(true);
+  const [featureAdr, setFeatureAdr] = useState(true);
+  const [featureSupplyDemand, setFeatureSupplyDemand] = useState(true);
+  const [featureNyBreaks, setFeatureNyBreaks] = useState(true);
+  const [featureVolumeSpike, setFeatureVolumeSpike] = useState(true);
+
   // Push notification
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
@@ -107,6 +116,14 @@ const Settings = () => {
       setPriceSpikeAlert((data as any).price_spike_alert ?? true);
       setVolumeSpikeAlert((data as any).volume_spike_alert ?? true);
       setMindJournalChatId((data as any).mind_journal_chat_id || '');
+      // Feature toggles
+      setFeatureCurrencyScanner((data as any).feature_currency_scanner ?? true);
+      setFeaturePriceSpike((data as any).feature_price_spike ?? true);
+      setFeatureEmaScanner((data as any).feature_ema_scanner ?? true);
+      setFeatureAdr((data as any).feature_adr ?? true);
+      setFeatureSupplyDemand((data as any).feature_supply_demand ?? true);
+      setFeatureNyBreaks((data as any).feature_ny_breaks ?? true);
+      setFeatureVolumeSpike((data as any).feature_volume_spike ?? true);
     }
   };
 
@@ -189,6 +206,13 @@ const Settings = () => {
             price_spike_alert: priceSpikeAlert,
             volume_spike_alert: volumeSpikeAlert,
             mind_journal_chat_id: mindJournalChatId || null,
+            feature_currency_scanner: featureCurrencyScanner,
+            feature_price_spike: featurePriceSpike,
+            feature_ema_scanner: featureEmaScanner,
+            feature_adr: featureAdr,
+            feature_supply_demand: featureSupplyDemand,
+            feature_ny_breaks: featureNyBreaks,
+            feature_volume_spike: featureVolumeSpike,
             updated_at: new Date().toISOString(),
           } as any)
           .eq('id', alertSettingsId);
@@ -209,6 +233,13 @@ const Settings = () => {
             price_spike_alert: priceSpikeAlert,
             volume_spike_alert: volumeSpikeAlert,
             mind_journal_chat_id: mindJournalChatId || null,
+            feature_currency_scanner: featureCurrencyScanner,
+            feature_price_spike: featurePriceSpike,
+            feature_ema_scanner: featureEmaScanner,
+            feature_adr: featureAdr,
+            feature_supply_demand: featureSupplyDemand,
+            feature_ny_breaks: featureNyBreaks,
+            feature_volume_spike: featureVolumeSpike,
           } as any)
           .select()
           .single();
@@ -361,7 +392,42 @@ const Settings = () => {
         </CardContent>
       </Card>
 
-      {/* Telegram Notifications */}
+      {/* TwelveData Feature Toggles */}
+      <Card className={glassCard}>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-orange-500/10 flex items-center justify-center">
+              <Zap className="w-3 h-3 text-orange-400" />
+            </div>
+            TwelveData Features
+          </CardTitle>
+          <CardDescription>API ব্যবহারকারী features — off করলে API call হবে না, daily limit বাঁচবে</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {[
+            { label: '💱 Currency Strength Scanner', desc: 'EMA(200) দিয়ে currency strength calculate করে', state: featureCurrencyScanner, setter: setFeatureCurrencyScanner },
+            { label: '📈 Price Spike Detector', desc: 'Sudden price movement detect করে', state: featurePriceSpike, setter: setFeaturePriceSpike },
+            { label: '📊 EMA Alignment Scanner', desc: 'Multi-timeframe EMA alignment check করে', state: featureEmaScanner, setter: setFeatureEmaScanner },
+            { label: '📏 ADR Calculator', desc: 'Average Daily Range calculate করে', state: featureAdr, setter: setFeatureAdr },
+            { label: '🟦 Supply & Demand Zones', desc: 'Key zone identify করে candle data থেকে', state: featureSupplyDemand, setter: setFeatureSupplyDemand },
+            { label: '🗽 NY Session Breaks', desc: 'NY session এ structure break detect করে', state: featureNyBreaks, setter: setFeatureNyBreaks },
+            { label: '🔊 Volume Spike Scanner', desc: 'Unusual volume detect করে', state: featureVolumeSpike, setter: setFeatureVolumeSpike },
+          ].map((feature) => (
+            <div key={feature.label} className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">{feature.label}</p>
+                <p className="text-xs text-muted-foreground">{feature.desc}</p>
+              </div>
+              <Switch checked={feature.state} onCheckedChange={feature.setter} />
+            </div>
+          ))}
+          <p className="text-[10px] text-muted-foreground pt-2 border-t border-border/20">
+            ⚠️ পরিবর্তন সেভ করতে নিচে "Save Alert Settings" বাটন চাপুন
+          </p>
+        </CardContent>
+      </Card>
+
+
       <Card className={glassCard}>
         <CardHeader>
           <CardTitle className="text-sm flex items-center gap-2">

@@ -184,6 +184,13 @@ export type Database = {
           confluence_alert: boolean
           created_at: string
           ema_shift_alert: boolean
+          feature_adr: boolean
+          feature_currency_scanner: boolean
+          feature_ema_scanner: boolean
+          feature_ny_breaks: boolean
+          feature_price_spike: boolean
+          feature_supply_demand: boolean
+          feature_volume_spike: boolean
           habit_reminder_alert: boolean
           id: string
           min_confluence_grade: string
@@ -202,6 +209,13 @@ export type Database = {
           confluence_alert?: boolean
           created_at?: string
           ema_shift_alert?: boolean
+          feature_adr?: boolean
+          feature_currency_scanner?: boolean
+          feature_ema_scanner?: boolean
+          feature_ny_breaks?: boolean
+          feature_price_spike?: boolean
+          feature_supply_demand?: boolean
+          feature_volume_spike?: boolean
           habit_reminder_alert?: boolean
           id?: string
           min_confluence_grade?: string
@@ -220,6 +234,13 @@ export type Database = {
           confluence_alert?: boolean
           created_at?: string
           ema_shift_alert?: boolean
+          feature_adr?: boolean
+          feature_currency_scanner?: boolean
+          feature_ema_scanner?: boolean
+          feature_ny_breaks?: boolean
+          feature_price_spike?: boolean
+          feature_supply_demand?: boolean
+          feature_volume_spike?: boolean
           habit_reminder_alert?: boolean
           id?: string
           min_confluence_grade?: string
