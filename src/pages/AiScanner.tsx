@@ -128,6 +128,7 @@ function useSessionStrength(session: string, selectedDate: Date) {
     queryFn: async () => {
       const dayStart = `${dateKey}T00:00:00.000Z`;
       const dayEnd = `${dateKey}T23:59:59.999Z`;
+      // Try selected date first
       const { data, error } = await supabase
         .from('currency_strength')
         .select('*')
@@ -136,9 +137,21 @@ function useSessionStrength(session: string, selectedDate: Date) {
         .lte('recorded_at', dayEnd)
         .order('recorded_at', { ascending: false });
       if (error) throw error;
-      if (!data || data.length === 0) return [];
-      const latestTime = data[0].recorded_at;
-      return data.filter(r => r.recorded_at === latestTime);
+      if (data && data.length > 0) {
+        const latestTime = data[0].recorded_at;
+        return data.filter(r => r.recorded_at === latestTime);
+      }
+      // Fallback: get the most recent data available (any date)
+      const { data: fallback, error: fbErr } = await supabase
+        .from('currency_strength')
+        .select('*')
+        .in('timeframe', timeframeVariants)
+        .order('recorded_at', { ascending: false })
+        .limit(50);
+      if (fbErr) throw fbErr;
+      if (!fallback || fallback.length === 0) return [];
+      const latestTime = fallback[0].recorded_at;
+      return fallback.filter(r => r.recorded_at === latestTime);
     },
     refetchInterval: 60000,
   });
