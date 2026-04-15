@@ -28,6 +28,7 @@ import HabitTracking from "./pages/HabitTracking.tsx";
 import SpikeAlerts from "./pages/SpikeAlerts.tsx";
 import MindJournal from "./pages/MindJournal.tsx";
 import AiScanner from "./pages/AiScanner.tsx";
+import PairSelector from "./pages/PairSelector.tsx";
 
 const queryClient = new QueryClient();
 
