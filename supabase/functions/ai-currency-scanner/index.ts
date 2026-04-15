@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { fetchWithRotation } from "../_shared/apiKeyRotator.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,25 +48,22 @@ function getModifiedNumber(currency: string, pair: string, result: number): numb
   return currency === base ? result : -result;
 }
 
-// Fetch EMA(200) using TwelveData technical indicator endpoint
-// This returns EMA value AND we derive current price from it (1 API call per pair)
+// Fetch time_series data using API key rotation from api_key_pool
 async function fetchEmaData(
   pair: string,
   interval: string,
-  apiKey: string
+  supabase: any
 ): Promise<{ price: number; ema200: number }> {
-  // Use time_series with EMA indicator — gets both price and EMA in 1 call
-  // Actually, TwelveData's /ema endpoint only costs 1 credit and returns EMA values
-  // We'll use /quote for price (1 credit) + /ema for EMA (1 credit) = 2 credits per pair
-  // BUT we can batch using comma-separated symbols!
+  const urlTemplate = `https://api.twelvedata.com/time_series?symbol=${pair}&interval=${interval}&outputsize=201&apikey=__API_KEY__`;
   
-  // Single pair: use /ema with outputsize=1 to get latest EMA, and extract close price from time_series
-  const url = `https://api.twelvedata.com/time_series?symbol=${pair}&interval=${interval}&outputsize=201&apikey=${apiKey}`;
-  
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`API error for ${pair}: ${res.status}`);
-  
+  const res = await fetchWithRotation(urlTemplate, "twelvedata", supabase);
   const data = await res.json();
+  
+  // Check for fallback/exhaustion response from rotator
+  if (data.error === "SERVICE_UNAVAILABLE" || data.fallback) {
+    throw new Error(`API keys exhausted: ${data.message}`);
+  }
+  
   if (data.status === "error") throw new Error(`${pair}: ${data.message}`);
   
   const values = data.values;
@@ -73,11 +71,8 @@ async function fetchEmaData(
     throw new Error(`${pair}: insufficient data (got ${values?.length || 0}, need 200)`);
   }
   
-  // Current price = latest close
   const price = parseFloat(values[0].close);
-  
-  // Calculate EMA(200) manually from the 201 candles
-  const closes = values.map((v: any) => parseFloat(v.close)).reverse(); // oldest first
+  const closes = values.map((v: any) => parseFloat(v.close)).reverse();
   const ema200 = calculateEMA(closes, 200);
   
   return { price, ema200 };
@@ -115,7 +110,7 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const twelvedataKey = Deno.env.get("TWELVEDATA_API_KEY")!;
+  // twelvedataKey no longer needed — fetchWithRotation handles key selection from api_key_pool
   const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
   const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -155,7 +150,7 @@ Deno.serve(async (req) => {
           processed++;
           console.log(`[${processed}/${ALL_PAIRS.length}] Scanning ${pair}...`);
           
-          const { price, ema200 } = await fetchEmaData(pair, interval, twelvedataKey);
+          const { price, ema200 } = await fetchEmaData(pair, interval, supabase);
           const analysis = analyzePair(price, ema200);
           
           const pairKey = pair.replace("/", "");
