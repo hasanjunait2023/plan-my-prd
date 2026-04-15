@@ -233,6 +233,13 @@ const Settings = () => {
             price_spike_alert: priceSpikeAlert,
             volume_spike_alert: volumeSpikeAlert,
             mind_journal_chat_id: mindJournalChatId || null,
+            feature_currency_scanner: featureCurrencyScanner,
+            feature_price_spike: featurePriceSpike,
+            feature_ema_scanner: featureEmaScanner,
+            feature_adr: featureAdr,
+            feature_supply_demand: featureSupplyDemand,
+            feature_ny_breaks: featureNyBreaks,
+            feature_volume_spike: featureVolumeSpike,
           } as any)
           .select()
           .single();
