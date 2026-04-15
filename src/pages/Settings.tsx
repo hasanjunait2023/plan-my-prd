@@ -59,6 +59,15 @@ const Settings = () => {
   const [savingAlerts, setSavingAlerts] = useState(false);
   const [alertSettingsId, setAlertSettingsId] = useState<string | null>(null);
 
+  // TwelveData Feature Toggles
+  const [featureCurrencyScanner, setFeatureCurrencyScanner] = useState(true);
+  const [featurePriceSpike, setFeaturePriceSpike] = useState(true);
+  const [featureEmaScanner, setFeatureEmaScanner] = useState(true);
+  const [featureAdr, setFeatureAdr] = useState(true);
+  const [featureSupplyDemand, setFeatureSupplyDemand] = useState(true);
+  const [featureNyBreaks, setFeatureNyBreaks] = useState(true);
+  const [featureVolumeSpike, setFeatureVolumeSpike] = useState(true);
+
   // Push notification
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
