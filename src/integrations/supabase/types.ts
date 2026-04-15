@@ -116,6 +116,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_scan_results: {
+        Row: {
+          created_at: string
+          id: string
+          pair: string
+          result: number
+          scan_batch_id: string
+          scanned_at: string
+          strength_label: string
+          timeframe: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pair: string
+          result?: number
+          scan_batch_id: string
+          scanned_at?: string
+          strength_label?: string
+          timeframe: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pair?: string
+          result?: number
+          scan_batch_id?: string
+          scanned_at?: string
+          strength_label?: string
+          timeframe?: string
+        }
+        Relationships: []
+      }
       alert_log: {
         Row: {
           alert_type: string
