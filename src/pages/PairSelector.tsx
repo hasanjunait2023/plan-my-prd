@@ -521,6 +521,11 @@ function PremiumPairCard({ pair, isTop }: { pair: QualifiedPair; isTop: boolean 
             <StatusBadge icon={<Zap className="h-2.5 w-2.5" />} label="PRIMARY" variant="primary" />
           )}
         </div>
+
+        {/* Row 5: TradingView Mini Chart */}
+        <div className="mt-3 rounded-lg overflow-hidden border border-border/30">
+          <MiniTradingViewChart symbol={`FX:${base}${quote}`} />
+        </div>
       </CardContent>
     </Card>
   );
