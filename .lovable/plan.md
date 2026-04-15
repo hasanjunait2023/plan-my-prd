@@ -1,78 +1,45 @@
 
 
-## Plan: AI Scanner — 3 Session Cron Schedule
+## Plan: Currency Strength page এ তিনটি Session Tab + AI Scanner Data Integration
 
 ### Goal
-তিনটি সেশনের জন্য automatic cron job সেটআপ করা যা নির্দিষ্ট সময়ে AI Currency Scanner চালাবে।
+Currency Strength page এ শুধু Asian tab না, **তিনটি session (Asian, London, New York)** এর AI Scanner থেকে আসা data সঠিকভাবে show করা। নতুন **Asian tab** যোগ করা এবং existing London/NY tab গুলোও AI Scanner এর same data source থেকে data দেখাবে।
 
-### Schedule (Bangladesh Time → UTC)
-| Session | BDT Time | UTC Time | Cron Expression |
-|---------|----------|----------|-----------------|
-| Asian | সকাল 7:00 | 01:00 UTC | `0 1 * * 1-5` |
-| London | দুপুর 11:00 | 05:00 UTC | `0 5 * * 1-5` |
-| New York | বিকেল 7:00 | 13:00 UTC | `0 13 * * 1-5` |
+### Changes (1 file: `src/pages/CurrencyStrength.tsx`)
 
-*শুধু weekdays (Mon-Fri) চালাবে — weekend এ forex market বন্ধ।*
+**1. Tab UI তে Asian যোগ**
+- Line ~298-301: TabsList এ তৃতীয় tab `Asian` যোগ হবে
+- Tab values: `Asian`, `1H` (London), `New York`
 
-### Technical Steps
+**2. `getDefaultTab()` আপডেট**
+- Tokyo/Sydney session active থাকলে `'Asian'` return করবে (currently `'1H'` return করে)
 
-**1. Enable pg_cron and pg_net extensions**
-- Database migration দিয়ে `pg_cron` এবং `pg_net` extensions enable করা
+**3. `useCurrencyStrength` hook আপডেট**
+- `timeframe === 'Asian'` হলে `['Asian']` variants ব্যবহার করবে
+- এতে AI Scanner এর Asian cron যে data store করে (`timeframe='Asian'`), সেটাই show হবে
+- London (`1H`) এবং New York (`New York`, `Strength On New York`) এর existing logic unchanged
 
-**2. Create 3 cron jobs via SQL insert**
-- প্রতিটি job `net.http_post()` দিয়ে `ai-currency-scanner` edge function call করবে
-- Body তে session name পাঠাবে: `{"session": "Asian"}`, `{"session": "London"}`, `{"session": "New York"}`
-- Authorization header এ anon key থাকবে
+**4. `usePreviousSessionData` hook আপডেট**
+- Asian tab active → previous session হিসেবে New York data fetch করবে
+- London tab active → previous session হিসেবে Asian data fetch করবে
+- New York tab active → previous session হিসেবে London data fetch করবে (existing)
 
-### SQL (Supabase SQL Editor এ run হবে — migration নয়, কারণ project-specific credentials আছে)
+**5. `useBothSessionData` → `useAllSessionData` আপডেট**
+- Asian session এর data ও fetch করবে
+- `TimeframeComparison` component এ তিনটি session pass করা হবে (optional `asianData` prop)
 
-```sql
--- Enable extensions
-create extension if not exists pg_cron with schema pg_catalog;
-create extension if not exists pg_net with schema extensions;
-
--- Asian session — 7 AM BDT (1:00 UTC) weekdays
-select cron.schedule(
-  'ai-scanner-asian',
-  '0 1 * * 1-5',
-  $$
-  select net.http_post(
-    url:='https://ejtnvpmshcqydndxxonq.supabase.co/functions/v1/ai-currency-scanner',
-    headers:='{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqdG52cG1zaGNxeWRuZHh4b25xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMzI0NTksImV4cCI6MjA5MDYwODQ1OX0.5iXpJuyIAKCKilGNzdaR635eVK43bw9khWyH1TnVwHo"}'::jsonb,
-    body:='{"session":"Asian","timeframe":"1H"}'::jsonb
-  ) as request_id;
-  $$
-);
-
--- London session — 11 AM BDT (5:00 UTC) weekdays
-select cron.schedule(
-  'ai-scanner-london',
-  '0 5 * * 1-5',
-  $$
-  select net.http_post(
-    url:='https://ejtnvpmshcqydndxxonq.supabase.co/functions/v1/ai-currency-scanner',
-    headers:='{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqdG52cG1zaGNxeWRuZHh4b25xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMzI0NTksImV4cCI6MjA5MDYwODQ1OX0.5iXpJuyIAKCKilGNzdaR635eVK43bw9khWyH1TnVwHo"}'::jsonb,
-    body:='{"session":"London","timeframe":"1H"}'::jsonb
-  ) as request_id;
-  $$
-);
-
--- New York session — 7 PM BDT (13:00 UTC) weekdays
-select cron.schedule(
-  'ai-scanner-newyork',
-  '0 13 * * 1-5',
-  $$
-  select net.http_post(
-    url:='https://ejtnvpmshcqydndxxonq.supabase.co/functions/v1/ai-currency-scanner',
-    headers:='{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqdG52cG1zaGNxeWRuZHh4b25xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMzI0NTksImV4cCI6MjA5MDYwODQ1OX0.5iXpJuyIAKCKilGNzdaR635eVK43bw9khWyH1TnVwHo"}'::jsonb,
-    body:='{"session":"New York","timeframe":"1H"}'::jsonb
-  ) as request_id;
-  $$
-);
+### Data Flow
+```text
+AI Scanner Edge Function (3 cron jobs)
+  ├── Asian  → currency_strength (timeframe='Asian')
+  ├── London → currency_strength (timeframe='1H')
+  └── NY     → currency_strength (timeframe='New York')
+                    ↓
+        ┌──────────┴──────────┐
+   AI Scanner Page      Currency Strength Page
+   (3 tabs)             (3 tabs — same data)
 ```
 
-### What Happens
-- প্রতিদিন সোম-শুক্র তিনবার automatic scan হবে
-- প্রতিটি scan session name সহ `currency_strength` table এ store হবে
-- AI Scanner page এ session tab অনুযায়ী data দেখাবে
+### No Migration Needed
+Same `currency_strength` table, same data — শুধু UI query logic update।
 
