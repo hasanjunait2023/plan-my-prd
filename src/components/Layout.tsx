@@ -52,6 +52,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { title: 'Habits', short: 'Habit', url: '/habits', icon: Target },
   { title: 'Mind Journal', short: 'Mind', url: '/mind-journal', icon: Brain },
   { title: 'AI Scanner', short: 'AI', url: '/ai-scanner', icon: Brain },
+  { title: 'Pair Selector', short: 'Pair', url: '/pair-selector', icon: Crosshair },
   { title: 'Settings', short: 'Set', url: '/settings', icon: Settings },
 ];
 
@@ -65,7 +66,7 @@ const toolsCategoryDefs = [
   {
     label: 'Analysis',
     icon: Brain,
-    urls: ['/trade-intelligence', '/psychology', '/rules', '/ai-scanner'],
+    urls: ['/trade-intelligence', '/psychology', '/rules', '/ai-scanner', '/pair-selector'],
   },
   {
     label: 'Other',
