@@ -142,13 +142,18 @@ Deno.serve(async (req) => {
     const errors: string[] = [];
     let processed = 0;
 
-    // 1 API call per pair = 28 total (within 800/day limit)
-    // Process 4 pairs at a time with 15s delay (TwelveData: 8 req/min free tier)
-    const CHUNK_SIZE = 4;
+    // Process 2 pairs at a time with 20s delay between chunks
+    // With 5 keys × 8 req/min = 40/min capacity, but fetchWithRotation
+    // tries keys sequentially so parallel requests can exhaust same key.
+    // 2 pairs/chunk + 20s gap = ~6 pairs/min, safe for all keys.
+    const CHUNK_SIZE = 2;
+    const CHUNK_DELAY_MS = 20000;
+    
     for (let i = 0; i < ALL_PAIRS.length; i += CHUNK_SIZE) {
       const chunk = ALL_PAIRS.slice(i, i + CHUNK_SIZE);
       
-      const chunkPromises = chunk.map(async (pair) => {
+      // Process pairs in chunk sequentially to avoid hitting same key simultaneously
+      for (const pair of chunk) {
         try {
           processed++;
           console.log(`[${processed}/${ALL_PAIRS.length}] Scanning ${pair}...`);
@@ -173,13 +178,11 @@ Deno.serve(async (req) => {
           errors.push(`${pair}: ${err.message}`);
           pairResults[pair] = 0;
         }
-      });
+      }
 
-      await Promise.all(chunkPromises);
-
-      // 15s delay between chunks to respect 8 req/min rate limit
+      // Delay between chunks to respect per-minute rate limits
       if (i + CHUNK_SIZE < ALL_PAIRS.length) {
-        await new Promise(r => setTimeout(r, 15000));
+        await new Promise(r => setTimeout(r, CHUNK_DELAY_MS));
       }
     }
 
