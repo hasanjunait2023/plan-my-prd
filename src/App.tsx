@@ -64,6 +64,7 @@ const App = () => (
                   <Route path="/habits" element={<HabitTracking />} />
                   <Route path="/spike-alerts" element={<SpikeAlerts />} />
                   <Route path="/mind-journal" element={<MindJournal />} />
+                  <Route path="/ai-scanner" element={<AiScanner />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>
