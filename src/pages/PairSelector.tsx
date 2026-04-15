@@ -532,6 +532,46 @@ function PremiumPairCard({ pair, isTop }: { pair: QualifiedPair; isTop: boolean 
 }
 
 // ====================================================================
+// TRADINGVIEW MINI CHART
+// ====================================================================
+function MiniTradingViewChart({ symbol }: { symbol: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    containerRef.current.innerHTML = "";
+
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
+    script.async = true;
+    script.type = "text/javascript";
+    script.innerHTML = JSON.stringify({
+      symbol,
+      width: "100%",
+      height: 160,
+      locale: "en",
+      dateRange: "1D",
+      colorTheme: "dark",
+      isTransparent: true,
+      autosize: false,
+      largeChartUrl: "",
+      noTimeScale: false,
+      chartOnly: false,
+    });
+
+    containerRef.current.appendChild(script);
+  }, [symbol]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="tradingview-widget-container"
+      style={{ height: 160, pointerEvents: "none" }}
+    />
+  );
+}
+
+// ====================================================================
 // SUB-COMPONENTS
 // ====================================================================
 
