@@ -233,7 +233,8 @@ Deno.serve(async (req) => {
     const bdNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
     const timeStr = bdNow.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
-    let message = `*💱 FX Co-Relation Strength On ${timeframe}*\n⏰ *${timeStr}*\n📊 _EMA(200) Pure Math_\n\n`;
+    const sessionLabel = session || timeframe;
+    let message = `*💱 FX Co-Relation Strength On ${sessionLabel}*\n⏰ *${timeStr}*\n📊 _EMA(200) Pure Math_\n\n`;
 
     for (const [label, items] of Object.entries(groups)) {
       if (items.length === 0) continue;
