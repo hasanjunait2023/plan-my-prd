@@ -637,13 +637,16 @@ function parseLayerScores(reasoning: string): {
   diff: boolean; bias: boolean; overext: boolean;
   structure: boolean; adr: boolean; atr: boolean;
 } {
+  // Split by " | " to check each layer segment individually
+  const segments = reasoning.split(" | ");
+  const check = (keyword: string) => segments.some(s => s.includes(keyword) && s.includes("✅"));
   return {
-    diff: reasoning.includes("Diff") && reasoning.includes("✅"),
-    bias: reasoning.includes("aligned") && reasoning.includes("✅"),
-    overext: reasoning.includes("Overext") && reasoning.includes("✅"),
-    structure: reasoning.includes("structure") && reasoning.includes("✅"),
-    adr: reasoning.includes("ADR") && reasoning.includes("✅"),
-    atr: reasoning.includes("ATR") && reasoning.includes("✅"),
+    diff: check("Diff"),
+    bias: check("aligned") || check("4H+1H"),
+    overext: check("Overext"),
+    structure: check("structure"),
+    adr: check("ADR"),
+    atr: check("ATR"),
   };
 }
 
