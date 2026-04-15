@@ -5,7 +5,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// 28 unique pairs
 const ALL_PAIRS = [
   "EUR/USD","EUR/GBP","EUR/JPY","EUR/AUD","EUR/NZD","EUR/CAD","EUR/CHF",
   "GBP/USD","GBP/JPY","GBP/AUD","GBP/NZD","GBP/CAD","GBP/CHF",
@@ -16,7 +15,6 @@ const ALL_PAIRS = [
   "CHF/JPY",
 ];
 
-// Currency → its 7 pairs (using slash format for matching)
 const CURRENCY_PAIRS: Record<string, string[]> = {
   USD: ["EUR/USD","GBP/USD","USD/JPY","AUD/USD","NZD/USD","USD/CAD","USD/CHF"],
   EUR: ["EUR/USD","EUR/GBP","EUR/JPY","EUR/AUD","EUR/NZD","EUR/CAD","EUR/CHF"],
@@ -49,46 +47,58 @@ function getModifiedNumber(currency: string, pair: string, result: number): numb
   return currency === base ? result : -result;
 }
 
-// Fetch current price and EMA(200) from TwelveData
+// Fetch EMA(200) using TwelveData technical indicator endpoint
+// This returns EMA value AND we derive current price from it (1 API call per pair)
 async function fetchEmaData(
   pair: string,
   interval: string,
   apiKey: string
 ): Promise<{ price: number; ema200: number }> {
-  // TwelveData EMA endpoint — returns current EMA value
-  const emaUrl = `https://api.twelvedata.com/ema?symbol=${pair}&interval=${interval}&time_period=200&apikey=${apiKey}&outputsize=1`;
-  const priceUrl = `https://api.twelvedata.com/price?symbol=${pair}&apikey=${apiKey}`;
-
-  const [emaRes, priceRes] = await Promise.all([
-    fetch(emaUrl),
-    fetch(priceUrl),
-  ]);
-
-  if (!emaRes.ok) throw new Error(`EMA fetch failed for ${pair}: ${emaRes.status}`);
-  if (!priceRes.ok) throw new Error(`Price fetch failed for ${pair}: ${priceRes.status}`);
-
-  const emaData = await emaRes.json();
-  const priceData = await priceRes.json();
-
-  if (emaData.status === "error") throw new Error(`EMA error ${pair}: ${emaData.message}`);
-  if (priceData.status === "error") throw new Error(`Price error ${pair}: ${priceData.message}`);
-
-  const ema200 = parseFloat(emaData.values?.[0]?.ema);
-  const price = parseFloat(priceData.price);
-
-  if (isNaN(ema200) || isNaN(price)) {
-    throw new Error(`Invalid data for ${pair}: price=${priceData.price}, ema=${emaData.values?.[0]?.ema}`);
+  // Use time_series with EMA indicator — gets both price and EMA in 1 call
+  // Actually, TwelveData's /ema endpoint only costs 1 credit and returns EMA values
+  // We'll use /quote for price (1 credit) + /ema for EMA (1 credit) = 2 credits per pair
+  // BUT we can batch using comma-separated symbols!
+  
+  // Single pair: use /ema with outputsize=1 to get latest EMA, and extract close price from time_series
+  const url = `https://api.twelvedata.com/time_series?symbol=${pair}&interval=${interval}&outputsize=201&apikey=${apiKey}`;
+  
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`API error for ${pair}: ${res.status}`);
+  
+  const data = await res.json();
+  if (data.status === "error") throw new Error(`${pair}: ${data.message}`);
+  
+  const values = data.values;
+  if (!values || values.length < 200) {
+    throw new Error(`${pair}: insufficient data (got ${values?.length || 0}, need 200)`);
   }
-
+  
+  // Current price = latest close
+  const price = parseFloat(values[0].close);
+  
+  // Calculate EMA(200) manually from the 201 candles
+  const closes = values.map((v: any) => parseFloat(v.close)).reverse(); // oldest first
+  const ema200 = calculateEMA(closes, 200);
+  
   return { price, ema200 };
+}
+
+// Calculate EMA from an array of prices (oldest first)
+function calculateEMA(prices: number[], period: number): number {
+  const k = 2 / (period + 1);
+  // Start with SMA of first `period` values
+  let ema = prices.slice(0, period).reduce((sum, p) => sum + p, 0) / period;
+  // Then apply EMA formula for remaining values
+  for (let i = period; i < prices.length; i++) {
+    ema = prices[i] * k + ema * (1 - k);
+  }
+  return ema;
 }
 
 // Pure math: compare price vs EMA(200)
 function analyzePair(price: number, ema200: number): { result: number; strength: string } {
   const diffPercent = ((price - ema200) / ema200) * 100;
 
-  // Clear above EMA → bullish (+1), clear below → bearish (-1), near EMA → neutral (0)
-  // Threshold: 0.1% distance from EMA to avoid noise
   if (diffPercent > 0.1) {
     return { result: 1, strength: "STRONG" };
   } else if (diffPercent < -0.1) {
@@ -128,15 +138,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // === SCAN using TwelveData EMA(200) + Pure Math ===
+    // === SCAN using TwelveData time_series + EMA(200) calculation ===
     const scanBatchId = crypto.randomUUID();
     const pairResults: Record<string, number> = {};
     const errors: string[] = [];
     let processed = 0;
 
-    // TwelveData free tier: 8 requests/min, 800/day
-    // We need 2 calls per pair (price + EMA) = 56 total
-    // Process 4 pairs at a time (8 API calls) with delays
+    // 1 API call per pair = 28 total (within 800/day limit)
+    // Process 4 pairs at a time with 15s delay (TwelveData: 8 req/min free tier)
     const CHUNK_SIZE = 4;
     for (let i = 0; i < ALL_PAIRS.length; i += CHUNK_SIZE) {
       const chunk = ALL_PAIRS.slice(i, i + CHUNK_SIZE);
@@ -149,12 +158,11 @@ Deno.serve(async (req) => {
           const { price, ema200 } = await fetchEmaData(pair, interval, twelvedataKey);
           const analysis = analyzePair(price, ema200);
           
-          const pairKey = pair.replace("/", ""); // Store without slash
+          const pairKey = pair.replace("/", "");
           pairResults[pair] = analysis.result;
           
-          console.log(`  ${pair}: Price=${price}, EMA200=${ema200}, Result=${analysis.result} (${analysis.strength})`);
+          console.log(`  ${pair}: Price=${price.toFixed(5)}, EMA200=${ema200.toFixed(5)}, Result=${analysis.result} (${analysis.strength})`);
           
-          // Store per-pair result
           await supabase.from("ai_scan_results").insert({
             scan_batch_id: scanBatchId,
             timeframe,
@@ -171,9 +179,9 @@ Deno.serve(async (req) => {
 
       await Promise.all(chunkPromises);
 
-      // Wait between chunks to respect rate limits (8 req/min for free tier)
+      // 15s delay between chunks to respect 8 req/min rate limit
       if (i + CHUNK_SIZE < ALL_PAIRS.length) {
-        await new Promise(r => setTimeout(r, 8000));
+        await new Promise(r => setTimeout(r, 15000));
       }
     }
 
@@ -191,7 +199,6 @@ Deno.serve(async (req) => {
       currencyScores[currency] = { score: totalScore, category };
     }
 
-    // Insert into currency_strength
     const strengthRecords = Object.entries(currencyScores).map(([currency, { score, category }]) => ({
       currency,
       strength: score,
@@ -202,7 +209,7 @@ Deno.serve(async (req) => {
 
     await supabase.from("currency_strength").insert(strengthRecords);
 
-    // === BUILD TELEGRAM MESSAGE ===
+    // === TELEGRAM MESSAGE ===
     const sorted = Object.entries(currencyScores)
       .map(([c, { score, category }]) => ({ currency: c, score, category }))
       .sort((a, b) => b.score - a.score);
@@ -218,8 +225,7 @@ Deno.serve(async (req) => {
     const bdNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
     const timeStr = bdNow.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
-    let message = `*💱 FX Co-Relation Strength On ${timeframe}*\n⏰ *${timeStr}*\n\n`;
-    message += `📊 _Method: EMA(200) Pure Math — No AI_\n\n`;
+    let message = `*💱 FX Co-Relation Strength On ${timeframe}*\n⏰ *${timeStr}*\n📊 _EMA(200) Pure Math_\n\n`;
 
     for (const [label, items] of Object.entries(groups)) {
       if (items.length === 0) continue;
@@ -235,7 +241,6 @@ Deno.serve(async (req) => {
       message += "\n";
     }
 
-    // Send Telegram
     if (telegramToken) {
       try {
         const { data: alertSettings } = await supabase
