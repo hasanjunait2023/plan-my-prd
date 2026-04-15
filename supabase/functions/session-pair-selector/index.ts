@@ -1,0 +1,475 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { fetchWithRotation } from "../_shared/apiKeyRotator.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const ALL_PAIRS = [
+  "EUR/USD","EUR/GBP","EUR/JPY","EUR/AUD","EUR/NZD","EUR/CAD","EUR/CHF",
+  "GBP/USD","GBP/JPY","GBP/AUD","GBP/NZD","GBP/CAD","GBP/CHF",
+  "USD/JPY","USD/CAD","USD/CHF",
+  "AUD/USD","AUD/JPY","AUD/NZD","AUD/CAD","AUD/CHF",
+  "NZD/USD","NZD/JPY","NZD/CAD","NZD/CHF",
+  "CAD/JPY","CAD/CHF",
+  "CHF/JPY",
+];
+
+const CURRENCY_PAIRS: Record<string, string[]> = {
+  USD: ["EUR/USD","GBP/USD","USD/JPY","AUD/USD","NZD/USD","USD/CAD","USD/CHF"],
+  EUR: ["EUR/USD","EUR/GBP","EUR/JPY","EUR/AUD","EUR/NZD","EUR/CAD","EUR/CHF"],
+  GBP: ["GBP/USD","EUR/GBP","GBP/JPY","GBP/AUD","GBP/NZD","GBP/CAD","GBP/CHF"],
+  JPY: ["USD/JPY","EUR/JPY","GBP/JPY","AUD/JPY","NZD/JPY","CAD/JPY","CHF/JPY"],
+  AUD: ["AUD/USD","EUR/AUD","GBP/AUD","AUD/JPY","AUD/NZD","AUD/CAD","AUD/CHF"],
+  NZD: ["NZD/USD","EUR/NZD","GBP/NZD","NZD/JPY","AUD/NZD","NZD/CAD","NZD/CHF"],
+  CAD: ["USD/CAD","EUR/CAD","GBP/CAD","CAD/JPY","AUD/CAD","NZD/CAD","CAD/CHF"],
+  CHF: ["USD/CHF","EUR/CHF","GBP/CHF","CHF/JPY","AUD/CHF","NZD/CHF","CAD/CHF"],
+};
+
+const SESSION_CURRENCIES: Record<string, string[]> = {
+  "Asian": ["JPY", "AUD", "NZD"],
+  "London": ["EUR", "GBP"],
+  "New York": ["USD", "CAD"],
+};
+
+const FLAGS: Record<string, string> = {
+  USD:"🇺🇸",EUR:"🇪🇺",GBP:"🇬🇧",JPY:"🇯🇵",AUD:"🇦🇺",NZD:"🇳🇿",CAD:"🇨🇦",CHF:"🇨🇭"
+};
+
+// ====== EMA Calculation ======
+function calculateEMA(prices: number[], period: number): number {
+  const k = 2 / (period + 1);
+  let ema = prices.slice(0, period).reduce((s, p) => s + p, 0) / period;
+  for (let i = period; i < prices.length; i++) {
+    ema = prices[i] * k + ema * (1 - k);
+  }
+  return ema;
+}
+
+// ====== ATR Calculation ======
+function calculateATR(candles: { high: number; low: number; close: number }[], period: number): number {
+  if (candles.length < period + 1) return 0;
+  const trs: number[] = [];
+  for (let i = 1; i < candles.length; i++) {
+    const tr = Math.max(
+      candles[i].high - candles[i].low,
+      Math.abs(candles[i].high - candles[i - 1].close),
+      Math.abs(candles[i].low - candles[i - 1].close)
+    );
+    trs.push(tr);
+  }
+  // Simple ATR = average of last `period` TRs
+  const recentTrs = trs.slice(-period);
+  return recentTrs.reduce((s, v) => s + v, 0) / recentTrs.length;
+}
+
+// Fetch time_series with rotation, returns full candle data
+async function fetchCandles(
+  pair: string, interval: string, outputsize: number, supabase: any
+): Promise<any[]> {
+  const urlTemplate = `https://api.twelvedata.com/time_series?symbol=${pair}&interval=${interval}&outputsize=${outputsize}&apikey=__API_KEY__`;
+  const res = await fetchWithRotation(urlTemplate, "twelvedata", supabase);
+  const data = await res.json();
+
+  if (data.error === "SERVICE_UNAVAILABLE" || data.fallback) {
+    throw new Error(`API keys exhausted: ${data.message}`);
+  }
+  if (data.status === "error") throw new Error(`${pair}: ${data.message}`);
+  if (!data.values || data.values.length < 10) {
+    throw new Error(`${pair}: insufficient data (got ${data.values?.length || 0})`);
+  }
+  return data.values;
+}
+
+function getModifiedNumber(currency: string, pair: string, result: number): number {
+  const base = pair.substring(0, 3);
+  return currency === base ? result : -result;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  try {
+    const body = await req.json();
+    const session: string = body.session || "London";
+    const sendTelegram: boolean = body.sendTelegram !== false;
+
+    console.log(`🎯 Starting 6-Layer Analysis for ${session} session...`);
+
+    const scanBatchId = crypto.randomUUID();
+    const errors: string[] = [];
+    
+    // ====== DATA COLLECTION ======
+    // Store: pair -> { price1h, ema200_1h, ema200_4h, price4h, candles1h }
+    interface PairData {
+      price1h: number;
+      ema200_1h: number;
+      price4h: number;
+      ema200_4h: number;
+      candles1h: { high: number; low: number; close: number }[];
+      overextPct: number;
+    }
+    
+    const pairData: Record<string, PairData> = {};
+    let processed = 0;
+
+    // Process pairs: fetch 1H and 4H data
+    const CHUNK_SIZE = 2;
+    const CHUNK_DELAY_MS = 20000;
+
+    for (let i = 0; i < ALL_PAIRS.length; i += CHUNK_SIZE) {
+      const chunk = ALL_PAIRS.slice(i, i + CHUNK_SIZE);
+
+      for (const pair of chunk) {
+        processed++;
+        console.log(`[${processed}/${ALL_PAIRS.length}] Fetching ${pair}...`);
+        
+        try {
+          // Fetch 1H data (201 candles for EMA200 + ATR)
+          const candles1h = await fetchCandles(pair, "1h", 201, supabase);
+          const closes1h = candles1h.map((v: any) => parseFloat(v.close)).reverse();
+          const price1h = parseFloat(candles1h[0].close);
+          const ema200_1h = calculateEMA(closes1h, 200);
+
+          // Small delay between 1H and 4H fetch
+          await new Promise(r => setTimeout(r, 2000));
+
+          // Fetch 4H data (201 candles for EMA200)
+          const candles4h = await fetchCandles(pair, "4h", 201, supabase);
+          const closes4h = candles4h.map((v: any) => parseFloat(v.close)).reverse();
+          const price4h = parseFloat(candles4h[0].close);
+          const ema200_4h = calculateEMA(closes4h, 200);
+
+          // Overextension check
+          const overextPct = Math.abs((price1h - ema200_1h) / ema200_1h) * 100;
+
+          pairData[pair] = {
+            price1h, ema200_1h,
+            price4h, ema200_4h,
+            candles1h: candles1h.map((v: any) => ({
+              high: parseFloat(v.high),
+              low: parseFloat(v.low),
+              close: parseFloat(v.close),
+            })),
+            overextPct,
+          };
+        } catch (err) {
+          console.error(`Error fetching ${pair}:`, err.message);
+          errors.push(`${pair}: ${err.message}`);
+        }
+      }
+
+      if (i + CHUNK_SIZE < ALL_PAIRS.length) {
+        await new Promise(r => setTimeout(r, CHUNK_DELAY_MS));
+      }
+    }
+
+    // ====== LAYER 1-2: Currency Strength + Differential ======
+    const currencyScores: Record<string, number> = {};
+    
+    for (const [currency, pairs] of Object.entries(CURRENCY_PAIRS)) {
+      let totalScore = 0;
+      for (const pair of pairs) {
+        const d = pairData[pair];
+        if (!d) continue;
+        const raw = d.price1h > d.ema200_1h ? 1 : (d.price1h < d.ema200_1h ? -1 : 0);
+        totalScore += getModifiedNumber(currency, pair, raw);
+      }
+      currencyScores[currency] = totalScore;
+    }
+
+    // ====== GET ADR DATA ======
+    const { data: adrRows } = await supabase
+      .from("adr_data")
+      .select("pair, adr_pips, today_range_pips, adr_percent_used")
+      .order("fetched_at", { ascending: false });
+
+    const adrMap: Record<string, { adrRemaining: number; adrPips: number }> = {};
+    if (adrRows) {
+      for (const row of adrRows) {
+        if (!adrMap[row.pair]) {
+          adrMap[row.pair] = {
+            adrRemaining: Math.max(0, 100 - (row.adr_percent_used || 0)),
+            adrPips: row.adr_pips || 0,
+          };
+        }
+      }
+    }
+
+    // ====== ANALYZE EACH PAIR — 6 LAYERS ======
+    interface PairResult {
+      pair: string;
+      direction: string;
+      totalScore: number;
+      differential: number;
+      bias4h: string;
+      overextensionPct: number;
+      dailyStructure: string;
+      adrRemaining: number;
+      atrStatus: string;
+      reasoning: string;
+      isQualified: boolean;
+    }
+
+    const results: PairResult[] = [];
+    const sessionPreferredCurrencies = SESSION_CURRENCIES[session] || [];
+
+    for (const pair of ALL_PAIRS) {
+      const d = pairData[pair];
+      if (!d) continue;
+
+      const base = pair.substring(0, 3);
+      const quote = pair.substring(4, 7);
+      const baseScore = currencyScores[base] || 0;
+      const quoteScore = currencyScores[quote] || 0;
+      const differential = baseScore - quoteScore;
+      const absDiff = Math.abs(differential);
+      const direction = differential > 0 ? "BUY" : differential < 0 ? "SELL" : "NONE";
+
+      let score = 0;
+      const reasons: string[] = [];
+
+      // LAYER 1-2: Differential ≥ 5 → 30 pts
+      if (absDiff >= 5) {
+        score += 30;
+        reasons.push(`Diff ${differential} ✅`);
+      } else {
+        reasons.push(`Diff ${differential} ❌ (need ≥5)`);
+      }
+
+      // LAYER 3: 4H Bias Alignment → 25 pts
+      const dir1h = d.price1h > d.ema200_1h ? "BULL" : "BEAR";
+      const dir4h = d.price4h > d.ema200_4h ? "BULL" : "BEAR";
+      const bias4h = dir1h === dir4h ? "CONFIRMED" : "CONFLICTING";
+      
+      if (bias4h === "CONFIRMED") {
+        score += 25;
+        reasons.push(`4H+1H aligned ${dir4h} ✅`);
+      } else {
+        reasons.push(`4H ${dir4h} vs 1H ${dir1h} ❌`);
+      }
+
+      // LAYER 4: Overextension → 20 pts (graduated)
+      const overextPct = d.overextPct;
+      if (overextPct < 0.8) {
+        score += 20;
+        reasons.push(`Overext ${overextPct.toFixed(2)}% ✅`);
+      } else if (overextPct <= 1.5) {
+        score += 10;
+        reasons.push(`Overext ${overextPct.toFixed(2)}% ⚠️`);
+      } else {
+        reasons.push(`Overext ${overextPct.toFixed(2)}% ❌`);
+      }
+
+      // LAYER 5: Daily Structure → 15 pts
+      // Use ADR data for swing high/low proxy
+      const pairKey = pair.replace("/", "");
+      const adr = adrMap[pairKey];
+      let dailyStructure = "CLEAR";
+      // If we have no ADR data, assume clear
+      if (adr && adr.adrPips > 0) {
+        // If ADR is almost fully used, structure might be at extremes
+        if (adr.adrRemaining < 20) {
+          dailyStructure = "AT_EXTREME";
+          reasons.push(`Daily structure at extreme ❌`);
+        } else {
+          score += 15;
+          reasons.push(`Daily structure clear ✅`);
+        }
+      } else {
+        score += 15;
+        reasons.push(`Daily structure clear (no ADR data) ✅`);
+      }
+
+      // LAYER 6: ADR + ATR → 15 pts total
+      // ADR Remaining → 10 pts (graduated)
+      const adrRemaining = adr ? adr.adrRemaining : 100;
+      if (adrRemaining >= 50) {
+        score += 10;
+        reasons.push(`ADR ${adrRemaining.toFixed(0)}% remaining ✅`);
+      } else if (adrRemaining >= 30) {
+        score += 5;
+        reasons.push(`ADR ${adrRemaining.toFixed(0)}% remaining ⚠️`);
+      } else {
+        reasons.push(`ADR ${adrRemaining.toFixed(0)}% remaining ❌`);
+      }
+
+      // ATR → 5 pts
+      const parsedCandles = d.candles1h;
+      const currentATR = calculateATR(parsedCandles.slice(0, 15), 14);
+      // 7-day avg ATR: use candles from position 14 to ~180 (7*24=168 candles)
+      const olderCandles = parsedCandles.slice(14, 182);
+      const avgATR = olderCandles.length >= 15 ? calculateATR(olderCandles.slice(0, 169), 14) : currentATR;
+      
+      let atrStatus = "NORMAL";
+      if (avgATR > 0) {
+        const atrRatio = currentATR / avgATR;
+        if (atrRatio >= 1.0) {
+          score += 5;
+          atrStatus = "ACTIVE";
+          reasons.push(`ATR active (${(atrRatio * 100).toFixed(0)}%) ✅`);
+        } else if (atrRatio >= 0.7) {
+          score += 3;
+          atrStatus = "NORMAL";
+          reasons.push(`ATR normal (${(atrRatio * 100).toFixed(0)}%) ⚠️`);
+        } else {
+          atrStatus = "SLEEPING";
+          reasons.push(`ATR sleeping (${(atrRatio * 100).toFixed(0)}%) ❌`);
+        }
+      } else {
+        score += 3;
+        reasons.push(`ATR data insufficient ⚠️`);
+      }
+
+      // Session preference bonus (not in score, but in ranking tiebreak)
+      const hasSessionCurrency = sessionPreferredCurrencies.includes(base) || 
+                                  sessionPreferredCurrencies.includes(quote);
+
+      const isQualified = score >= 70 && absDiff >= 5 && bias4h === "CONFIRMED";
+
+      results.push({
+        pair,
+        direction: direction === "NONE" ? "NONE" : direction,
+        totalScore: score,
+        differential,
+        bias4h,
+        overextensionPct: overextPct,
+        dailyStructure,
+        adrRemaining,
+        atrStatus,
+        reasoning: reasons.join(" | "),
+        isQualified,
+      });
+    }
+
+    // Sort: qualified first, then by score desc, then session currency preference
+    results.sort((a, b) => {
+      if (a.isQualified !== b.isQualified) return a.isQualified ? -1 : 1;
+      return b.totalScore - a.totalScore;
+    });
+
+    // Assign ranks
+    const qualified = results.filter(r => r.isQualified);
+    const skipped = results.filter(r => !r.isQualified);
+    
+    qualified.forEach((r, i) => (r as any).rank = i + 1);
+
+    // ====== STORE RESULTS ======
+    const dbRecords = results.map((r, idx) => ({
+      scan_batch_id: scanBatchId,
+      pair: r.pair.replace("/", ""),
+      session,
+      direction: r.direction,
+      total_score: r.totalScore,
+      differential: r.differential,
+      bias_4h: r.bias4h,
+      overextension_pct: r.overextensionPct,
+      daily_structure: r.dailyStructure,
+      adr_remaining: r.adrRemaining,
+      atr_status: r.atrStatus,
+      reasoning: r.reasoning,
+      is_qualified: r.isQualified,
+      rank: r.isQualified ? (r as any).rank : 0,
+    }));
+
+    await supabase.from("session_pair_recommendations").insert(dbRecords);
+
+    // ====== TELEGRAM ======
+    if (sendTelegram && telegramToken && qualified.length > 0) {
+      try {
+        const { data: alertSettings } = await supabase
+          .from("alert_settings")
+          .select("telegram_chat_id")
+          .limit(1)
+          .single();
+
+        const chatId = alertSettings?.telegram_chat_id;
+        if (chatId) {
+          const bdNow = new Date(Date.now() + 6 * 60 * 60 * 1000);
+          const timeStr = bdNow.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+
+          let msg = `🎯 *${session.toUpperCase()} SESSION — PAIR FOCUS LIST*\n`;
+          msg += `⏰ ${timeStr} BDT\n\n`;
+          msg += `━━━━━━━━━━━━━━━━━━━\n`;
+
+          for (const r of qualified.slice(0, 4)) {
+            const base = r.pair.substring(0, 3);
+            const quote = r.pair.substring(4, 7);
+            const emoji = r.direction === "BUY" ? "📈" : "📉";
+            const baseFlag = FLAGS[base] || "";
+            const quoteFlag = FLAGS[quote] || "";
+            
+            msg += `🟢 ${baseFlag}${quoteFlag} *${r.pair}* → ${emoji} *${r.direction} BIAS*\n`;
+            msg += `   Strength: ${base} ${currencyScores[base] || 0} | ${quote} ${currencyScores[quote] || 0} | Gap: ${r.differential > 0 ? "+" : ""}${r.differential}\n`;
+            msg += `   4H+1H: ${r.bias4h} ✅ | Score: ${r.totalScore}/105\n`;
+            msg += `   ADR: ${r.adrRemaining.toFixed(0)}% | ATR: ${r.atrStatus}\n\n`;
+          }
+
+          msg += `━━━━━━━━━━━━━━━━━━━\n`;
+          msg += `❌ *SKIPPED:* ${skipped.length} pairs\n`;
+          
+          // Show top 3 skip reasons
+          for (const s of skipped.slice(0, 3)) {
+            const shortReason = s.bias4h === "CONFLICTING" ? "4H conflict" :
+                               s.totalScore < 70 ? `Score ${s.totalScore}` :
+                               Math.abs(s.differential) < 5 ? `Diff ${s.differential}` : "Filtered";
+            msg += `• ${s.pair} — ${shortReason}\n`;
+          }
+          
+          msg += `\n⚠️ _শুধু এই pairs এ setup খোঁজো_\n_15M structure → 3M entry_`;
+
+          await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: msg,
+              parse_mode: "Markdown",
+            }),
+          });
+        }
+      } catch (tgErr) {
+        console.error("Telegram error:", tgErr);
+      }
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      scan_batch_id: scanBatchId,
+      session,
+      pairs_analyzed: Object.keys(pairData).length,
+      qualified: qualified.map(r => ({
+        pair: r.pair,
+        direction: r.direction,
+        score: r.totalScore,
+        differential: r.differential,
+        bias4h: r.bias4h,
+        overextPct: r.overextensionPct.toFixed(2),
+        adrRemaining: r.adrRemaining.toFixed(0),
+        atrStatus: r.atrStatus,
+        reasoning: r.reasoning,
+        rank: (r as any).rank,
+      })),
+      skipped_count: skipped.length,
+      currency_scores: currencyScores,
+      errors: errors.length > 0 ? errors : undefined,
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  } catch (err) {
+    console.error("Pair selector error:", err);
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
