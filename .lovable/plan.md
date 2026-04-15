@@ -1,111 +1,113 @@
 
 
-## Plan: Mind Journal — Trading Thoughts & Ideas Page (Web + Telegram Sync)
+## Plan: AI Currency Strength Scanner — Google Sheet থেকে Logic বুঝে Native Implementation
 
-### তুমি যা চাও
-একটা **Mind Journal** page যেখানে trading-related thoughts, ideas, screenshots store করবে। দুইভাবে entry হবে:
-1. **Web UI** থেকে directly — text + image দিয়ে thought entry
-2. **Telegram Group** থেকে — ছবি + caption পাঠালে auto-store হবে
+### Google Sheet Structure (তোমার uploaded file থেকে)
 
-**Bi-directional sync**: Telegram → Web DB, Web → Telegram group auto-post।
+তোমার sheet এ **5টা sheet** আছে:
 
-### Architecture
+1. **Co-related Number (Page 1)** — Final summary: Currency, 1H Score, Classification, 15M Score, 3M Score
+2. **Trading Signal (Page 2)** — AI generated trade signals with Entry/TP/SL
+3. **Co-relation Currency (Page 3)** — 1H timeframe: Per-pair GPT score → "Modified Number" → per-currency "Final Co-relation" sum
+4. **Page 4 & 5** — Same structure for 15M and 3M timeframes
+
+### Aggregation Logic (Critical Finding)
 
 ```text
-Web UI (Mind Journal page)
-    ↕ Supabase (mind_thoughts table + storage)
-    ↕
-Telegram Group ←→ mind-telegram-sync (Edge Function)
-    ↑
-pg_cron (every minute) → polls new messages from group
+Example: USD on 1H (Page 3)
+┌──────────────┬────────┬─────────────────┐
+│ Pair         │ Number │ Modified Number │
+├──────────────┼────────┼─────────────────┤
+│ FX:EURUSD    │  +1    │  -1  (inverted) │  ← USD is quote, so flip sign
+│ FX:GBPUSD    │  +1    │  -1  (inverted) │
+│ FX:USDJPY    │  -1    │  -1  (keep)     │  ← USD is base, keep sign
+│ FX:AUDUSD    │  +1    │  -1  (inverted) │
+│ FX:NZDUSD    │  +1    │  -1  (inverted) │
+│ FX:USDCAD    │  -1    │  -1  (keep)     │
+│ FX:USDCHF    │  -1    │  -1  (keep)     │
+│              │        │ Sum = -7        │  ← Final 1H Score for USD
+└──────────────┴────────┴─────────────────┘
+
+Rule: 
+- If currency is BASE (left side) → Modified Number = Number (keep)
+- If currency is QUOTE (right side) → Modified Number = -Number (flip)
+- Final Score = Sum of all Modified Numbers
 ```
 
-### Step 1: Database — `mind_thoughts` table
+Classification:
+- **STRONG**: Score ≥ 5
+- **MID STRONG**: Score = 4  
+- **NEUTRAL**: Score -3 to 3
+- **MID WEAK**: Score = -4
+- **WEAK**: Score ≤ -5
 
-```sql
-CREATE TABLE mind_thoughts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  content text NOT NULL DEFAULT '',
-  image_url text,
-  source text NOT NULL DEFAULT 'web',  -- 'web' or 'telegram'
-  telegram_message_id bigint,
-  tags text[] NOT NULL DEFAULT '{}',
-  created_at timestamptz NOT NULL DEFAULT now(),
-  date text NOT NULL  -- YYYY-MM-DD for date grouping
-);
+### 7 Pairs Per Currency (Fixed List)
 
-CREATE INDEX idx_mind_thoughts_date ON mind_thoughts(date DESC);
-CREATE INDEX idx_mind_thoughts_user ON mind_thoughts(user_id);
+```text
+USD: EURUSD, GBPUSD, USDJPY, AUDUSD, NZDUSD, USDCAD, USDCHF
+EUR: EURUSD, EURGBP, EURJPY, EURAUD, EURNZD, EURCAD, EURCHF
+GBP: GBPUSD, EURGBP, GBPJPY, GBPAUD, GBPNZD, GBPCAD, GBPCHF
+JPY: USDJPY, EURJPY, GBPJPY, AUDJPY, NZDJPY, CADJPY, CHFJPY
+AUD: AUDUSD, EURAUD, GBPAUD, AUDJPY, AUDNZD, AUDCAD, AUDCHF
+NZD: NZDUSD, EURNZD, GBPNZD, NZDJPY, AUDNZD, NZDCAD, NZDCHF
+CAD: USDCAD, EURCAD, GBPCAD, CADJPY, AUDCAD, NZDCAD, CADCHF
+CHF: USDCHF, EURCHF, GBPCHF, CHFJPY, AUDCHF, NZDCHF, CADCHF
 ```
-RLS: user_id based CRUD for authenticated users + service_role full access।
+Total unique pairs = **28** (same as `TRADEABLE_PAIRS`)
 
-### Step 2: Storage Bucket — `mind-images`
-ছবি store করার জন্য public bucket তৈরি করবো (journal screenshots pattern follow করবো)।
+### Implementation Plan
 
-### Step 3: Mind Journal Page — `/mind-journal`
-Trade Journal page এর **exact same layout pattern** follow করবো:
+**Step 1: Add `CHARTIMG_API_KEY` secret**
+- Value from your workflow: `pFgZxyqajb9h4SYtIdz3m27OiqrSTggt2LAC6ZJ3`
 
-- **Left Sidebar**: Date-wise grouping (Month → Date collapsible), search bar
-- **Middle Panel**: Selected date এর thoughts list (card format — text + image preview + timestamp)
-- **Right Panel / Detail View**: Full thought view with image zoom
-- **Top Bar**: "New Thought" button, filter options, export
+**Step 2: Create `ai_scan_results` table (migration)**
+- `id, scan_batch_id, timeframe, pair, base_currency, result (+1/-1/0), strength_label, scanned_at, created_at`
+- RLS: service_role insert/delete, authenticated select
 
-**New Thought Form:**
-- Text area (markdown support optional)
-- Image upload (drag & drop)
-- Tags input (optional — e.g., "setup", "lesson", "idea", "mistake")
-- Save button → Supabase insert + auto Telegram post
+**Step 3: Create Edge Function `ai-currency-scanner/index.ts`**
+- Input: `{ timeframe: "1H" | "15M" | "3M" }`
+- Loop through 28 unique pairs
+- For each pair:
+  1. Fetch chart from chart-img.com: `GET /v1/tradingview/advanced-chart?symbol=FX:{pair}&interval={tf}&studies=EMA:200&width=700&height=400`
+  2. Convert to base64 → send to OpenRouter GPT-4o vision with your exact prompt
+  3. Parse `RESULT: +1/-1/0`
+  4. Store in `ai_scan_results`
+- After all pairs done:
+  1. For each of 8 currencies, find its 7 related pairs
+  2. Apply Modified Number logic (flip sign if quote currency)
+  3. Sum → Final Score → Classify
+  4. Insert into `currency_strength` table
+  5. Send Telegram report (same format as your n8n workflow)
+- **Timeout handling**: Use chunked processing — process 4 pairs at a time with 2s delay between chunks
 
-### Step 4: Edge Function — `mind-telegram-sync/index.ts`
-**Telegram → DB (Polling)**:
-- pg_cron প্রতি মিনিটে call করবে
-- Designated group/chat থেকে `getUpdates` poll করবে
-- Photo + caption messages detect করবে
-- Photo download → `mind-images` bucket এ upload
-- Caption → `content` field, image URL → `image_url`
-- `source: 'telegram'`, `telegram_message_id` save করবে (duplicate prevention)
+**Step 4: Create `/ai-scanner` page**
+- Manual "Run Scan" button (select timeframe: 1H/15M/3M)
+- Real-time progress: pair being scanned, count done/total
+- Scan history with per-pair breakdown
+- Visual: pair name, result badge (+1/-1/0), strength label
 
-**DB → Telegram (Auto-post)**:
-- Web UI থেকে new thought save হলে, edge function call করবে
-- Text + image Telegram group এ send করবে with date
-- Format: `📝 Mind Journal — {date}\n\n{content}`
+**Step 5: Add route + nav**
+- Add to `App.tsx` routing
+- Add to nav config
 
-### Step 5: Settings Integration
-Settings page এ **Mind Journal Telegram Group ID** input field যোগ করবো `alert_settings` table এ `mind_journal_chat_id` column হিসেবে।
+### Requirements Checklist
 
-### Step 6: Navigation
-Nav config এ `/mind-journal` route যোগ করবো — Brain/Lightbulb icon সহ।
+| Item | Status |
+|------|--------|
+| `CHARTIMG_API_KEY` | ❌ Need to add as secret |
+| `OPENROUTER_API_KEY` | ✅ Exists |
+| `TELEGRAM_BOT_TOKEN` | ✅ Exists |
+| `currency_strength` table | ✅ Exists |
+| `ai_scan_results` table | ❌ Need to create |
+| pg_cron for auto-schedule | Can add after manual testing works |
 
-### Notification Format (Telegram Auto-post)
+### Files to Create/Edit
 
-```
-📝 Mind Journal — April 14, 2026
-
-{thought content}
-
-#MindJournal #TradingThoughts
-```
-
-### Files Changed
-| File | Change |
-|---|---|
-| Migration | `mind_thoughts` table + storage bucket |
-| `src/pages/MindJournal.tsx` | New page — journal-style layout |
-| `src/components/mind/ThoughtCard.tsx` | Individual thought card component |
-| `src/components/mind/ThoughtForm.tsx` | New thought entry form |
-| `src/components/mind/MindSidebar.tsx` | Date-wise sidebar (NotebookSidebar pattern) |
-| `src/components/mind/ThoughtDetail.tsx` | Full thought detail view |
-| `src/hooks/useMindThoughts.ts` | CRUD hook for mind_thoughts table |
-| `supabase/functions/mind-telegram-sync/index.ts` | Bi-directional Telegram sync |
-| `src/App.tsx` | Route যোগ |
-| `src/hooks/useNavConfig.ts` | Nav item যোগ |
-| `src/pages/Settings.tsx` | Mind Journal chat ID field |
-| Migration | `alert_settings` এ `mind_journal_chat_id` column |
-
-### Result
-- Web UI তে journal-style Mind Journal page পাবে — date-wise thoughts browse, search, filter
-- Telegram group এ photo+caption দিলে auto-store হবে
-- Web থেকে entry দিলে auto-post হবে Telegram group এ
-- Tags দিয়ে thoughts categorize করা যাবে
+| File | Action |
+|------|--------|
+| Migration | Create `ai_scan_results` table |
+| `supabase/functions/ai-currency-scanner/index.ts` | New — main scanner logic |
+| `src/pages/AiScanner.tsx` | New — scanner control UI |
+| `src/App.tsx` | Add route |
+| `src/hooks/useNavConfig.ts` | Add nav item |
 
