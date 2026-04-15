@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
           processed++;
           console.log(`[${processed}/${ALL_PAIRS.length}] Scanning ${pair}...`);
           
-          const { price, ema200 } = await fetchEmaData(pair, interval, twelvedataKey);
+          const { price, ema200 } = await fetchEmaData(pair, interval, supabase);
           const analysis = analyzePair(price, ema200);
           
           const pairKey = pair.replace("/", "");
