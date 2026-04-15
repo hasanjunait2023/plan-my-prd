@@ -201,11 +201,17 @@ Deno.serve(async (req) => {
       currencyScores[currency] = { score: totalScore, category };
     }
 
+    // Determine storage timeframe label based on session
+    let storageTimeframe = timeframe;
+    if (session === "New York") storageTimeframe = "New York";
+    else if (session === "Asian") storageTimeframe = "Asian";
+    else if (session === "London") storageTimeframe = "1H";
+
     const strengthRecords = Object.entries(currencyScores).map(([currency, { score, category }]) => ({
       currency,
       strength: score,
       category,
-      timeframe,
+      timeframe: storageTimeframe,
       recorded_at,
     }));
 
