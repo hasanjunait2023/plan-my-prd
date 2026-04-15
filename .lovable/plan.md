@@ -1,113 +1,70 @@
 
 
-## Plan: AI Currency Strength Scanner — Google Sheet থেকে Logic বুঝে Native Implementation
+## Plan: AI Scanner — Session-Based Tabs + Scheduled Runs + Full Filtering
 
-### Google Sheet Structure (তোমার uploaded file থেকে)
+### Goal
+AI Scanner page কে Currency Strength page এর মতো করে 3 টি session tab (London, New York, Asian), date picker, auto-refresh, এবং session-based data filtering যোগ করা।
 
-তোমার sheet এ **5টা sheet** আছে:
+### What Changes
 
-1. **Co-related Number (Page 1)** — Final summary: Currency, 1H Score, Classification, 15M Score, 3M Score
-2. **Trading Signal (Page 2)** — AI generated trade signals with Entry/TP/SL
-3. **Co-relation Currency (Page 3)** — 1H timeframe: Per-pair GPT score → "Modified Number" → per-currency "Final Co-relation" sum
-4. **Page 4 & 5** — Same structure for 15M and 3M timeframes
+**1. Session Tabs (London / New York / Asian)**
+- Timeframe dropdown (1H, 15M, 3M) সরিয়ে 3 টি session tab যোগ করা: **London**, **New York**, **Asian**
+- প্রতিটি tab তার নিজের session এর data দেখাবে (currency_strength table থেকে timeframe filter দিয়ে)
+- Active session auto-detect করবে (Currency Strength page এর `getDefaultTab()` logic reuse)
 
-### Aggregation Logic (Critical Finding)
+**2. Scheduled Scan per Session**
+- প্রতিটি session এর জন্য edge function এ separate timeframe mapping:
+  - Asian → `1H` scan
+  - London → `1H` scan  
+  - New York → `New York` scan
+- Edge function আপডেট করে session name accept করবে timeframe এর পাশাপাশি
+- `currency_strength` table এ session name সহ data store হবে
 
+**3. Date Picker + History Navigation**
+- Currency Strength page এর মতো Calendar date picker যোগ করা
+- Selected date অনুযায়ী data filter হবে
+
+**4. Refresh Button + Real-time Updates**
+- Manual refresh button
+- Supabase Realtime subscription দিয়ে নতুন data আসলে auto-update
+
+**5. Previous Session Comparison**
+- Currency Strength page এর মতো previous scan batch এর সাথে comparison (change arrows, ↑↓ badges)
+
+**6. Run Scan Button Retained**
+- Manual "Run Scan" button থাকবে, কিন্তু selected session অনুযায়ী scan চালাবে
+
+### Technical Details
+
+**Files to modify:**
+- `src/pages/AiScanner.tsx` — Full redesign:
+  - `Tabs` component দিয়ে London/New York/Asian tabs
+  - `Calendar` date picker (Popover এ)
+  - `useCurrencyStrength()` style query hook — session tab + date filter
+  - Previous session data fetch for comparison
+  - Realtime channel subscription
+  - `RefreshCw` button
+  - StrengthRow component as-is (already built)
+
+- `supabase/functions/ai-currency-scanner/index.ts` — Accept `session` parameter alongside `timeframe`, store with session-appropriate timeframe label
+
+**No database changes needed** — `currency_strength` table already has `timeframe` column that can store session names.
+
+### UI Layout (matching Currency Strength page)
 ```text
-Example: USD on 1H (Page 3)
-┌──────────────┬────────┬─────────────────┐
-│ Pair         │ Number │ Modified Number │
-├──────────────┼────────┼─────────────────┤
-│ FX:EURUSD    │  +1    │  -1  (inverted) │  ← USD is quote, so flip sign
-│ FX:GBPUSD    │  +1    │  -1  (inverted) │
-│ FX:USDJPY    │  -1    │  -1  (keep)     │  ← USD is base, keep sign
-│ FX:AUDUSD    │  +1    │  -1  (inverted) │
-│ FX:NZDUSD    │  +1    │  -1  (inverted) │
-│ FX:USDCAD    │  -1    │  -1  (keep)     │
-│ FX:USDCHF    │  -1    │  -1  (keep)     │
-│              │        │ Sum = -7        │  ← Final 1H Score for USD
-└──────────────┴────────┴─────────────────┘
-
-Rule: 
-- If currency is BASE (left side) → Modified Number = Number (keep)
-- If currency is QUOTE (right side) → Modified Number = -Number (flip)
-- Final Score = Sum of all Modified Numbers
+┌─────────────────────────────────────────┐
+│ FX Currency Strength                    │
+│ EMA(200) Pure Math — Updated: ...       │
+│                        [📅 Date] [🔄]  │
+├─────────────────────────────────────────┤
+│  [London] [New York] [Asian]  [▶ Scan] │
+├─────────────────────────────────────────┤
+│  Progress bar (when scanning)           │
+├─────────────────────────────────────────┤
+│  1  🇦🇺 AUD  ████████████  +7  ↑2  STRONG   │
+│  2  🇳🇿 NZD  ██████████    +5  ↑1  STRONG   │
+│  ...                                    │
+│  8  🇯🇵 JPY  ██            -5  ↓2  WEAK     │
+└─────────────────────────────────────────┘
 ```
-
-Classification:
-- **STRONG**: Score ≥ 5
-- **MID STRONG**: Score = 4  
-- **NEUTRAL**: Score -3 to 3
-- **MID WEAK**: Score = -4
-- **WEAK**: Score ≤ -5
-
-### 7 Pairs Per Currency (Fixed List)
-
-```text
-USD: EURUSD, GBPUSD, USDJPY, AUDUSD, NZDUSD, USDCAD, USDCHF
-EUR: EURUSD, EURGBP, EURJPY, EURAUD, EURNZD, EURCAD, EURCHF
-GBP: GBPUSD, EURGBP, GBPJPY, GBPAUD, GBPNZD, GBPCAD, GBPCHF
-JPY: USDJPY, EURJPY, GBPJPY, AUDJPY, NZDJPY, CADJPY, CHFJPY
-AUD: AUDUSD, EURAUD, GBPAUD, AUDJPY, AUDNZD, AUDCAD, AUDCHF
-NZD: NZDUSD, EURNZD, GBPNZD, NZDJPY, AUDNZD, NZDCAD, NZDCHF
-CAD: USDCAD, EURCAD, GBPCAD, CADJPY, AUDCAD, NZDCAD, CADCHF
-CHF: USDCHF, EURCHF, GBPCHF, CHFJPY, AUDCHF, NZDCHF, CADCHF
-```
-Total unique pairs = **28** (same as `TRADEABLE_PAIRS`)
-
-### Implementation Plan
-
-**Step 1: Add `CHARTIMG_API_KEY` secret**
-- Value from your workflow: `pFgZxyqajb9h4SYtIdz3m27OiqrSTggt2LAC6ZJ3`
-
-**Step 2: Create `ai_scan_results` table (migration)**
-- `id, scan_batch_id, timeframe, pair, base_currency, result (+1/-1/0), strength_label, scanned_at, created_at`
-- RLS: service_role insert/delete, authenticated select
-
-**Step 3: Create Edge Function `ai-currency-scanner/index.ts`**
-- Input: `{ timeframe: "1H" | "15M" | "3M" }`
-- Loop through 28 unique pairs
-- For each pair:
-  1. Fetch chart from chart-img.com: `GET /v1/tradingview/advanced-chart?symbol=FX:{pair}&interval={tf}&studies=EMA:200&width=700&height=400`
-  2. Convert to base64 → send to OpenRouter GPT-4o vision with your exact prompt
-  3. Parse `RESULT: +1/-1/0`
-  4. Store in `ai_scan_results`
-- After all pairs done:
-  1. For each of 8 currencies, find its 7 related pairs
-  2. Apply Modified Number logic (flip sign if quote currency)
-  3. Sum → Final Score → Classify
-  4. Insert into `currency_strength` table
-  5. Send Telegram report (same format as your n8n workflow)
-- **Timeout handling**: Use chunked processing — process 4 pairs at a time with 2s delay between chunks
-
-**Step 4: Create `/ai-scanner` page**
-- Manual "Run Scan" button (select timeframe: 1H/15M/3M)
-- Real-time progress: pair being scanned, count done/total
-- Scan history with per-pair breakdown
-- Visual: pair name, result badge (+1/-1/0), strength label
-
-**Step 5: Add route + nav**
-- Add to `App.tsx` routing
-- Add to nav config
-
-### Requirements Checklist
-
-| Item | Status |
-|------|--------|
-| `CHARTIMG_API_KEY` | ❌ Need to add as secret |
-| `OPENROUTER_API_KEY` | ✅ Exists |
-| `TELEGRAM_BOT_TOKEN` | ✅ Exists |
-| `currency_strength` table | ✅ Exists |
-| `ai_scan_results` table | ❌ Need to create |
-| pg_cron for auto-schedule | Can add after manual testing works |
-
-### Files to Create/Edit
-
-| File | Action |
-|------|--------|
-| Migration | Create `ai_scan_results` table |
-| `supabase/functions/ai-currency-scanner/index.ts` | New — main scanner logic |
-| `src/pages/AiScanner.tsx` | New — scanner control UI |
-| `src/App.tsx` | Add route |
-| `src/hooks/useNavConfig.ts` | Add nav item |
 
