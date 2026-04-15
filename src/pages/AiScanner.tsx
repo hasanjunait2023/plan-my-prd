@@ -87,8 +87,8 @@ function getDefaultTab(): string {
 function getTimeframeVariants(session: string): string[] {
   switch (session) {
     case 'New York': return ['New York', 'Strength On New York'];
-    case 'London': return ['1H'];
-    case 'Asian': return ['Asian', '1H_Asian'];
+    case 'London': return ['1H', 'London'];
+    case 'Asian': return ['Asian', '1H_Asian', '1H'];
     default: return ['1H'];
   }
 }
@@ -128,6 +128,7 @@ function useSessionStrength(session: string, selectedDate: Date) {
     queryFn: async () => {
       const dayStart = `${dateKey}T00:00:00.000Z`;
       const dayEnd = `${dateKey}T23:59:59.999Z`;
+      // Try selected date first
       const { data, error } = await supabase
         .from('currency_strength')
         .select('*')
@@ -136,41 +137,49 @@ function useSessionStrength(session: string, selectedDate: Date) {
         .lte('recorded_at', dayEnd)
         .order('recorded_at', { ascending: false });
       if (error) throw error;
-      if (!data || data.length === 0) return [];
-      const latestTime = data[0].recorded_at;
-      return data.filter(r => r.recorded_at === latestTime);
+      if (data && data.length > 0) {
+        const latestTime = data[0].recorded_at;
+        return data.filter(r => r.recorded_at === latestTime);
+      }
+      // Fallback: get the most recent data available (any date)
+      const { data: fallback, error: fbErr } = await supabase
+        .from('currency_strength')
+        .select('*')
+        .in('timeframe', timeframeVariants)
+        .order('recorded_at', { ascending: false })
+        .limit(50);
+      if (fbErr) throw fbErr;
+      if (!fallback || fallback.length === 0) return [];
+      const latestTime = fallback[0].recorded_at;
+      return fallback.filter(r => r.recorded_at === latestTime);
     },
     refetchInterval: 60000,
   });
 }
 
 function usePreviousSession(session: string, selectedDate: Date) {
-  const dateKey = format(selectedDate, 'yyyy-MM-dd');
-  const lookbackKey = format(subDays(selectedDate, 7), 'yyyy-MM-dd');
-
-  // Get the "opposite" session for comparison
-  const oppositeVariants = session === 'New York'
-    ? ['1H']
-    : session === 'London'
-      ? ['New York', 'Strength On New York']
-      : ['1H']; // Asian compares to London
+  const timeframeVariants = getTimeframeVariants(session);
 
   return useQuery({
-    queryKey: ['ai-scanner-prev', session, dateKey],
+    queryKey: ['ai-scanner-prev', session, format(selectedDate, 'yyyy-MM-dd')],
     queryFn: async () => {
-      const rangeStart = `${lookbackKey}T00:00:00.000Z`;
-      const rangeEnd = `${dateKey}T23:59:59.999Z`;
+      // Get all data for this session's timeframes, find the 2nd most recent batch
       const { data, error } = await supabase
         .from('currency_strength')
         .select('*')
-        .in('timeframe', oppositeVariants)
-        .gte('recorded_at', rangeStart)
-        .lte('recorded_at', rangeEnd)
-        .order('recorded_at', { ascending: false });
+        .in('timeframe', timeframeVariants)
+        .order('recorded_at', { ascending: false })
+        .limit(100);
       if (error) throw error;
       if (!data || data.length === 0) return [];
-      const latestTime = data[0].recorded_at;
-      return data.filter(r => r.recorded_at === latestTime);
+      
+      // Find unique recorded_at timestamps
+      const timestamps = [...new Set(data.map(r => r.recorded_at))];
+      if (timestamps.length < 2) return [];
+      
+      // Return the 2nd most recent batch
+      const prevTime = timestamps[1];
+      return data.filter(r => r.recorded_at === prevTime);
     },
   });
 }
