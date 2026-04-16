@@ -121,6 +121,20 @@ export function WatchlistPanel() {
           </button>
         </SheetHeader>
 
+        {/* Strength source banner */}
+        {snapshot.timeframe && (
+          <div className="px-3 py-1.5 border-b border-border/40 bg-muted/20 flex items-center gap-2 text-[10px] text-muted-foreground">
+            <Activity className="w-3 h-3 text-primary" />
+            <span>Strength from</span>
+            <span className="font-bold text-primary uppercase tracking-wider">{snapshot.timeframe}</span>
+            <span className="ml-auto">
+              {snapshot.recordedAt
+                ? new Date(snapshot.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : ''}
+            </span>
+          </div>
+        )}
+
         {/* Search */}
         <div className="px-3 pt-3 pb-2">
           <div className="relative">
