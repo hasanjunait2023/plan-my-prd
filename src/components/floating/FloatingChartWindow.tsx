@@ -250,11 +250,23 @@ export function FloatingChartWindow() {
         className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-card/80 backdrop-blur cursor-move select-none"
         style={{ touchAction: 'none' }}
       >
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <GripHorizontal className="w-4 h-4 text-muted-foreground shrink-0" />
-          <span className="text-lg">{base}{quote}</span>
-          <div className="min-w-0">
-            <div className="text-sm font-semibold truncate">{chartItem.symbol}</div>
+          <span className="text-lg shrink-0">{base}{quote}</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold truncate">{chartItem.symbol}</span>
+              {(baseEntry || quoteEntry) && (
+                <PairStrengthBadges
+                  base={baseCur}
+                  quote={quoteCur}
+                  baseTier={baseEntry?.tier}
+                  quoteTier={quoteEntry?.tier}
+                  baseStrength={baseEntry?.strength}
+                  quoteStrength={quoteEntry?.strength}
+                />
+              )}
+            </div>
             <div className="text-[10px] text-muted-foreground truncate">{chartItem.name}</div>
           </div>
         </div>
