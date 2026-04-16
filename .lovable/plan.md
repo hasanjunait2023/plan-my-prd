@@ -1,42 +1,65 @@
 
-# Chart Enhancement Plan
 
-## কী করব
+User wants: EMA 9, 15, 200 + RSI indicators + favorite timeframes (1m, 3m, 15m, 1H, 4H) on chart.
 
-### 1. Drawing tool hide (Floating Chart Window)
+Looking at current code:
+- `TradingViewWidget.tsx` and `AdvancedChartEmbed.tsx` already have EMA 9/15/200 + RSI in studies array
+- Both already have `favorites.intervals: ["1", "3", "15", "60", "240"]`
+
+So technically code-এ already আছে। কিন্তু user বলছে দেখা যাচ্ছে না — মানে TradingView free embed widget এ `favorites` API actually কাজ করে না (এটা শুধু advanced charting library তে available)।
+
+Real issue: free embed widget এ favorites bar render হয় না। Solution হলো custom timeframe pills add করা চার্টের উপরে overlay হিসেবে যেগুলো TradingView interval change trigger করবে।
+
+Plan:
+
+# Chart Indicators + Favorite Timeframes Plan
+
+## কী Build করব
+
+### 1. Indicators verify (already আছে)
+**Files**: `TradingViewWidget.tsx`, `AdvancedChartEmbed.tsx`
+- EMA 9, 15, 200 + RSI already studies array এ আছে
+- Confirm করে নিশ্চিত করব render হচ্ছে কিনা, missing থাকলে re-add করব
+
+### 2. Custom Timeframe Pills (favorites replacement)
+**সমস্যা**: TradingView free embed widget এ `favorites.intervals` actually visible bar render করে না — এটা শুধু paid charting library তে কাজ করে।
+
+**Solution**: Chart-এর top-এ একটা compact custom pill bar add করব:
+- Pills: `1m | 3m | 15m | 1H | 4H`
+- Active pill highlighted (`bg-primary/20 text-primary`)
+- Click করলে chart-এর interval change হবে (parent state update → widget re-render)
+
+### 3. ChartPanel Update
+**File**: `src/components/charts/ChartPanel.tsx`
+- বর্তমানে শুধু RSI toggle আছে
+- পাশে timeframe pills add করব (h-5, text-[9px], compact)
+- `onIntervalChange` prop already আছে — সেটা wire up করব
+
+### 4. FloatingChartWindow Update
 **File**: `src/components/floating/FloatingChartWindow.tsx`
-- দুটো `AdvancedChartEmbed` instance এ `hideSideToolbar={true}` prop pass করব
-- side toolbar = TradingView এর drawing tools (left side এর pencil/line/shape icons)
-
-### 2. RSI toggle button (ChartPanel)
-**Files**:
-- `src/components/charts/TradingViewWidget.tsx` — `showRsi` prop add করব (default `true`)
-- `src/components/charts/ChartPanel.tsx` — timeframe buttons এর পাশে compact RSI toggle button add করব
-- প্রতিটা panel এর নিজস্ব RSI on/off state থাকবে (local state in ChartPanel)
-
-**Logic**: `showRsi=false` হলে studies array থেকে RSI বাদ যাবে, শুধু EMA 9/15/200 + Volume থাকবে।
-
-### 3. Top bar compact (ChartAnalysis)
-**File**: `src/pages/ChartAnalysis.tsx`
-- Top bar height: `h-6` → `h-5` (সব button)
-- Padding: `py-1` → `py-0.5`
-- Result: ~8-10px বেশি chart area
+- দুটো `AdvancedChartEmbed` instance-এর উপরে same timeframe pill bar add করব
+- প্রতিটার নিজস্ব interval state থাকবে (already আছে likely)
 
 ## Files Modified
 
 ```text
-EDIT: src/components/floating/FloatingChartWindow.tsx
-EDIT: src/components/charts/TradingViewWidget.tsx
 EDIT: src/components/charts/ChartPanel.tsx
-EDIT: src/pages/ChartAnalysis.tsx
+EDIT: src/components/floating/FloatingChartWindow.tsx
+VERIFY: src/components/charts/TradingViewWidget.tsx (EMA + RSI studies)
+VERIFY: src/components/charts/AdvancedChartEmbed.tsx (EMA + RSI studies)
 ```
 
 ## Design Notes
-- RSI toggle: h-5 height, 9px text "RSI"
-- Active = `bg-primary/20 text-primary`, inactive = muted
-- Mobile-first (428px viewport)
-- কোন business logic বা data flow change নেই
+- Pill bar: horizontal flex, gap-0.5, h-5
+- Each pill: `px-2 text-[10px] font-bold rounded`
+- Active = `bg-primary text-primary-foreground`
+- Inactive = `bg-muted/30 text-muted-foreground hover:bg-muted/50`
+- RSI toggle pill bar-এর ডানপাশে থাকবে
+- Mobile-first (428px viewport) — single row, no wrap
 
 ## যা change হবে না
-- Currency strength, bias calculator, pair suggestions touch হবে না
-- ChartAnalysis এর drawing tool already hidden আছে — সেটাই থাকবে
+- Indicator config (EMA periods, RSI defaults)
+- Volume overlay setup
+- Drawing tools hidden state
+- Chart business logic
+
