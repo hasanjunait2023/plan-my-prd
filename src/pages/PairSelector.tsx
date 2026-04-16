@@ -513,13 +513,21 @@ function DivergenceAlerts({ pairs }: { pairs: DivergencePair[] }) {
 }
 
 // ====================================================================
-// PREMIUM PAIR CARD — Simplified
+// PREMIUM PAIR CARD — Simplified with timeframe selector
 // ====================================================================
+const TIMEFRAMES = [
+  { label: "3M", value: "3" },
+  { label: "15M", value: "15" },
+  { label: "1H", value: "60" },
+  { label: "4H", value: "240" },
+];
+
 function PremiumPairCard({ pair, isTop }: { pair: QualifiedPair; isTop: boolean }) {
   const base = pair.pair.substring(0, 3);
   const quote = pair.pair.length >= 7 ? pair.pair.substring(4, 7) : pair.pair.substring(3, 6);
   const isBuy = pair.direction === "BUY";
   const [expanded, setExpanded] = useState(false);
+  const [chartInterval, setChartInterval] = useState("15");
   const tvSymbol = `FX:${base}${quote}`;
 
   return (
@@ -582,12 +590,37 @@ function PremiumPairCard({ pair, isTop }: { pair: QualifiedPair; isTop: boolean 
             )}
           </div>
 
-          {/* Live TradingView Chart */}
+          {/* Timeframe Selector + Chart */}
           <div
             className="cursor-pointer"
             onClick={() => setExpanded(true)}
           >
-            <LiveAdvancedChart symbol={tvSymbol} height={450} />
+            {/* Timeframe strip */}
+            <div className="flex items-center justify-between px-2 py-1.5 bg-card/50 border-b border-border/20">
+              <span className="text-[10px] text-muted-foreground">TradingView Chart</span>
+              <div className="flex gap-0.5">
+                {TIMEFRAMES.map((tf) => (
+                  <button
+                    key={tf.value}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChartInterval(tf.value);
+                    }}
+                    className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                      chartInterval === tf.value
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {tf.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Chart - increased height for desktop */}
+            <div className="md:h-[550px] h-[350px]">
+              <LiveAdvancedChart symbol={tvSymbol} height="100%" interval={chartInterval} />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -603,12 +636,30 @@ function PremiumPairCard({ pair, isTop }: { pair: QualifiedPair; isTop: boolean 
                 {pair.direction}
               </Badge>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => setExpanded(false)}>
-              ✕
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Expanded dialog timeframe selector */}
+              <div className="flex gap-0.5 bg-secondary rounded-lg p-0.5">
+                {TIMEFRAMES.map((tf) => (
+                  <button
+                    key={tf.value}
+                    onClick={() => setChartInterval(tf.value)}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                      chartInterval === tf.value
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tf.label}
+                  </button>
+                ))}
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setExpanded(false)}>
+                ✕
+              </Button>
+            </div>
           </div>
           <div className="flex-1">
-            <LiveAdvancedChart symbol={tvSymbol} height="100%" />
+            <LiveAdvancedChart symbol={tvSymbol} height="100%" interval={chartInterval} />
           </div>
         </div>
       )}
