@@ -68,17 +68,25 @@ function AdvancedChartEmbedInner({
         { id: 'Volume@tv-basicstudies' },
       ],
       studies_overrides: {
-        // EMA — colors set per study (TradingView shares this key, so individual EMA colors
-        // need to be tweaked from the chart UI; we set the dominant 200 EMA look here).
+        // EMA 9 — red
+        'MAExp@tv-basicstudies.1.plot.color': '#ef4444',
+        'MAExp@tv-basicstudies.1.plot.linewidth': 1,
+        // EMA 15 — green
+        'MAExp@tv-basicstudies.2.plot.color': '#22c55e',
+        'MAExp@tv-basicstudies.2.plot.linewidth': 1,
+        // EMA 200 — purple, thicker
+        'MAExp@tv-basicstudies.3.plot.color': '#a855f7',
+        'MAExp@tv-basicstudies.3.plot.linewidth': 3,
+        // Fallback (older key shape) — sets the 200 EMA look as dominant
         'moving average exponential.plot.color': '#a855f7',
         'moving average exponential.plot.linewidth': 2,
-        // RSI — compact style
+        // RSI — compact
         'relative strength index.plot.color': '#eab308',
         'relative strength index.plot.linewidth': 1,
         'relative strength index.upper band.color': '#64748b',
         'relative strength index.lower band.color': '#64748b',
         'relative strength index.hlines background.color': 'rgba(100,116,139,0.05)',
-        // Volume — separate pane (default), red/green bars
+        // Volume — own pane (default behaviour for Volume study), colored bars
         'volume.volume.color.0': '#ef4444',
         'volume.volume.color.1': '#22c55e',
         'volume.volume ma.visible': false,
