@@ -28,6 +28,7 @@ function TradingViewWidgetInner({ symbol, interval, showRsi = true }: TradingVie
       { id: 'MAExp@tv-basicstudies', inputs: { length: 9 } },
       { id: 'MAExp@tv-basicstudies', inputs: { length: 15 } },
       { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
+      { id: 'Volume@tv-basicstudies' },
     ];
     if (showRsi) {
       studies.push({ id: 'RSI@tv-basicstudies' });
@@ -50,6 +51,7 @@ function TradingViewWidgetInner({ symbol, interval, showRsi = true }: TradingVie
       enable_publishing: false,
       withdateranges: false,
       hide_side_toolbar: true,
+      hide_volume: true,
       details: false,
       calendar: false,
       show_popup_button: true,
