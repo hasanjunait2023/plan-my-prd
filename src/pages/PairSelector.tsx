@@ -52,9 +52,6 @@ interface DivergencePair {
   divergenceStrength: string;
   score: number;
 }
-  currency_scores: Record<string, number>;
-  errors?: string[];
-}
 
 interface DbRecommendation {
   id: string;
