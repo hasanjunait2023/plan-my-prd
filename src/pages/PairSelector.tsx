@@ -27,6 +27,9 @@ interface QualifiedPair {
   atrStatus: string;
   reasoning: string;
   rank: number;
+  rsiValue?: number;
+  divergenceType?: string;
+  divergenceStrength?: string;
 }
 
 interface ScanResult {
@@ -35,9 +38,19 @@ interface ScanResult {
   session: string;
   pairs_analyzed: number;
   qualified: QualifiedPair[];
+  divergence_pairs?: DivergencePair[];
   skipped_count: number;
   currency_scores: Record<string, number>;
   errors?: string[];
+}
+
+interface DivergencePair {
+  pair: string;
+  direction: string;
+  rsiValue: number;
+  divergenceType: string;
+  divergenceStrength: string;
+  score: number;
 }
 
 interface DbRecommendation {
@@ -56,6 +69,9 @@ interface DbRecommendation {
   rank: number;
   scan_batch_id: string;
   scanned_at: string;
+  rsi_value?: number;
+  divergence_type?: string;
+  divergence_strength?: string;
 }
 
 const FLAGS: Record<string, string> = {
@@ -171,6 +187,22 @@ const PairSelector = () => {
         atrStatus: r.atr_status,
         reasoning: r.reasoning,
         rank: r.rank,
+        rsiValue: r.rsi_value,
+        divergenceType: r.divergence_type,
+        divergenceStrength: r.divergence_strength,
+      }));
+
+  // Divergence pairs: from live result or from DB
+  const displayDivergencePairs: DivergencePair[] = liveResult?.divergence_pairs || 
+    sessionData
+      .filter(r => r.divergence_type && r.divergence_type !== "NONE")
+      .map(r => ({
+        pair: r.pair,
+        direction: r.direction,
+        rsiValue: r.rsi_value || 50,
+        divergenceType: r.divergence_type || "NONE",
+        divergenceStrength: r.divergence_strength || "NONE",
+        score: r.total_score,
       }));
 
   const displaySkippedCount = liveResult ? liveResult.skipped_count : skippedDb.length;
@@ -322,6 +354,9 @@ const PairSelector = () => {
             ) : (
               <>
                 <PriorityBrief pairs={displayQualified} />
+                {displayDivergencePairs.length > 0 && (
+                  <DivergenceAlerts pairs={displayDivergencePairs} />
+                )}
                 {displayQualified.slice(0, 4).map((pair, idx) => (
                   <PremiumPairCard key={pair.pair} pair={pair} isTop={idx === 0} />
                 ))}
@@ -420,6 +455,53 @@ function PriorityBrief({ pairs }: { pairs: QualifiedPair[] }) {
                 </span>
                 <span className={`text-xs font-bold font-mono ${isBuy ? "text-emerald-400" : "text-red-400"}`}>
                   {p.score}<span className="text-muted-foreground text-[9px]">/105</span>
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+// ====================================================================
+// DIVERGENCE ALERTS — RSI Divergence section
+// ====================================================================
+function DivergenceAlerts({ pairs }: { pairs: DivergencePair[] }) {
+  return (
+    <Card className="border-border/50 bg-card/80 backdrop-blur-sm overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border/30 flex items-center gap-2">
+        <Activity className="h-3.5 w-3.5 text-amber-400" />
+        <span className="text-xs font-bold text-foreground tracking-wide uppercase">🔀 Divergence Alerts</span>
+        <span className="text-[10px] text-muted-foreground ml-auto">1H RSI</span>
+      </div>
+      <div className="px-4 py-2.5 space-y-1.5">
+        {pairs.map(p => {
+          const base = p.pair.substring(0, 3);
+          const quote = p.pair.length >= 6 ? p.pair.substring(3, 6) : p.pair.substring(3);
+          const isBullish = p.divergenceType === "BULLISH";
+          const isStrong = p.divergenceStrength === "STRONG";
+          return (
+            <div key={p.pair} className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${isBullish ? "bg-emerald-400" : "bg-red-400"}`} />
+                <span className="text-xs">{FLAGS[base]}{FLAGS[quote]}</span>
+                <span className="text-sm font-semibold text-foreground">{base}/{quote}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                  isBullish 
+                    ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" 
+                    : "bg-red-500/15 text-red-400 border border-red-500/20"
+                }`}>
+                  {p.divergenceType}
+                </span>
+                {isStrong && (
+                  <span className="text-[10px] font-bold text-amber-400">💪</span>
+                )}
+                <span className="text-xs font-mono text-muted-foreground">
+                  RSI {p.rsiValue?.toFixed(1)}
                 </span>
               </div>
             </div>

@@ -966,12 +966,15 @@ export type Database = {
           daily_structure: string
           differential: number
           direction: string
+          divergence_strength: string
+          divergence_type: string
           id: string
           is_qualified: boolean
           overextension_pct: number
           pair: string
           rank: number
           reasoning: string
+          rsi_value: number
           scan_batch_id: string
           scanned_at: string
           session: string
@@ -985,12 +988,15 @@ export type Database = {
           daily_structure?: string
           differential?: number
           direction?: string
+          divergence_strength?: string
+          divergence_type?: string
           id?: string
           is_qualified?: boolean
           overextension_pct?: number
           pair: string
           rank?: number
           reasoning?: string
+          rsi_value?: number
           scan_batch_id?: string
           scanned_at?: string
           session: string
@@ -1004,12 +1010,15 @@ export type Database = {
           daily_structure?: string
           differential?: number
           direction?: string
+          divergence_strength?: string
+          divergence_type?: string
           id?: string
           is_qualified?: boolean
           overextension_pct?: number
           pair?: string
           rank?: number
           reasoning?: string
+          rsi_value?: number
           scan_batch_id?: string
           scanned_at?: string
           session?: string
