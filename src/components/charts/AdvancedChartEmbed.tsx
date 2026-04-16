@@ -64,7 +64,6 @@ function AdvancedChartEmbedInner({
         { id: 'MAExp@tv-basicstudies', inputs: { length: 9 } },
         { id: 'MAExp@tv-basicstudies', inputs: { length: 15 } },
         { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
-        { id: 'Volume@tv-basicstudies' },
         { id: 'RSI@tv-basicstudies' },
       ],
       hide_top_toolbar: hideTopToolbar,
