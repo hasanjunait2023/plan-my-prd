@@ -65,7 +65,39 @@ function AdvancedChartEmbedInner({
         { id: 'MAExp@tv-basicstudies', inputs: { length: 15 } },
         { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
         { id: 'RSI@tv-basicstudies' },
+        { id: 'Volume@tv-basicstudies' },
       ],
+      studies_overrides: {
+        // EMA 9 — red
+        'MAExp@tv-basicstudies.1.plot.color': '#ef4444',
+        'MAExp@tv-basicstudies.1.plot.linewidth': 1,
+        // EMA 15 — green
+        'MAExp@tv-basicstudies.2.plot.color': '#22c55e',
+        'MAExp@tv-basicstudies.2.plot.linewidth': 1,
+        // EMA 200 — purple, thicker
+        'MAExp@tv-basicstudies.3.plot.color': '#a855f7',
+        'MAExp@tv-basicstudies.3.plot.linewidth': 3,
+        // Fallback (older key shape) — sets the 200 EMA look as dominant
+        'moving average exponential.plot.color': '#a855f7',
+        'moving average exponential.plot.linewidth': 2,
+        // RSI — compact
+        'relative strength index.plot.color': '#eab308',
+        'relative strength index.plot.linewidth': 1,
+        'relative strength index.upper band.color': '#64748b',
+        'relative strength index.lower band.color': '#64748b',
+        'relative strength index.hlines background.color': 'rgba(100,116,139,0.05)',
+        // Volume — own pane (default behaviour for Volume study), colored bars
+        'volume.volume.color.0': '#ef4444',
+        'volume.volume.color.1': '#22c55e',
+        'volume.volume ma.visible': false,
+      },
+      overrides: {
+        'paneProperties.legendProperties.showStudyTitles': true,
+        'paneProperties.legendProperties.showStudyValues': true,
+        'scalesProperties.showSeriesLastValue': true,
+        // Countdown to bar close on price scale
+        'scalesProperties.showSymbolLabels': false,
+      },
       hide_top_toolbar: hideTopToolbar,
       hide_legend: false,
       enable_publishing: false,
@@ -78,6 +110,10 @@ function AdvancedChartEmbedInner({
       popup_height: '800',
       allow_symbol_change: false,
       save_image: true,
+      enabled_features: ['countdown', 'study_templates'],
+      time_frames: [
+        { text: '1D', resolution: interval, description: '1 Day' },
+      ],
       width: '100%',
       height: '100%',
       support_host: 'https://www.tradingview.com',
