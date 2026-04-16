@@ -73,11 +73,6 @@ interface DbRecommendation {
   divergence_type?: string;
   divergence_strength?: string;
 }
-  is_qualified: boolean;
-  rank: number;
-  scan_batch_id: string;
-  scanned_at: string;
-}
 
 const FLAGS: Record<string, string> = {
   USD: "🇺🇸", EUR: "🇪🇺", GBP: "🇬🇧", JPY: "🇯🇵",
