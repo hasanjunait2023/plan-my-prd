@@ -5,6 +5,8 @@ import { useFloatingWatchlist } from '@/contexts/FloatingWatchlistContext';
 import { getPairFlags } from '@/lib/pairFlags';
 import { cn } from '@/lib/utils';
 import AdvancedChartEmbed from '@/components/charts/AdvancedChartEmbed';
+import { useCurrencyStrengths } from '@/hooks/useCurrencyStrengths';
+import { PairStrengthBadges } from './StrengthBadge';
 
 const STORAGE_KEY = 'chart-window-state';
 const TF_KEY = 'chart-window-tf';
