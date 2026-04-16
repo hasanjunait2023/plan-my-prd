@@ -314,15 +314,22 @@ Deno.serve(async (req) => {
       // Store pair data (without candles to keep size small)
       const partialStore: Record<string, any> = {};
       for (const [pair, d] of Object.entries(pairData)) {
+        // Calculate RSI divergence before storing
+        const closes = d.candles1h.map(c => c.close).reverse(); // chronological
+        const rsiValues = calculateRSI(closes, 14);
+        const divergence = detectDivergence(closes, rsiValues);
+
         partialStore[pair] = {
           price1h: d.price1h,
           ema200_1h: d.ema200_1h,
           price4h: d.price4h,
           ema200_4h: d.ema200_4h,
           overextPct: d.overextPct,
-          // Store ATR pre-calculated
           atr_current: calculateATR(d.candles1h.slice(0, 15), 14),
           atr_avg: d.candles1h.length >= 30 ? calculateATR(d.candles1h.slice(14, 182).slice(0, 169), 14) : calculateATR(d.candles1h.slice(0, 15), 14),
+          rsi_value: divergence.rsiValue,
+          divergence_type: divergence.type,
+          divergence_strength: divergence.strength,
         };
       }
       
@@ -372,6 +379,10 @@ Deno.serve(async (req) => {
       
       // Add second batch data
       for (const [pair, d] of Object.entries(pairData)) {
+        const closes = d.candles1h.map(c => c.close).reverse();
+        const rsiValues = calculateRSI(closes, 14);
+        const divergence = detectDivergence(closes, rsiValues);
+
         mergedPairData[pair] = {
           price1h: d.price1h,
           ema200_1h: d.ema200_1h,
@@ -380,6 +391,9 @@ Deno.serve(async (req) => {
           overextPct: d.overextPct,
           atr_current: calculateATR(d.candles1h.slice(0, 15), 14),
           atr_avg: d.candles1h.length >= 30 ? calculateATR(d.candles1h.slice(14, 182).slice(0, 169), 14) : calculateATR(d.candles1h.slice(0, 15), 14),
+          rsi_value: divergence.rsiValue,
+          divergence_type: divergence.type,
+          divergence_strength: divergence.strength,
         };
       }
 
@@ -390,6 +404,10 @@ Deno.serve(async (req) => {
     } else {
       // "all" batch — just use current pairData directly
       for (const [pair, d] of Object.entries(pairData)) {
+        const closes = d.candles1h.map(c => c.close).reverse();
+        const rsiValues = calculateRSI(closes, 14);
+        const divergence = detectDivergence(closes, rsiValues);
+
         mergedPairData[pair] = {
           price1h: d.price1h,
           ema200_1h: d.ema200_1h,
@@ -398,6 +416,9 @@ Deno.serve(async (req) => {
           overextPct: d.overextPct,
           atr_current: calculateATR(d.candles1h.slice(0, 15), 14),
           atr_avg: d.candles1h.length >= 30 ? calculateATR(d.candles1h.slice(14, 182).slice(0, 169), 14) : calculateATR(d.candles1h.slice(0, 15), 14),
+          rsi_value: divergence.rsiValue,
+          divergence_type: divergence.type,
+          divergence_strength: divergence.strength,
         };
       }
     }
