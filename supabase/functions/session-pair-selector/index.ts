@@ -623,6 +623,9 @@ Deno.serve(async (req) => {
       reasoning: r.reasoning,
       is_qualified: r.isQualified,
       rank: r.isQualified ? (r as any).rank : 0,
+      rsi_value: r.rsiValue,
+      divergence_type: r.divergenceType,
+      divergence_strength: r.divergenceStrength,
     }));
 
     await supabase.from("session_pair_recommendations").insert(dbRecords);
