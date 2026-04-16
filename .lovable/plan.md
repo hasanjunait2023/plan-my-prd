@@ -1,78 +1,45 @@
 
 
-## Plan: Session Pair Selector — 6-Layer Analysis System + Testing Page
+# Pair Selector UI Redesign — Premium & Simplified
 
-### Overview
-একটি নতুন Edge Function + একটি নতুন page তৈরি করা হবে যেটা প্রতি session এ 6-layer analysis চালিয়ে Top 3-4 pair BUY/SELL bias সহ recommend করবে। Page থেকে manually trigger করে test করা যাবে।
+## Problem
+বর্তমান PairSelector page এ `PremiumPairCard` অনেক complicated — score ring, 6-layer breakdown bar, layer legend, metric boxes, status badges, আর mini symbol overview chart (যেটা ছোট এবং non-interactive)। অনেক visual noise।
 
-### API Credit Budget Check
-- Current capacity: 5 keys × 800 = **4,000 calls/day**
-- All keys currently exhausted (calls_today = 800 each)
-- New function per run: 28 pairs × 2 timeframes (1H + 4H) = **56 calls**
-- 3 sessions/day = **168 calls/day** — manageable
+## Design Direction
+Clean, premium, card-per-pair layout। প্রতিটি qualified pair এর জন্য:
+1. **Header strip** — Flag + Pair name + BUY/SELL badge + Score (simple text, no ring)
+2. **Live TradingView Advanced Chart** — 15-minute interval, EMA 9/15/200 + RSI (same config as `PairSuggestions > InlineChart`), height **450px** (mobile-friendly বড় chart)
+3. **Expand button** — Full-screen dialog (already exists pattern)
 
----
+সব layer breakdown bar, metric boxes (Gap/ADR/Ext), status badges — **remove**। শুধু pair name, direction, score, আর chart।
 
-### Part 1: Database — New Table `session_pair_recommendations`
+## Changes
 
-```sql
-pair TEXT, session TEXT, direction TEXT (BUY/SELL),
-total_score INTEGER, differential INTEGER,
-bias_4h TEXT, overextension_pct NUMERIC,
-daily_structure TEXT, adr_remaining NUMERIC,
-atr_status TEXT, reasoning TEXT,
-is_qualified BOOLEAN, rank INTEGER,
-scanned_at TIMESTAMPTZ
-```
+### File: `src/pages/PairSelector.tsx`
 
-### Part 2: Edge Function — `session-pair-selector`
+1. **Replace `PremiumPairCard`** with a simplified component:
+   - Header: `🇬🇧🇯🇵 GBP/JPY` + `BUY` badge (green/red) + score as simple text `85/105`
+   - Below header: Full TradingView Advanced Chart widget (15min, EMA 9/15/200 + RSI), height 450px
+   - Expand icon to open full-screen dialog with the same chart
+   
+2. **Remove** these sub-components (no longer needed):
+   - `MetricBox`
+   - `LayerSegment`
+   - `StatusBadge`
+   - `parseLayerScores`
+   - Score ring SVG
+   - 6-layer breakdown bar + legend
+   - Status badges row
 
-একটি single function যা:
+3. **Replace `MiniTradingViewChart`** with the full Advanced Chart widget (reuse the same pattern from `PairSuggestions > InlineChart` — `embed-widget-advanced-chart.js` with EMA 9, 15, 200 + RSI studies, interval `"15"`)
 
-1. **Input**: `{ session: "Asian" | "London" | "New York" }`
-2. **1H + 4H data fetch**: 28 pairs × 2 TF = 56 API calls (reusing `fetchWithRotation`)
-3. **6 Layers compute**:
-   - Layer 1-2: Currency strength score + pair differential (from 1H EMA200)
-   - Layer 3: 4H EMA200 bias alignment check
-   - Layer 4: Overextension check (price vs 1H EMA200 distance %)
-   - Layer 5: Daily structure (uses existing `adr_data` table's today_high/today_low)
-   - Layer 6: ADR remaining (from `adr_data`) + ATR (calculated from 1H candles)
-4. **Scoring**: Weighted matrix (max 105 pts), threshold 70 pts
-5. **Store** results in `session_pair_recommendations`
-6. **Optional Telegram** send with formatted message
+4. Chart height: **450px** inline, full viewport in expanded dialog
 
-### Part 3: New Page — `/pair-selector`
+### No changes to:
+- Hero header, session tabs, run button, progress bar, currency strength strip, skipped tab, empty states — these stay as-is
 
-**File**: `src/pages/PairSelector.tsx`
-
-UI components:
-- **Session selector** (Asian / London / New York dropdown)
-- **Run Analysis** button — triggers edge function
-- **Results cards** — Top 3-4 qualified pairs with:
-  - Pair name + BUY/SELL badge
-  - Score breakdown (6 layers visual)
-  - Currency strength differential bar
-  - ADR remaining gauge
-- **Skipped pairs** section — কেন skip হলো সেটা দেখাবে
-- **History** — previous scan results দেখার option
-- Auto-refresh / loading state with progress
-
-### Part 4: Route + Navigation
-
-- `App.tsx` এ `/pair-selector` route যোগ
-- Navigation এ "Pair Selector" link যোগ
-
----
-
-### Execution Time Estimate
-- 56 API calls × ~10s gap between chunks of 2 = **~5 minutes per run**
-- UI তে progress bar দেখাবে
-
-### File Changes Summary
-| File | Action |
-|------|--------|
-| Migration: `session_pair_recommendations` table | Create |
-| `supabase/functions/session-pair-selector/index.ts` | Create |
-| `src/pages/PairSelector.tsx` | Create |
-| `src/App.tsx` | Add route |
+## Technical Notes
+- TradingView Advanced Chart widget config identical to `PairSuggestions > InlineChart` but with `interval: "15"` instead of `"60"`
+- The expand dialog reuses the existing `Dialog/DialogContent` pattern
+- Removing ~150 lines of complex sub-components, replacing with ~80 lines of clean card + chart
 
