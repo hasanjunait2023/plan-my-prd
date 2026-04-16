@@ -272,20 +272,6 @@ export function FloatingChartWindow() {
             <ArrowLeft className="w-3.5 h-3.5" />
             Back
           </button>
-          {TIMEFRAMES.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setTf(t.value)}
-              className={cn(
-                'px-2 py-1 rounded text-[11px] font-medium transition border',
-                tf === t.value
-                  ? 'bg-primary/15 text-primary border-primary/30'
-                  : 'bg-transparent text-muted-foreground border-transparent hover:bg-muted/40'
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
           <button
             onClick={closeChart}
             className="ml-1 p-1.5 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground"
@@ -294,6 +280,18 @@ export function FloatingChartWindow() {
             <X className="w-4 h-4" />
           </button>
         </div>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 min-h-0">
+        <AdvancedChartEmbed
+          symbol={chartItem.tvSymbol}
+          interval={tf}
+          height="100%"
+          hideTopToolbar={false}
+          hideSideToolbar={true}
+        />
+      </div>
       </div>
 
       {/* Range / Zoom selector */}
