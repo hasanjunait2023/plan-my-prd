@@ -139,6 +139,10 @@ export function FloatingChartWindow() {
   if (!chartItem) return null;
 
   const { base, quote } = getPairFlags(chartItem.symbol);
+  const baseCur = chartItem.symbol.slice(0, 3);
+  const quoteCur = chartItem.symbol.slice(3, 6);
+  const baseEntry = strengths[baseCur];
+  const quoteEntry = strengths[quoteCur];
 
   // Mobile: full screen overlay
   if (isMobile) {
@@ -150,9 +154,21 @@ export function FloatingChartWindow() {
         <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-card/60">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-xl">{base}{quote}</span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold truncate">{chartItem.symbol}</div>
-              <div className="text-[10px] text-muted-foreground truncate">{chartItem.name}</div>
+              <div className="flex items-center gap-2 mt-0.5">
+                {(baseEntry || quoteEntry) && (
+                  <PairStrengthBadges
+                    base={baseCur}
+                    quote={quoteCur}
+                    baseTier={baseEntry?.tier}
+                    quoteTier={quoteEntry?.tier}
+                    baseStrength={baseEntry?.strength}
+                    quoteStrength={quoteEntry?.strength}
+                    size="sm"
+                  />
+                )}
+              </div>
             </div>
           </div>
           <button
