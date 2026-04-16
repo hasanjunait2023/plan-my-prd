@@ -5,7 +5,7 @@ import { useFloatingWatchlist } from '@/contexts/FloatingWatchlistContext';
 import { getPairFlags } from '@/lib/pairFlags';
 import { cn } from '@/lib/utils';
 import AdvancedChartEmbed from '@/components/charts/AdvancedChartEmbed';
-import { useCurrencyStrengths } from '@/hooks/useCurrencyStrengths';
+import { useStrengthSnapshot } from '@/hooks/useCurrencyStrengths';
 import { PairStrengthBadges } from './StrengthBadge';
 
 const STORAGE_KEY = 'chart-window-state';
@@ -64,7 +64,8 @@ function loadTf(): string {
 export function FloatingChartWindow() {
   const isMobile = useIsMobile();
   const { chartItem, closeChart } = useFloatingWatchlist();
-  const strengths = useCurrencyStrengths();
+  const snapshot = useStrengthSnapshot();
+  const strengths = snapshot.data;
   const [state, setState] = useState<WinState>(() => {
     const saved = loadState();
     if (saved) return saved;
