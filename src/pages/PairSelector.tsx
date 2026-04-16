@@ -320,9 +320,12 @@ const PairSelector = () => {
             {displayQualified.length === 0 ? (
               <EmptyQualified />
             ) : (
-              displayQualified.slice(0, 4).map((pair, idx) => (
-                <PremiumPairCard key={pair.pair} pair={pair} isTop={idx === 0} />
-              ))
+              <>
+                <PriorityBrief pairs={displayQualified} />
+                {displayQualified.slice(0, 4).map((pair, idx) => (
+                  <PremiumPairCard key={pair.pair} pair={pair} isTop={idx === 0} />
+                ))}
+              </>
             )}
           </TabsContent>
 
