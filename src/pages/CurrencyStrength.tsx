@@ -419,6 +419,7 @@ export default function CurrencyStrength() {
           >
             Reset Layout
           </Button>
+          </div>
         </div>
       </div>
 
