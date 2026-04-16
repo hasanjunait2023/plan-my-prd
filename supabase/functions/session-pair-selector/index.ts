@@ -590,6 +590,9 @@ Deno.serve(async (req) => {
         atrStatus,
         reasoning: reasons.join(" | "),
         isQualified,
+        rsiValue: d.rsi_value || 50,
+        divergenceType: d.divergence_type || "NONE",
+        divergenceStrength: d.divergence_strength || "NONE",
       });
     }
 
