@@ -29,6 +29,16 @@ const TIMEFRAMES: { label: string; value: string }[] = [
   { label: 'D', value: 'D' },
 ];
 
+const RANGES: { label: string; value: string }[] = [
+  { label: 'Auto', value: 'AUTO' },
+  { label: '1H', value: '60M' },
+  { label: '4H', value: '4H' },
+  { label: '1D', value: '1D' },
+  { label: '1W', value: '5D' },
+  { label: '1M', value: '1M' },
+];
+
+
 function loadState(): WinState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -66,6 +76,7 @@ export function FloatingChartWindow() {
     return { x: 40, y: 40, w: DEFAULT_W, h: DEFAULT_H };
   });
   const [tf, setTf] = useState<string>(loadTf);
+  const [rangeOverride, setRangeOverride] = useState<string>('AUTO');
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; orig: WinState }>({ startX: 0, startY: 0, orig: state });
@@ -168,11 +179,31 @@ export function FloatingChartWindow() {
           ))}
         </div>
 
+        {/* Range / Zoom selector */}
+        <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/40 overflow-x-auto no-scrollbar">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-1 shrink-0">Zoom</span>
+          {RANGES.map((r) => (
+            <button
+              key={r.value}
+              onClick={() => setRangeOverride(r.value)}
+              className={cn(
+                'px-2.5 py-1 rounded text-[11px] font-medium whitespace-nowrap transition border shrink-0',
+                rangeOverride === r.value
+                  ? 'bg-primary/15 text-primary border-primary/30'
+                  : 'bg-transparent text-muted-foreground border-border/40 hover:text-foreground'
+              )}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex-1 min-h-0">
           <AdvancedChartEmbed
             symbol={chartItem.tvSymbol}
             interval={tf}
             height="100%"
+            range={rangeOverride === 'AUTO' ? undefined : rangeOverride}
           />
         </div>
       </div>
@@ -234,12 +265,32 @@ export function FloatingChartWindow() {
         </div>
       </div>
 
+      {/* Range / Zoom selector */}
+      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/40 bg-card/40 overflow-x-auto no-scrollbar">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-1 shrink-0">Zoom</span>
+        {RANGES.map((r) => (
+          <button
+            key={r.value}
+            onClick={() => setRangeOverride(r.value)}
+            className={cn(
+              'px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap transition border shrink-0',
+              rangeOverride === r.value
+                ? 'bg-primary/15 text-primary border-primary/30'
+                : 'bg-transparent text-muted-foreground border-border/40 hover:text-foreground'
+            )}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
       {/* Body */}
       <div className="flex-1 min-h-0">
         <AdvancedChartEmbed
           symbol={chartItem.tvSymbol}
           interval={tf}
           height="100%"
+          range={rangeOverride === 'AUTO' ? undefined : rangeOverride}
         />
       </div>
 
