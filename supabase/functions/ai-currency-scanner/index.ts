@@ -143,12 +143,11 @@ Deno.serve(async (req) => {
     const errors: string[] = [];
     let processed = 0;
 
-    // Process 2 pairs at a time with 20s delay between chunks
-    // With 5 keys × 8 req/min = 40/min capacity, but fetchWithRotation
-    // tries keys sequentially so parallel requests can exhaust same key.
-    // 2 pairs/chunk + 20s gap = ~6 pairs/min, safe for all keys.
-    const CHUNK_SIZE = 2;
-    const CHUNK_DELAY_MS = 20000;
+    // Process 1 pair at a time with 1.5s delay between each
+    // fetchWithRotation handles key selection, 5 keys × 8 req/min = 40/min capacity
+    // 28 pairs × ~2s each = ~56s, fits within edge function timeout
+    const CHUNK_SIZE = 1;
+    const CHUNK_DELAY_MS = 1500;
     
     for (let i = 0; i < ALL_PAIRS.length; i += CHUNK_SIZE) {
       const chunk = ALL_PAIRS.slice(i, i + CHUNK_SIZE);
