@@ -5,6 +5,7 @@ import { useFloatingWatchlist } from '@/contexts/FloatingWatchlistContext';
 import { getPairFlags } from '@/lib/pairFlags';
 import { cn } from '@/lib/utils';
 import AdvancedChartEmbed from '@/components/charts/AdvancedChartEmbed';
+import TimeframePills from '@/components/charts/TimeframePills';
 import { useStrengthSnapshot } from '@/hooks/useCurrencyStrengths';
 import { PairStrengthBadges } from './StrengthBadge';
 
