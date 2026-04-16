@@ -311,6 +311,9 @@ const PairSelector = () => {
             <TabsTrigger value="skipped" className="flex-1 gap-1.5 text-xs">
               <XCircle className="h-3 w-3" /> Skipped ({displaySkippedCount})
             </TabsTrigger>
+            <TabsTrigger value="history" className="flex-1 gap-1.5 text-xs">
+              <History className="h-3 w-3" /> History
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="results" className="mt-3 space-y-3">
@@ -331,6 +334,10 @@ const PairSelector = () => {
                 <SkippedPairRow key={r.id} rec={r} />
               ))
             )}
+          </TabsContent>
+
+          <TabsContent value="history" className="mt-3">
+            <ScanHistoryPanel />
           </TabsContent>
         </Tabs>
       )}
