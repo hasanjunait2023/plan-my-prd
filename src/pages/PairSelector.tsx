@@ -8,8 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Play, TrendingUp, TrendingDown, Clock, AlertTriangle,
-  XCircle, Target,
+  Play, Clock, AlertTriangle,
+  XCircle, Target, Shield, Zap, Gauge, Layers,
   ArrowUpRight, ArrowDownRight, Activity,
   RefreshCw,
 } from "lucide-react";
