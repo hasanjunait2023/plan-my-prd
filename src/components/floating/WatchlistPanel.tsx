@@ -12,8 +12,9 @@ import {
 } from '@/lib/watchlistData';
 import { getPairFlags } from '@/lib/pairFlags';
 import { cn } from '@/lib/utils';
-import { useCurrencyStrengths } from '@/hooks/useCurrencyStrengths';
+import { useStrengthSnapshot } from '@/hooks/useCurrencyStrengths';
 import { PairStrengthBadges } from './StrengthBadge';
+import { Activity } from 'lucide-react';
 
 type TabKey = WatchlistCategory | 'ALL';
 
@@ -70,7 +71,8 @@ export function WatchlistPanel() {
   const { watchlistOpen, closeWatchlist, openChart } = useFloatingWatchlist();
   const [tab, setTab] = useState<TabKey>('ALL');
   const [search, setSearch] = useState('');
-  const strengths = useCurrencyStrengths();
+  const snapshot = useStrengthSnapshot();
+  const strengths = snapshot.data;
 
   // Filter items
   const items = useMemo(() => {
