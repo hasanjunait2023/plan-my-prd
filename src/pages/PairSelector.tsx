@@ -691,9 +691,19 @@ function LiveAdvancedChart({ symbol, height, interval }: { symbol: string; heigh
     script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
     script.async = true;
     script.type = "text/javascript";
+    // Map interval to a close-view range (1-2 days for lower TFs)
+    const rangeMap: Record<string, string> = {
+      "3": "1D",
+      "15": "2D",
+      "60": "5D",
+      "240": "1M",
+    };
+    const range = rangeMap[interval] || "5D";
+
     script.innerHTML = JSON.stringify({
       symbol,
       interval,
+      range,
       theme: "dark",
       style: "1",
       locale: "en",
