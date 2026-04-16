@@ -297,7 +297,16 @@ export function FloatingChartWindow() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition mr-1"
+            aria-label="Back to watchlist"
+            title="Back to watchlist"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Back
+          </button>
           {TIMEFRAMES.map((t) => (
             <button
               key={t.value}
