@@ -59,12 +59,11 @@ function calculateATR(candles: { high: number; low: number; close: number }[], p
     );
     trs.push(tr);
   }
-  // Simple ATR = average of last `period` TRs
   const recentTrs = trs.slice(-period);
   return recentTrs.reduce((s, v) => s + v, 0) / recentTrs.length;
 }
 
-// Fetch time_series with rotation, returns full candle data
+// Fetch time_series with rotation
 async function fetchCandles(
   pair: string, interval: string, outputsize: number, supabase: any
 ): Promise<any[]> {
@@ -87,6 +86,37 @@ function getModifiedNumber(currency: string, pair: string, result: number): numb
   return currency === base ? result : -result;
 }
 
+// ====== Temporary storage table for batch data ======
+// We use a JSON approach: store partial results in the DB between batch calls
+async function storePartialData(supabase: any, scanBatchId: string, pairData: Record<string, any>) {
+  // Store as alert_log with special type for temp data
+  await supabase.from("alert_log").insert({
+    alert_type: "pair_selector_partial",
+    pair: scanBatchId,
+    message: "partial_batch_data",
+    metadata: pairData,
+  });
+}
+
+async function loadPartialData(supabase: any, scanBatchId: string): Promise<Record<string, any>> {
+  const { data } = await supabase
+    .from("alert_log")
+    .select("metadata")
+    .eq("alert_type", "pair_selector_partial")
+    .eq("pair", scanBatchId)
+    .single();
+  
+  return data?.metadata || {};
+}
+
+async function cleanupPartialData(supabase: any, scanBatchId: string) {
+  await supabase
+    .from("alert_log")
+    .delete()
+    .eq("alert_type", "pair_selector_partial")
+    .eq("pair", scanBatchId);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -101,14 +131,21 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const session: string = body.session || "London";
     const sendTelegram: boolean = body.sendTelegram !== false;
+    const batch: string = body.batch || "all"; // "first", "second", or "all"
+    const scanBatchIdInput: string = body.scan_batch_id || null;
 
-    console.log(`🎯 Starting 6-Layer Analysis for ${session} session...`);
+    const scanBatchId = scanBatchIdInput || crypto.randomUUID();
 
-    const scanBatchId = crypto.randomUUID();
+    console.log(`🎯 Pair Selector [${batch}] for ${session} session (batch: ${scanBatchId})...`);
+
+    // Determine which pairs to scan
+    let pairsToScan = ALL_PAIRS;
+    if (batch === "first") pairsToScan = ALL_PAIRS.slice(0, 14);
+    else if (batch === "second") pairsToScan = ALL_PAIRS.slice(14);
+
     const errors: string[] = [];
     
     // ====== DATA COLLECTION ======
-    // Store: pair -> { price1h, ema200_1h, ema200_4h, price4h, candles1h }
     interface PairData {
       price1h: number;
       ema200_1h: number;
@@ -121,54 +158,147 @@ Deno.serve(async (req) => {
     const pairData: Record<string, PairData> = {};
     let processed = 0;
 
-    // Process pairs: fetch 1H and 4H data
-    const CHUNK_SIZE = 2;
-    const CHUNK_DELAY_MS = 20000;
+    // Reduced delays to fit within edge function timeout
+    const CHUNK_DELAY_MS = 1500;
 
-    for (let i = 0; i < ALL_PAIRS.length; i += CHUNK_SIZE) {
-      const chunk = ALL_PAIRS.slice(i, i + CHUNK_SIZE);
+    for (let i = 0; i < pairsToScan.length; i++) {
+      const pair = pairsToScan[i];
+      processed++;
+      console.log(`[${processed}/${pairsToScan.length}] Fetching ${pair}...`);
+      
+      try {
+        // Fetch 1H data (201 candles for EMA200 + ATR)
+        const candles1h = await fetchCandles(pair, "1h", 201, supabase);
+        const closes1h = candles1h.map((v: any) => parseFloat(v.close)).reverse();
+        const price1h = parseFloat(candles1h[0].close);
+        const ema200_1h = calculateEMA(closes1h, 200);
 
-      for (const pair of chunk) {
-        processed++;
-        console.log(`[${processed}/${ALL_PAIRS.length}] Fetching ${pair}...`);
-        
-        try {
-          // Fetch 1H data (201 candles for EMA200 + ATR)
-          const candles1h = await fetchCandles(pair, "1h", 201, supabase);
-          const closes1h = candles1h.map((v: any) => parseFloat(v.close)).reverse();
-          const price1h = parseFloat(candles1h[0].close);
-          const ema200_1h = calculateEMA(closes1h, 200);
+        // Small delay between 1H and 4H fetch
+        await new Promise(r => setTimeout(r, CHUNK_DELAY_MS));
 
-          // Small delay between 1H and 4H fetch
-          await new Promise(r => setTimeout(r, 2000));
+        // Fetch 4H data (201 candles for EMA200)
+        const candles4h = await fetchCandles(pair, "4h", 201, supabase);
+        const closes4h = candles4h.map((v: any) => parseFloat(v.close)).reverse();
+        const price4h = parseFloat(candles4h[0].close);
+        const ema200_4h = calculateEMA(closes4h, 200);
 
-          // Fetch 4H data (201 candles for EMA200)
-          const candles4h = await fetchCandles(pair, "4h", 201, supabase);
-          const closes4h = candles4h.map((v: any) => parseFloat(v.close)).reverse();
-          const price4h = parseFloat(candles4h[0].close);
-          const ema200_4h = calculateEMA(closes4h, 200);
+        // Overextension check
+        const overextPct = Math.abs((price1h - ema200_1h) / ema200_1h) * 100;
 
-          // Overextension check
-          const overextPct = Math.abs((price1h - ema200_1h) / ema200_1h) * 100;
-
-          pairData[pair] = {
-            price1h, ema200_1h,
-            price4h, ema200_4h,
-            candles1h: candles1h.map((v: any) => ({
-              high: parseFloat(v.high),
-              low: parseFloat(v.low),
-              close: parseFloat(v.close),
-            })),
-            overextPct,
-          };
-        } catch (err) {
-          console.error(`Error fetching ${pair}:`, err.message);
-          errors.push(`${pair}: ${err.message}`);
-        }
+        pairData[pair] = {
+          price1h, ema200_1h,
+          price4h, ema200_4h,
+          candles1h: candles1h.map((v: any) => ({
+            high: parseFloat(v.high),
+            low: parseFloat(v.low),
+            close: parseFloat(v.close),
+          })),
+          overextPct,
+        };
+      } catch (err) {
+        console.error(`Error fetching ${pair}:`, err.message);
+        errors.push(`${pair}: ${err.message}`);
       }
 
-      if (i + CHUNK_SIZE < ALL_PAIRS.length) {
+      // Delay between pairs
+      if (i < pairsToScan.length - 1) {
         await new Promise(r => setTimeout(r, CHUNK_DELAY_MS));
+      }
+    }
+
+    // ====== BATCH HANDLING ======
+    if (batch === "first") {
+      // Store partial data and self-invoke for second batch
+      console.log(`✅ First batch done: ${processed} pairs. Storing and invoking second batch...`);
+      
+      // Store pair data (without candles to keep size small)
+      const partialStore: Record<string, any> = {};
+      for (const [pair, d] of Object.entries(pairData)) {
+        partialStore[pair] = {
+          price1h: d.price1h,
+          ema200_1h: d.ema200_1h,
+          price4h: d.price4h,
+          ema200_4h: d.ema200_4h,
+          overextPct: d.overextPct,
+          // Store ATR pre-calculated
+          atr_current: calculateATR(d.candles1h.slice(0, 15), 14),
+          atr_avg: d.candles1h.length >= 30 ? calculateATR(d.candles1h.slice(14, 182).slice(0, 169), 14) : calculateATR(d.candles1h.slice(0, 15), 14),
+        };
+      }
+      
+      await storePartialData(supabase, scanBatchId, partialStore);
+
+      // Self-invoke second batch
+      const selfUrl = `${supabaseUrl}/functions/v1/session-pair-selector`;
+      fetch(selfUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          batch: "second",
+          scan_batch_id: scanBatchId,
+          session,
+          sendTelegram,
+        }),
+      }).catch(e => console.error("Self-invoke error:", e));
+
+      return new Response(JSON.stringify({
+        success: true,
+        scan_batch_id: scanBatchId,
+        batch: "first",
+        pairs_fetched: processed,
+        errors: errors.length > 0 ? errors : undefined,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ====== For "second" or "all" batch: merge data and analyze ======
+    
+    // Merge with first batch data if this is the second batch
+    let mergedPairData: Record<string, any> = {};
+    let firstBatchATR: Record<string, { atr_current: number; atr_avg: number }> = {};
+    
+    if (batch === "second") {
+      const firstBatchData = await loadPartialData(supabase, scanBatchId);
+      
+      // Load first batch into mergedPairData
+      for (const [pair, d] of Object.entries(firstBatchData)) {
+        mergedPairData[pair] = d;
+        firstBatchATR[pair] = { atr_current: (d as any).atr_current, atr_avg: (d as any).atr_avg };
+      }
+      
+      // Add second batch data
+      for (const [pair, d] of Object.entries(pairData)) {
+        mergedPairData[pair] = {
+          price1h: d.price1h,
+          ema200_1h: d.ema200_1h,
+          price4h: d.price4h,
+          ema200_4h: d.ema200_4h,
+          overextPct: d.overextPct,
+          atr_current: calculateATR(d.candles1h.slice(0, 15), 14),
+          atr_avg: d.candles1h.length >= 30 ? calculateATR(d.candles1h.slice(14, 182).slice(0, 169), 14) : calculateATR(d.candles1h.slice(0, 15), 14),
+        };
+      }
+
+      // Cleanup temp data
+      await cleanupPartialData(supabase, scanBatchId);
+      
+      console.log(`✅ Second batch done. Merged total: ${Object.keys(mergedPairData).length} pairs.`);
+    } else {
+      // "all" batch — just use current pairData directly
+      for (const [pair, d] of Object.entries(pairData)) {
+        mergedPairData[pair] = {
+          price1h: d.price1h,
+          ema200_1h: d.ema200_1h,
+          price4h: d.price4h,
+          ema200_4h: d.ema200_4h,
+          overextPct: d.overextPct,
+          atr_current: calculateATR(d.candles1h.slice(0, 15), 14),
+          atr_avg: d.candles1h.length >= 30 ? calculateATR(d.candles1h.slice(14, 182).slice(0, 169), 14) : calculateATR(d.candles1h.slice(0, 15), 14),
+        };
       }
     }
 
@@ -178,7 +308,7 @@ Deno.serve(async (req) => {
     for (const [currency, pairs] of Object.entries(CURRENCY_PAIRS)) {
       let totalScore = 0;
       for (const pair of pairs) {
-        const d = pairData[pair];
+        const d = mergedPairData[pair];
         if (!d) continue;
         const raw = d.price1h > d.ema200_1h ? 1 : (d.price1h < d.ema200_1h ? -1 : 0);
         totalScore += getModifiedNumber(currency, pair, raw);
@@ -223,7 +353,7 @@ Deno.serve(async (req) => {
     const sessionPreferredCurrencies = SESSION_CURRENCIES[session] || [];
 
     for (const pair of ALL_PAIRS) {
-      const d = pairData[pair];
+      const d = mergedPairData[pair];
       if (!d) continue;
 
       const base = pair.substring(0, 3);
@@ -270,13 +400,10 @@ Deno.serve(async (req) => {
       }
 
       // LAYER 5: Daily Structure → 15 pts
-      // Use ADR data for swing high/low proxy
       const pairKey = pair.replace("/", "");
       const adr = adrMap[pairKey];
       let dailyStructure = "CLEAR";
-      // If we have no ADR data, assume clear
       if (adr && adr.adrPips > 0) {
-        // If ADR is almost fully used, structure might be at extremes
         if (adr.adrRemaining < 20) {
           dailyStructure = "AT_EXTREME";
           reasons.push(`Daily structure at extreme ❌`);
@@ -290,7 +417,6 @@ Deno.serve(async (req) => {
       }
 
       // LAYER 6: ADR + ATR → 15 pts total
-      // ADR Remaining → 10 pts (graduated)
       const adrRemaining = adr ? adr.adrRemaining : 100;
       if (adrRemaining >= 50) {
         score += 10;
@@ -303,11 +429,8 @@ Deno.serve(async (req) => {
       }
 
       // ATR → 5 pts
-      const parsedCandles = d.candles1h;
-      const currentATR = calculateATR(parsedCandles.slice(0, 15), 14);
-      // 7-day avg ATR: use candles from position 14 to ~180 (7*24=168 candles)
-      const olderCandles = parsedCandles.slice(14, 182);
-      const avgATR = olderCandles.length >= 15 ? calculateATR(olderCandles.slice(0, 169), 14) : currentATR;
+      const currentATR = d.atr_current || 0;
+      const avgATR = d.atr_avg || currentATR;
       
       let atrStatus = "NORMAL";
       if (avgATR > 0) {
@@ -329,10 +452,6 @@ Deno.serve(async (req) => {
         reasons.push(`ATR data insufficient ⚠️`);
       }
 
-      // Session preference bonus (not in score, but in ranking tiebreak)
-      const hasSessionCurrency = sessionPreferredCurrencies.includes(base) || 
-                                  sessionPreferredCurrencies.includes(quote);
-
       const isQualified = score >= 70 && absDiff >= 5 && bias4h === "CONFIRMED";
 
       results.push({
@@ -350,20 +469,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Sort: qualified first, then by score desc, then session currency preference
+    // Sort: qualified first, then by score desc
     results.sort((a, b) => {
       if (a.isQualified !== b.isQualified) return a.isQualified ? -1 : 1;
       return b.totalScore - a.totalScore;
     });
 
-    // Assign ranks
     const qualified = results.filter(r => r.isQualified);
     const skipped = results.filter(r => !r.isQualified);
     
     qualified.forEach((r, i) => (r as any).rank = i + 1);
 
     // ====== STORE RESULTS ======
-    const dbRecords = results.map((r, idx) => ({
+    const dbRecords = results.map((r) => ({
       scan_batch_id: scanBatchId,
       pair: r.pair.replace("/", ""),
       session,
@@ -381,6 +499,8 @@ Deno.serve(async (req) => {
     }));
 
     await supabase.from("session_pair_recommendations").insert(dbRecords);
+
+    console.log(`✅ Stored ${dbRecords.length} results. Qualified: ${qualified.length}`);
 
     // ====== TELEGRAM ======
     if (sendTelegram && telegramToken && qualified.length > 0) {
@@ -416,7 +536,6 @@ Deno.serve(async (req) => {
           msg += `━━━━━━━━━━━━━━━━━━━\n`;
           msg += `❌ *SKIPPED:* ${skipped.length} pairs\n`;
           
-          // Show top 3 skip reasons
           for (const s of skipped.slice(0, 3)) {
             const shortReason = s.bias4h === "CONFLICTING" ? "4H conflict" :
                                s.totalScore < 70 ? `Score ${s.totalScore}` :
@@ -445,7 +564,8 @@ Deno.serve(async (req) => {
       success: true,
       scan_batch_id: scanBatchId,
       session,
-      pairs_analyzed: Object.keys(pairData).length,
+      batch,
+      pairs_analyzed: Object.keys(mergedPairData).length,
       qualified: qualified.map(r => ({
         pair: r.pair,
         direction: r.direction,
