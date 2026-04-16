@@ -7,15 +7,16 @@ interface StrengthBadgeProps {
   strength?: number;
   size?: 'xs' | 'sm';
   showCurrency?: boolean;
+  variant?: 'compact' | 'full';
   className?: string;
 }
 
-const TIER_CONFIG: Record<StrengthTier, { label: string; short: string; cls: string }> = {
-  STRONG:        { label: 'Strong',     short: 'S',  cls: 'bg-green-500/15 text-green-400 border-green-500/30' },
-  MEDIUM_STRONG: { label: 'Med Strong', short: 'M+', cls: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25' },
-  NEUTRAL:       { label: 'Neutral',    short: 'N',  cls: 'bg-muted/40 text-muted-foreground border-border/50' },
-  MEDIUM_WEAK:   { label: 'Med Weak',   short: 'M-', cls: 'bg-orange-500/10 text-orange-300 border-orange-500/25' },
-  WEAK:          { label: 'Weak',       short: 'W',  cls: 'bg-red-500/15 text-red-400 border-red-500/30' },
+const TIER_CONFIG: Record<StrengthTier, { label: string; full: string; short: string; cls: string }> = {
+  STRONG:        { label: 'Strong',     full: 'Strong',        short: 'S',  cls: 'bg-green-500/15 text-green-400 border-green-500/30' },
+  MEDIUM_STRONG: { label: 'Med Strong', full: 'Medium Strong', short: 'M+', cls: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25' },
+  NEUTRAL:       { label: 'Neutral',    full: 'Neutral',       short: 'N',  cls: 'bg-muted/40 text-muted-foreground border-border/50' },
+  MEDIUM_WEAK:   { label: 'Med Weak',   full: 'Medium Weak',   short: 'M-', cls: 'bg-orange-500/10 text-orange-300 border-orange-500/25' },
+  WEAK:          { label: 'Weak',       full: 'Weak',          short: 'W',  cls: 'bg-red-500/15 text-red-400 border-red-500/30' },
 };
 
 export function StrengthBadge({
@@ -24,6 +25,7 @@ export function StrengthBadge({
   strength,
   size = 'xs',
   showCurrency = true,
+  variant = 'compact',
   className,
 }: StrengthBadgeProps) {
   if (!tier) {
