@@ -546,6 +546,24 @@ function LiveAdvancedChart({ symbol, height }: { symbol: string; height: number 
 }
 
 // ====================================================================
+// METRIC CELL
+// ====================================================================
+function MetricCell({ label, value, accent }: { label: string; value: string; accent: "green" | "yellow" | "red" | "muted" }) {
+  const colors = {
+    green: "text-emerald-400",
+    yellow: "text-amber-400",
+    red: "text-red-400",
+    muted: "text-muted-foreground",
+  };
+  return (
+    <div className="bg-card/50 px-2.5 py-2 text-center">
+      <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 mb-0.5">{label}</p>
+      <p className={`text-xs font-bold font-mono ${colors[accent]}`}>{value}</p>
+    </div>
+  );
+}
+
+// ====================================================================
 // REMAINING SUB-COMPONENTS
 // ====================================================================
 
