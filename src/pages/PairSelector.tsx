@@ -8,9 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Play, TrendingUp, TrendingDown, Clock, AlertTriangle,
-  CheckCircle2, XCircle, BarChart3, Shield, Zap, Target,
-  ArrowUpRight, ArrowDownRight, Activity, Gauge, Layers,
+  Play, Clock, AlertTriangle,
+  XCircle, Target, Shield, Zap, Gauge, Layers,
+  ArrowUpRight, ArrowDownRight, Activity,
   RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -374,245 +374,160 @@ const PairSelector = () => {
 };
 
 // ====================================================================
-// PREMIUM PAIR CARD
+// PREMIUM PAIR CARD — Simplified
 // ====================================================================
 function PremiumPairCard({ pair, isTop }: { pair: QualifiedPair; isTop: boolean }) {
   const base = pair.pair.substring(0, 3);
   const quote = pair.pair.length >= 7 ? pair.pair.substring(4, 7) : pair.pair.substring(3, 6);
   const isBuy = pair.direction === "BUY";
-  const scorePercent = Math.round((pair.score / 105) * 100);
-
-  // Layer scores parsed from reasoning
-  const layers = parseLayerScores(pair.reasoning);
+  const [expanded, setExpanded] = useState(false);
+  const tvSymbol = `FX:${base}${quote}`;
 
   return (
-    <Card className={`relative overflow-hidden border transition-all ${
-      isTop
-        ? isBuy
-          ? "border-emerald-500/40 bg-gradient-to-br from-emerald-500/5 to-transparent shadow-lg shadow-emerald-500/10"
-          : "border-red-500/40 bg-gradient-to-br from-red-500/5 to-transparent shadow-lg shadow-red-500/10"
-        : "border-border/50"
-    }`}>
-      {/* Rank ribbon */}
-      {isTop && (
-        <div className={`absolute top-0 right-0 px-3 py-0.5 text-[10px] font-bold rounded-bl-lg ${
-          isBuy ? "bg-emerald-500 text-black" : "bg-red-500 text-white"
-        }`}>
-          #1 PRIMARY
+    <>
+      <Card className={`relative overflow-hidden border transition-all ${
+        isTop
+          ? isBuy
+            ? "border-emerald-500/40 bg-gradient-to-br from-emerald-500/5 to-transparent shadow-lg shadow-emerald-500/10"
+            : "border-red-500/40 bg-gradient-to-br from-red-500/5 to-transparent shadow-lg shadow-red-500/10"
+          : "border-border/50"
+      }`}>
+        <CardContent className="p-0">
+          {/* Header strip */}
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
+                isBuy
+                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                  : "bg-red-500/15 text-red-400 border border-red-500/30"
+              }`}>
+                {pair.rank}
+              </div>
+              <span className="text-sm">{FLAGS[base]}{FLAGS[quote]}</span>
+              <span className="font-bold text-foreground text-base tracking-tight">
+                {base}/{quote}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${
+                isBuy
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "bg-red-500/20 text-red-400 border border-red-500/30"
+              }`}>
+                {isBuy ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+                {pair.direction}
+              </div>
+              <span className={`text-sm font-bold font-mono ${isBuy ? "text-emerald-400" : "text-red-400"}`}>
+                {pair.score}<span className="text-muted-foreground text-[10px]">/105</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Live TradingView Chart */}
+          <div
+            className="cursor-pointer"
+            onClick={() => setExpanded(true)}
+          >
+            <LiveAdvancedChart symbol={tvSymbol} height={450} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Expanded full-screen dialog */}
+      {expanded && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">{FLAGS[base]}{FLAGS[quote]}</span>
+              <span className="font-bold text-foreground">{base}/{quote}</span>
+              <Badge className={isBuy ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}>
+                {pair.direction}
+              </Badge>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setExpanded(false)}>
+              ✕
+            </Button>
+          </div>
+          <div className="flex-1">
+            <LiveAdvancedChart symbol={tvSymbol} height="100%" />
+          </div>
         </div>
       )}
-
-      <CardContent className="p-4">
-        {/* Row 1: Pair + Direction + Score */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            {/* Rank badge */}
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
-              isBuy
-                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                : "bg-red-500/15 text-red-400 border border-red-500/30"
-            }`}>
-              {pair.rank}
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm">{FLAGS[base]}{FLAGS[quote]}</span>
-                <span className="font-bold text-foreground text-lg tracking-tight">
-                  {pair.pair.includes("/") ? pair.pair : `${base}/${quote}`}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Direction + Score */}
-          <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${
-              isBuy
-                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                : "bg-red-500/20 text-red-400 border border-red-500/30"
-            }`}>
-              {isBuy ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
-              {pair.direction}
-            </div>
-          </div>
-        </div>
-
-        {/* Row 2: Score ring + Key metrics */}
-        <div className="flex items-center gap-4 mb-4">
-          {/* Score circle */}
-          <div className="relative flex-shrink-0">
-            <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
-              <path
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                fill="none"
-                stroke="hsl(var(--secondary))"
-                strokeWidth="3"
-              />
-              <path
-                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                fill="none"
-                stroke={isBuy ? "hsl(142, 71%, 45%)" : "hsl(0, 84%, 60%)"}
-                strokeWidth="3"
-                strokeDasharray={`${scorePercent}, 100`}
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className={`text-sm font-bold ${isBuy ? "text-emerald-400" : "text-red-400"}`}>
-                {pair.score}
-              </span>
-              <span className="text-[8px] text-muted-foreground">/ 105</span>
-            </div>
-          </div>
-
-          {/* Key metrics grid */}
-          <div className="flex-1 grid grid-cols-3 gap-2">
-            <MetricBox
-              label="Gap"
-              value={`${pair.differential > 0 ? "+" : ""}${pair.differential}`}
-              color={Math.abs(pair.differential) >= 7 ? "emerald" : Math.abs(pair.differential) >= 5 ? "blue" : "muted"}
-            />
-            <MetricBox
-              label="ADR"
-              value={`${pair.adrRemaining}%`}
-              color={Number(pair.adrRemaining) >= 60 ? "emerald" : Number(pair.adrRemaining) >= 40 ? "amber" : "red"}
-            />
-            <MetricBox
-              label="Ext"
-              value={`${pair.overextPct}%`}
-              color={Number(pair.overextPct) < 0.8 ? "emerald" : Number(pair.overextPct) < 1.5 ? "amber" : "red"}
-            />
-          </div>
-        </div>
-
-        {/* Row 3: 6-Layer bar */}
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>6 Layer Breakdown</span>
-            <span className="font-mono">{pair.score}/105</span>
-          </div>
-          <div className="flex gap-0.5 h-2 rounded-full overflow-hidden bg-secondary">
-            <LayerSegment width={30} earned={layers.diff} color={isBuy ? "bg-emerald-500" : "bg-red-500"} />
-            <LayerSegment width={25} earned={layers.bias} color="bg-blue-500" />
-            <LayerSegment width={20} earned={layers.overext} color="bg-violet-500" />
-            <LayerSegment width={15} earned={layers.structure} color="bg-amber-500" />
-            <LayerSegment width={10} earned={layers.adr} color="bg-cyan-500" />
-            <LayerSegment width={5} earned={layers.atr} color="bg-pink-500" />
-          </div>
-          <div className="flex gap-2 text-[9px] text-muted-foreground flex-wrap">
-            <span className="flex items-center gap-0.5"><span className={`w-1.5 h-1.5 rounded-full ${isBuy ? "bg-emerald-500" : "bg-red-500"}`} /> Diff</span>
-            <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> 4H</span>
-            <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-violet-500" /> Ext</span>
-            <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Struct</span>
-            <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-cyan-500" /> ADR</span>
-            <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-pink-500" /> ATR</span>
-          </div>
-        </div>
-
-        {/* Row 4: Status badges */}
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          <StatusBadge icon={<Shield className="h-2.5 w-2.5" />} label={`4H ${pair.bias4h}`} variant="success" />
-          <StatusBadge
-            icon={<Activity className="h-2.5 w-2.5" />}
-            label={`ATR ${pair.atrStatus}`}
-            variant={pair.atrStatus === "ACTIVE" ? "success" : pair.atrStatus === "NORMAL" ? "warning" : "danger"}
-          />
-          {isTop && (
-            <StatusBadge icon={<Zap className="h-2.5 w-2.5" />} label="PRIMARY" variant="primary" />
-          )}
-        </div>
-
-        {/* Row 5: TradingView Mini Chart */}
-        <div className="mt-3 rounded-lg overflow-hidden border border-border/30">
-          <MiniTradingViewChart symbol={`FX:${base}${quote}`} />
-        </div>
-      </CardContent>
-    </Card>
+    </>
   );
 }
 
 // ====================================================================
-// TRADINGVIEW MINI CHART
+// LIVE ADVANCED CHART (EMA 9/15/200 + RSI, 15min)
 // ====================================================================
-function MiniTradingViewChart({ symbol }: { symbol: string }) {
+function LiveAdvancedChart({ symbol, height }: { symbol: string; height: number | string }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
     containerRef.current.innerHTML = "";
 
+    const widgetContainer = document.createElement("div");
+    widgetContainer.className = "tradingview-widget-container";
+    widgetContainer.style.height = "100%";
+    widgetContainer.style.width = "100%";
+
+    const widgetInner = document.createElement("div");
+    widgetInner.className = "tradingview-widget-container__widget";
+    widgetInner.style.height = "100%";
+    widgetInner.style.width = "100%";
+    widgetContainer.appendChild(widgetInner);
+
     const script = document.createElement("script");
-    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
     script.async = true;
     script.type = "text/javascript";
     script.innerHTML = JSON.stringify({
       symbol,
-      width: "100%",
-      height: 160,
+      interval: "15",
+      theme: "dark",
+      style: "1",
       locale: "en",
-      dateRange: "1D",
-      colorTheme: "dark",
-      isTransparent: true,
-      autosize: false,
-      largeChartUrl: "",
-      noTimeScale: false,
-      chartOnly: false,
+      timezone: "Etc/UTC",
+      studies: [
+        { id: "MAExp@tv-basicstudies", inputs: { length: 9 } },
+        { id: "MAExp@tv-basicstudies", inputs: { length: 15 } },
+        { id: "MAExp@tv-basicstudies", inputs: { length: 200 } },
+        { id: "RSI@tv-basicstudies" },
+      ],
+      hide_top_toolbar: true,
+      hide_legend: false,
+      enable_publishing: false,
+      withdateranges: false,
+      hide_side_toolbar: true,
+      details: false,
+      calendar: false,
+      show_popup_button: true,
+      popup_width: "1200",
+      popup_height: "800",
+      allow_symbol_change: false,
+      save_image: true,
+      width: "100%",
+      height: "100%",
+      support_host: "https://www.tradingview.com",
     });
 
-    containerRef.current.appendChild(script);
+    widgetContainer.appendChild(script);
+    containerRef.current.appendChild(widgetContainer);
   }, [symbol]);
 
   return (
     <div
       ref={containerRef}
-      className="tradingview-widget-container"
-      style={{ height: 160, pointerEvents: "none" }}
+      className="w-full overflow-hidden"
+      style={{ height: typeof height === "number" ? `${height}px` : height }}
     />
   );
 }
 
 // ====================================================================
-// SUB-COMPONENTS
+// REMAINING SUB-COMPONENTS
 // ====================================================================
-
-function MetricBox({ label, value, color }: { label: string; value: string; color: string }) {
-  const colorMap: Record<string, string> = {
-    emerald: "text-emerald-400",
-    blue: "text-blue-400",
-    amber: "text-amber-400",
-    red: "text-red-400",
-    muted: "text-foreground",
-  };
-  return (
-    <div className="text-center bg-secondary/50 rounded-lg p-1.5">
-      <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{label}</p>
-      <p className={`text-sm font-bold font-mono ${colorMap[color] || "text-foreground"}`}>{value}</p>
-    </div>
-  );
-}
-
-function LayerSegment({ width, earned, color }: { width: number; earned: boolean; color: string }) {
-  return (
-    <div
-      className={`h-full transition-all ${earned ? color : "bg-transparent"}`}
-      style={{ width: `${(width / 105) * 100}%` }}
-    />
-  );
-}
-
-function StatusBadge({ icon, label, variant }: { icon: React.ReactNode; label: string; variant: string }) {
-  const styles: Record<string, string> = {
-    success: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    warning: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-    danger: "bg-red-500/10 text-red-400 border-red-500/20",
-    primary: "bg-primary/10 text-primary border-primary/20",
-  };
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium border ${styles[variant] || styles.primary}`}>
-      {icon} {label}
-    </span>
-  );
-}
 
 function EmptyQualified() {
   return (
@@ -649,7 +564,6 @@ function SkippedPairRow({ rec }: { rec: DbRecommendation }) {
   const base = rec.pair.substring(0, 3);
   const quote = rec.pair.length >= 6 ? rec.pair.substring(3, 6) : "???";
 
-  // Determine primary skip reason
   const skipReason =
     rec.bias_4h === "CONFLICTING" ? "4H Conflict" :
     Math.abs(rec.differential) < 5 ? `Diff ${rec.differential}` :
@@ -672,27 +586,6 @@ function SkippedPairRow({ rec }: { rec: DbRecommendation }) {
       </div>
     </div>
   );
-}
-
-// ====================================================================
-// HELPERS
-// ====================================================================
-
-function parseLayerScores(reasoning: string): {
-  diff: boolean; bias: boolean; overext: boolean;
-  structure: boolean; adr: boolean; atr: boolean;
-} {
-  // Split by " | " to check each layer segment individually
-  const segments = reasoning.split(" | ");
-  const check = (keyword: string) => segments.some(s => s.includes(keyword) && s.includes("✅"));
-  return {
-    diff: check("Diff"),
-    bias: check("aligned") || check("4H+1H"),
-    overext: check("Overext"),
-    structure: check("structure"),
-    adr: check("ADR"),
-    atr: check("ATR"),
-  };
 }
 
 export default PairSelector;
