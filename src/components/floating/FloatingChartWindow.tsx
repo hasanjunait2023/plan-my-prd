@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { X, GripHorizontal } from 'lucide-react';
+import { X, GripHorizontal, ArrowLeft } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFloatingWatchlist } from '@/contexts/FloatingWatchlistContext';
 import { getPairFlags } from '@/lib/pairFlags';
@@ -63,9 +63,14 @@ function loadTf(): string {
 
 export function FloatingChartWindow() {
   const isMobile = useIsMobile();
-  const { chartItem, closeChart } = useFloatingWatchlist();
+  const { chartItem, closeChart, openWatchlist } = useFloatingWatchlist();
   const snapshot = useStrengthSnapshot();
   const strengths = snapshot.data;
+
+  const handleBack = useCallback(() => {
+    closeChart();
+    openWatchlist();
+  }, [closeChart, openWatchlist]);
   const [state, setState] = useState<WinState>(() => {
     const saved = loadState();
     if (saved) return saved;
@@ -153,9 +158,19 @@ export function FloatingChartWindow() {
         className="fixed inset-0 bg-background flex flex-col"
         style={{ zIndex: 9997 }}
       >
-        <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-card/60">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xl">{base}{quote}</span>
+        <div className="flex items-center gap-2 px-2 py-2 border-b border-border/40 bg-card/60">
+          {/* Back button → returns to watchlist */}
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-md bg-primary/10 hover:bg-primary/20 active:bg-primary/30 text-primary border border-primary/30 transition shrink-0"
+            aria-label="Back to watchlist"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-[11px] font-bold">Back</span>
+          </button>
+
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="text-xl shrink-0">{base}{quote}</span>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold truncate">{chartItem.symbol}</div>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -180,7 +195,7 @@ export function FloatingChartWindow() {
           </div>
           <button
             onClick={closeChart}
-            className="p-2 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+            className="p-2 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground shrink-0"
             aria-label="Close chart"
           >
             <X className="w-5 h-5" />
@@ -282,7 +297,16 @@ export function FloatingChartWindow() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition mr-1"
+            aria-label="Back to watchlist"
+            title="Back to watchlist"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Back
+          </button>
           {TIMEFRAMES.map((t) => (
             <button
               key={t.value}
