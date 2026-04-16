@@ -33,20 +33,36 @@ function PairRow({
   const baseEntry = strengths[baseCur];
   const quoteEntry = strengths[quoteCur];
 
+  const baseStr = baseEntry?.strength;
+  const quoteStr = quoteEntry?.strength;
+  const diff = baseStr !== undefined && quoteStr !== undefined ? baseStr - quoteStr : undefined;
+
+  const tierColor = (s?: number): string => {
+    if (s === undefined) return 'hsl(0, 0%, 50%)';
+    if (s >= 5) return 'hsl(142, 71%, 45%)';
+    if (s >= 2) return 'hsl(160, 60%, 45%)';
+    if (s > -2) return 'hsl(48, 50%, 55%)';
+    if (s > -5) return 'hsl(25, 95%, 53%)';
+    return 'hsl(0, 84%, 60%)';
+  };
+  const baseColor = tierColor(baseStr);
+  const quoteColor = tierColor(quoteStr);
+  const diffColor = diff === undefined ? 'hsl(0,0%,50%)' : diff > 1 ? 'hsl(142, 71%, 45%)' : diff < -1 ? 'hsl(0, 84%, 60%)' : 'hsl(48, 50%, 55%)';
+
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-3 py-3 hover:bg-muted/40 active:bg-muted/60 transition-colors text-left border-b border-border/30 min-h-[64px]"
+      className="w-full flex items-center gap-3 px-3 py-3 hover:bg-muted/40 active:bg-muted/60 transition-colors text-left border-b border-border/30 min-h-[68px]"
     >
       {/* Flags */}
       <div className="relative w-10 h-10 shrink-0">
         <span className="absolute left-0 top-0 text-2xl">{base}</span>
         <span className="absolute right-0 bottom-0 text-2xl">{quote}</span>
       </div>
-      {/* Name + strength */}
+      {/* Name + tier badges */}
       <div className="flex-1 min-w-0">
         <div className="text-sm font-semibold text-foreground truncate">{item.symbol}</div>
-        <div className="text-[11px] text-muted-foreground truncate mb-1">{item.name}</div>
+        <div className="text-[10px] text-muted-foreground truncate mb-1">{item.name}</div>
         {(baseEntry || quoteEntry) && (
           <PairStrengthBadges
             base={baseCur}
@@ -58,9 +74,41 @@ function PairRow({
           />
         )}
       </div>
-      {/* Right side placeholder for live price (later) */}
-      <div className="text-right shrink-0">
-        <div className="text-xs text-muted-foreground">—</div>
+      {/* Right side: numeric strength values + differential */}
+      <div className="text-right shrink-0 flex flex-col items-end gap-0.5 min-w-[72px]">
+        {baseStr !== undefined || quoteStr !== undefined ? (
+          <>
+            <div className="flex items-center gap-1.5 leading-none">
+              <span className="text-[9px] font-bold text-muted-foreground tracking-wide">{baseCur}</span>
+              <span
+                className="text-[15px] font-black tabular-nums tracking-tight"
+                style={{ color: baseColor, textShadow: `0 0 12px ${baseColor}55` }}
+              >
+                {baseStr !== undefined ? (baseStr > 0 ? `+${baseStr}` : baseStr) : '—'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 leading-none">
+              <span className="text-[9px] font-bold text-muted-foreground tracking-wide">{quoteCur}</span>
+              <span
+                className="text-[15px] font-black tabular-nums tracking-tight"
+                style={{ color: quoteColor, textShadow: `0 0 12px ${quoteColor}55` }}
+              >
+                {quoteStr !== undefined ? (quoteStr > 0 ? `+${quoteStr}` : quoteStr) : '—'}
+              </span>
+            </div>
+            {diff !== undefined && (
+              <div
+                className="text-[9px] font-black px-1.5 py-0.5 rounded mt-0.5 tracking-wider"
+                style={{ color: diffColor, backgroundColor: `${diffColor}1a`, border: `1px solid ${diffColor}33` }}
+                title="Differential (base − quote)"
+              >
+                Δ {diff > 0 ? '+' : ''}{diff}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-xs text-muted-foreground">—</div>
+        )}
       </div>
     </button>
   );
