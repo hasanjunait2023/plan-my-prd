@@ -64,6 +64,7 @@ function loadTf(): string {
 export function FloatingChartWindow() {
   const isMobile = useIsMobile();
   const { chartItem, closeChart } = useFloatingWatchlist();
+  const strengths = useCurrencyStrengths();
   const [state, setState] = useState<WinState>(() => {
     const saved = loadState();
     if (saved) return saved;
