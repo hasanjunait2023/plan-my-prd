@@ -121,8 +121,10 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const action = body.action || "scan";
     const timeframe = body.timeframe || "1H";
-    const session = body.session || null; // "London", "New York", "Asian" or null
+    const session = body.session || null;
     const interval = TIMEFRAME_MAP[timeframe] || "1h";
+    const batch = body.batch || "all"; // "first", "second", or "all"
+    const scanBatchIdInput = body.scan_batch_id || null; // shared batch ID for split runs
 
     if (action === "status") {
       const { data } = await supabase
@@ -138,26 +140,27 @@ Deno.serve(async (req) => {
     }
 
     // === SCAN using TwelveData time_series + EMA(200) calculation ===
-    const scanBatchId = crypto.randomUUID();
+    const scanBatchId = scanBatchIdInput || crypto.randomUUID();
     const pairResults: Record<string, number> = {};
     const errors: string[] = [];
     let processed = 0;
 
-    // Process 2 pairs at a time with 20s delay between chunks
-    // With 5 keys × 8 req/min = 40/min capacity, but fetchWithRotation
-    // tries keys sequentially so parallel requests can exhaust same key.
-    // 2 pairs/chunk + 20s gap = ~6 pairs/min, safe for all keys.
-    const CHUNK_SIZE = 2;
-    const CHUNK_DELAY_MS = 20000;
+    // Split pairs based on batch parameter
+    let pairsToScan = ALL_PAIRS;
+    if (batch === "first") pairsToScan = ALL_PAIRS.slice(0, 14);
+    else if (batch === "second") pairsToScan = ALL_PAIRS.slice(14);
+
+    const CHUNK_SIZE = 1;
+    const CHUNK_DELAY_MS = 1500;
     
-    for (let i = 0; i < ALL_PAIRS.length; i += CHUNK_SIZE) {
-      const chunk = ALL_PAIRS.slice(i, i + CHUNK_SIZE);
+    for (let i = 0; i < pairsToScan.length; i += CHUNK_SIZE) {
+      const chunk = pairsToScan.slice(i, i + CHUNK_SIZE);
       
       // Process pairs in chunk sequentially to avoid hitting same key simultaneously
       for (const pair of chunk) {
         try {
           processed++;
-          console.log(`[${processed}/${ALL_PAIRS.length}] Scanning ${pair}...`);
+          console.log(`[${processed}/${pairsToScan.length}] Scanning ${pair}...`);
           
           const { price, ema200 } = await fetchEmaData(pair, interval, supabase);
           const analysis = analyzePair(price, ema200);
@@ -182,8 +185,58 @@ Deno.serve(async (req) => {
       }
 
       // Delay between chunks to respect per-minute rate limits
-      if (i + CHUNK_SIZE < ALL_PAIRS.length) {
+      if (i + CHUNK_SIZE < pairsToScan.length) {
         await new Promise(r => setTimeout(r, CHUNK_DELAY_MS));
+      }
+    }
+
+    // For "first" batch, self-invoke the second batch then return
+    if (batch === "first") {
+      // Fire-and-forget: invoke self with second batch
+      const selfUrl = `${supabaseUrl}/functions/v1/ai-currency-scanner`;
+      fetch(selfUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          batch: "second",
+          scan_batch_id: scanBatchId,
+          timeframe,
+          session,
+        }),
+      }).catch(e => console.error("Self-invoke error:", e));
+
+      return new Response(JSON.stringify({
+        success: true,
+        scan_batch_id: scanBatchId,
+        batch: "first",
+        pairs_scanned: processed,
+        errors: errors.length > 0 ? errors : undefined,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // For "second" or "all" batch, load all results from this batch for aggregation
+    if (batch === "second") {
+      // Load first batch results from DB to combine
+      const { data: firstBatchResults } = await supabase
+        .from("ai_scan_results")
+        .select("pair, result")
+        .eq("scan_batch_id", scanBatchId);
+      
+      if (firstBatchResults) {
+        for (const r of firstBatchResults) {
+          // Convert stored pair key (EURUSD) back to pair format (EUR/USD)
+          const pairWithSlash = r.pair.length === 6 
+            ? `${r.pair.slice(0, 3)}/${r.pair.slice(3)}` 
+            : r.pair;
+          if (!(pairWithSlash in pairResults)) {
+            pairResults[pairWithSlash] = r.result;
+          }
+        }
       }
     }
 
