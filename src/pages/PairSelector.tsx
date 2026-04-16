@@ -423,6 +423,26 @@ function PremiumPairCard({ pair, isTop }: { pair: QualifiedPair; isTop: boolean 
             </div>
           </div>
 
+          {/* Key Metrics Strip */}
+          <div className="grid grid-cols-4 gap-px bg-border/30 border-y border-border/30">
+            <MetricCell label="Diff" value={`${pair.differential > 0 ? "+" : ""}${pair.differential}`} accent={pair.differential >= 8 ? "green" : pair.differential >= 5 ? "yellow" : "muted"} />
+            <MetricCell label="4H Bias" value={pair.bias4h} accent={pair.bias4h === "ALIGNED" ? "green" : pair.bias4h === "CONFLICTING" ? "red" : "muted"} />
+            <MetricCell label="ADR Left" value={`${pair.adrRemaining}%`} accent={Number(pair.adrRemaining) >= 60 ? "green" : Number(pair.adrRemaining) >= 30 ? "yellow" : "red"} />
+            <MetricCell label="ATR" value={pair.atrStatus} accent={pair.atrStatus === "NORMAL" ? "green" : pair.atrStatus === "HIGH" ? "yellow" : "red"} />
+          </div>
+
+          {/* Overext + Reasoning */}
+          <div className="px-4 py-2 flex items-center justify-between border-b border-border/20">
+            <span className="text-[10px] text-muted-foreground">
+              Overext: <span className={`font-mono font-medium ${Number(pair.overextPct) > 85 ? "text-red-400" : "text-foreground"}`}>{pair.overextPct}%</span>
+            </span>
+            {pair.reasoning && (
+              <span className="text-[10px] text-muted-foreground/70 truncate max-w-[55%] text-right">
+                {pair.reasoning}
+              </span>
+            )}
+          </div>
+
           {/* Live TradingView Chart */}
           <div
             className="cursor-pointer"
@@ -522,6 +542,24 @@ function LiveAdvancedChart({ symbol, height }: { symbol: string; height: number 
       className="w-full overflow-hidden"
       style={{ height: typeof height === "number" ? `${height}px` : height }}
     />
+  );
+}
+
+// ====================================================================
+// METRIC CELL
+// ====================================================================
+function MetricCell({ label, value, accent }: { label: string; value: string; accent: "green" | "yellow" | "red" | "muted" }) {
+  const colors = {
+    green: "text-emerald-400",
+    yellow: "text-amber-400",
+    red: "text-red-400",
+    muted: "text-muted-foreground",
+  };
+  return (
+    <div className="bg-card/50 px-2.5 py-2 text-center">
+      <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 mb-0.5">{label}</p>
+      <p className={`text-xs font-bold font-mono ${colors[accent]}`}>{value}</p>
+    </div>
   );
 }
 
