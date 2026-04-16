@@ -28,7 +28,6 @@ function TradingViewWidgetInner({ symbol, interval, showRsi = true }: TradingVie
       { id: 'MAExp@tv-basicstudies', inputs: { length: 9 } },
       { id: 'MAExp@tv-basicstudies', inputs: { length: 15 } },
       { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
-      { id: 'Volume@tv-basicstudies' },
     ];
     if (showRsi) {
       studies.push({ id: 'RSI@tv-basicstudies' });
@@ -46,12 +45,18 @@ function TradingViewWidgetInner({ symbol, interval, showRsi = true }: TradingVie
       locale: 'en',
       timezone: 'Etc/UTC',
       studies,
+      studies_overrides: {
+        'volume.volume.color.0': 'rgba(239,83,80,0.45)',
+        'volume.volume.color.1': 'rgba(38,166,154,0.45)',
+        'volume.volume.transparency': 60,
+        'volume.show ma': false,
+      },
       hide_top_toolbar: true,
       hide_legend: false,
       enable_publishing: false,
       withdateranges: false,
       hide_side_toolbar: true,
-      hide_volume: true,
+      hide_volume: false,
       details: false,
       calendar: false,
       show_popup_button: true,
