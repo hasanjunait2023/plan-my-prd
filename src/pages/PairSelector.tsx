@@ -9,8 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import {
   Play, TrendingUp, TrendingDown, Clock, AlertTriangle,
-  CheckCircle2, XCircle, BarChart3, Shield, Zap, Target,
-  ArrowUpRight, ArrowDownRight, Activity, Gauge, Layers,
+  XCircle, Target,
+  ArrowUpRight, ArrowDownRight, Activity,
   RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
