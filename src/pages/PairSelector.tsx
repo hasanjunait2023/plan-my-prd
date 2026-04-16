@@ -525,4 +525,67 @@ function LiveAdvancedChart({ symbol, height }: { symbol: string; height: number 
   );
 }
 
+// ====================================================================
+// REMAINING SUB-COMPONENTS
+// ====================================================================
+
+function EmptyQualified() {
+  return (
+    <Card className="border-amber-500/20 bg-amber-500/5">
+      <CardContent className="p-6 text-center">
+        <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-amber-500/60" />
+        <p className="text-sm font-medium text-foreground">কোনো Pair Qualify করেনি</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          সব pair filtered out হয়েছে — Diff &lt; 5, 4H conflict, বা score &lt; 70
+        </p>
+        <p className="text-xs text-amber-400 mt-3 font-medium">
+          ⏸ এই session এ trade নেওয়া safe না
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SkippedSummaryCard({ count }: { count: number }) {
+  return (
+    <Card className="border-border/50">
+      <CardContent className="p-4 text-center">
+        <XCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
+        <p className="text-sm text-foreground font-medium">{count} pairs skipped</p>
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Differential &lt; 5 • 4H Conflict • Overextended • Low Score
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SkippedPairRow({ rec }: { rec: DbRecommendation }) {
+  const base = rec.pair.substring(0, 3);
+  const quote = rec.pair.length >= 6 ? rec.pair.substring(3, 6) : "???";
+
+  const skipReason =
+    rec.bias_4h === "CONFLICTING" ? "4H Conflict" :
+    Math.abs(rec.differential) < 5 ? `Diff ${rec.differential}` :
+    rec.total_score < 70 ? `Score ${rec.total_score}` :
+    "Filtered";
+
+  return (
+    <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-card border border-border/30">
+      <div className="flex items-center gap-2">
+        <span className="text-xs">{FLAGS[base]}{FLAGS[quote]}</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          {base}/{quote}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] text-muted-foreground font-mono">{rec.total_score}pts</span>
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 text-red-400/70 border-red-500/20">
+          {skipReason}
+        </Badge>
+      </div>
+    </div>
+  );
+}
+
 export default PairSelector;
