@@ -327,7 +327,34 @@ export default function CurrencyStrength() {
     ),
     'heatmap': hasData ? <StrengthHeatmap data={data!} /> : null,
     'comparison': <TimeframeComparison asianData={asianData} londonData={londonData} nyData={nyData} />,
-    'pair-suggestions': hasData ? <PairSuggestions data={data!} /> : null,
+    'pair-suggestions': hasData ? (
+      <PairSuggestions data={data!} />
+    ) : (
+      <Card className="border-border/30 bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center">
+              <TrendingUp className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <CardTitle className="text-base font-bold tracking-tight">Pair Suggestions</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-10 text-muted-foreground">
+            <p className="text-sm font-semibold mb-1">কোনো pair suggestions নেই</p>
+            <p className="text-xs">এই তারিখে currency strength data পাওয়া যায়নি — আজকের তারিখ select করুন বা refresh চাপুন।</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedDate(new Date())}
+              className="mt-3 text-xs"
+            >
+              আজকের তারিখে যান
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    ),
     'trend-chart': (
       <Card className="border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]">
         <CardHeader className="pb-3">
