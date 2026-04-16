@@ -603,193 +603,144 @@ function LiveAdvancedChart({ symbol, height }: { symbol: string; height: number 
 }
 
 // ====================================================================
-// SCAN HISTORY PANEL — Filter by date/session + CSV export
+// SCAN HISTORY PANEL — Date-wise grouped + CSV export
 // ====================================================================
 function ScanHistoryPanel() {
-  const [filterSession, setFilterSession] = useState("all");
-  const [filterDate, setFilterDate] = useState("");
-  const [onlyQualified, setOnlyQualified] = useState(false);
-
   const { data: historyData, isLoading } = useQuery({
-    queryKey: ["pair-selector-history", filterSession, filterDate],
+    queryKey: ["pair-selector-history"],
     queryFn: async () => {
-      let query = supabase
+      const { data } = await supabase
         .from("session_pair_recommendations")
         .select("*")
+        .eq("is_qualified", true)
         .order("scanned_at", { ascending: false })
         .limit(500);
-
-      if (filterSession !== "all") {
-        query = query.eq("session", filterSession);
-      }
-      if (filterDate) {
-        query = query.gte("scanned_at", `${filterDate}T00:00:00Z`).lte("scanned_at", `${filterDate}T23:59:59Z`);
-      }
-
-      const { data } = await query;
       return (data as DbRecommendation[] | null) || [];
     },
   });
 
-  const displayData = useMemo(() => {
+  // Group by date
+  const groupedByDate = useMemo(() => {
     if (!historyData) return [];
-    return onlyQualified ? historyData.filter(r => r.is_qualified) : historyData;
-  }, [historyData, onlyQualified]);
-
-  // Group by scan batch for display
-  const groupedByBatch = useMemo(() => {
-    const groups: Record<string, { session: string; scannedAt: string; items: DbRecommendation[] }> = {};
-    for (const rec of displayData) {
-      if (!groups[rec.scan_batch_id]) {
-        groups[rec.scan_batch_id] = { session: rec.session, scannedAt: rec.scanned_at, items: [] };
-      }
-      groups[rec.scan_batch_id].items.push(rec);
+    const dateMap: Record<string, DbRecommendation[]> = {};
+    for (const rec of historyData) {
+      const dateKey = new Date(rec.scanned_at).toLocaleDateString("en-CA"); // YYYY-MM-DD
+      if (!dateMap[dateKey]) dateMap[dateKey] = [];
+      dateMap[dateKey].push(rec);
     }
-    return Object.entries(groups).sort((a, b) => b[1].scannedAt.localeCompare(a[1].scannedAt));
-  }, [displayData]);
+    return Object.entries(dateMap).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [historyData]);
 
   const exportCSV = useCallback(() => {
-    if (!displayData.length) return;
-    const headers = ["Scan Time", "Session", "Pair", "Direction", "Score", "Rank", "Qualified", "Differential", "4H Bias", "ADR Remaining %", "ATR Status", "Overextension %", "Reasoning"];
-    const rows = displayData.map(r => [
-      new Date(r.scanned_at).toLocaleString(),
-      r.session,
-      r.pair,
-      r.direction,
-      r.total_score,
-      r.rank,
-      r.is_qualified ? "YES" : "NO",
-      r.differential,
-      r.bias_4h,
-      r.adr_remaining.toFixed(0),
-      r.atr_status,
-      r.overextension_pct.toFixed(2),
-      `"${r.reasoning.replace(/"/g, '""')}"`,
-    ]);
+    if (!historyData?.length) return;
+    const headers = ["Date", "Time", "Session", "Pair", "Direction", "Score", "Rank", "Differential", "4H Bias", "ADR Remaining %", "ATR Status", "Overext %", "Reasoning"];
+    const rows = historyData.map(r => {
+      const d = new Date(r.scanned_at);
+      return [
+        d.toLocaleDateString("en-CA"),
+        d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+        r.session,
+        r.pair,
+        r.direction,
+        r.total_score,
+        r.rank,
+        r.differential,
+        r.bias_4h,
+        r.adr_remaining.toFixed(0),
+        r.atr_status,
+        r.overextension_pct.toFixed(2),
+        `"${r.reasoning.replace(/"/g, '""')}"`,
+      ];
+    });
     const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `PairSelector_History_${filterSession}_${filterDate || "all"}.csv`;
+    a.download = `PairSelector_History_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [displayData, filterSession, filterDate]);
+  }, [historyData]);
+
+  if (isLoading) {
+    return <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div>;
+  }
+
+  if (!groupedByDate.length) {
+    return <div className="text-center py-8 text-muted-foreground text-sm">কোনো history নেই</div>;
+  }
 
   return (
     <div className="space-y-3">
-      {/* Filters */}
-      <div className="flex gap-2 flex-wrap">
-        <Select value={filterSession} onValueChange={setFilterSession}>
-          <SelectTrigger className="w-[120px] h-9 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Sessions</SelectItem>
-            <SelectItem value="Asian">🌏 Asian</SelectItem>
-            <SelectItem value="London">🏰 London</SelectItem>
-            <SelectItem value="New York">🗽 New York</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          type="date"
-          value={filterDate}
-          onChange={e => setFilterDate(e.target.value)}
-          className="w-[150px] h-9 text-xs"
-          placeholder="Filter by date"
-        />
-        <Button
-          variant={onlyQualified ? "default" : "outline"}
-          size="sm"
-          className="h-9 text-xs gap-1"
-          onClick={() => setOnlyQualified(!onlyQualified)}
-        >
-          <Target className="h-3 w-3" />
-          Qualified Only
-        </Button>
+      {/* Export button */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">{historyData?.length || 0} qualified results</span>
         <Button
           variant="outline"
           size="sm"
-          className="h-9 text-xs gap-1 ml-auto"
+          className="h-8 text-xs gap-1.5"
           onClick={exportCSV}
-          disabled={!displayData.length}
         >
           <Download className="h-3 w-3" />
-          CSV
+          Export CSV
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="flex gap-3 text-[11px] text-muted-foreground">
-        <span>{displayData.length} records</span>
-        <span>{groupedByBatch.length} scans</span>
-        <span>{displayData.filter(r => r.is_qualified).length} qualified</span>
-      </div>
+      {/* Date-wise list */}
+      {groupedByDate.map(([date, recs]) => {
+        // Group by session within the date
+        const bySession: Record<string, DbRecommendation[]> = {};
+        for (const r of recs) {
+          if (!bySession[r.session]) bySession[r.session] = [];
+          bySession[r.session].push(r);
+        }
 
-      {/* Results by batch */}
-      {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground text-sm">Loading history...</div>
-      ) : groupedByBatch.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground text-sm">কোনো scan history নেই</div>
-      ) : (
-        <div className="space-y-3">
-          {groupedByBatch.map(([batchId, batch]) => {
-            const qualified = batch.items.filter(r => r.is_qualified).sort((a, b) => a.rank - b.rank);
-            const skipped = batch.items.filter(r => !r.is_qualified);
-            return (
-              <Card key={batchId} className="border-border/50">
-                <CardContent className="p-3 space-y-2">
-                  {/* Batch header */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{SESSION_ICONS[batch.session]}</span>
-                      <span className="text-xs font-semibold text-foreground">{batch.session}</span>
-                      <Badge variant="outline" className="text-[10px] h-5">
-                        {qualified.length} qualified
-                      </Badge>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">
-                      {new Date(batch.scannedAt).toLocaleString("en-US", {
-                        month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
-                      })}
+        return (
+          <div key={date}>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-px flex-1 bg-border/40" />
+              <span className="text-[11px] font-semibold text-muted-foreground">
+                {new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              </span>
+              <div className="h-px flex-1 bg-border/40" />
+            </div>
+
+            {Object.entries(bySession).map(([session, items]) => (
+              <Card key={session} className="border-border/40 mb-2">
+                <CardContent className="p-3 space-y-1.5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm">{SESSION_ICONS[session]}</span>
+                    <span className="text-xs font-semibold text-foreground">{session}</span>
+                    <span className="text-[10px] text-muted-foreground ml-auto">
+                      {new Date(items[0].scanned_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                     </span>
                   </div>
-
-                  {/* Qualified pairs */}
-                  {qualified.map(r => {
+                  {items.sort((a, b) => a.rank - b.rank).map(r => {
                     const base = r.pair.substring(0, 3);
                     const quote = r.pair.length >= 6 ? r.pair.substring(3, 6) : "???";
                     const isBuy = r.direction === "BUY";
                     return (
-                      <div key={r.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-secondary/30 border border-border/20">
+                      <div key={r.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-secondary/30">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-bold text-muted-foreground w-4">#{r.rank}</span>
                           <span className="text-xs">{FLAGS[base]}{FLAGS[quote]}</span>
                           <span className="text-xs font-medium text-foreground">{base}/{quote}</span>
-                          <Badge className={`text-[9px] px-1.5 py-0 h-4 ${isBuy ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}`}>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isBuy ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}`}>
                             {r.direction}
-                          </Badge>
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] font-mono">
-                          <span className={isBuy ? "text-emerald-400" : "text-red-400"}>{r.total_score}</span>
-                          <span className="text-muted-foreground">D{r.differential > 0 ? "+" : ""}{r.differential}</span>
-                        </div>
+                        <span className={`text-xs font-bold font-mono ${isBuy ? "text-emerald-400" : "text-red-400"}`}>
+                          {r.total_score}<span className="text-muted-foreground text-[9px]">/105</span>
+                        </span>
                       </div>
                     );
                   })}
-
-                  {/* Skipped count */}
-                  {skipped.length > 0 && (
-                    <p className="text-[10px] text-muted-foreground/60 pl-2">
-                      + {skipped.length} skipped pairs
-                    </p>
-                  )}
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
