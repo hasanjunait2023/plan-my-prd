@@ -187,6 +187,22 @@ const PairSelector = () => {
         atrStatus: r.atr_status,
         reasoning: r.reasoning,
         rank: r.rank,
+        rsiValue: r.rsi_value,
+        divergenceType: r.divergence_type,
+        divergenceStrength: r.divergence_strength,
+      }));
+
+  // Divergence pairs: from live result or from DB
+  const displayDivergencePairs: DivergencePair[] = liveResult?.divergence_pairs || 
+    sessionData
+      .filter(r => r.divergence_type && r.divergence_type !== "NONE")
+      .map(r => ({
+        pair: r.pair,
+        direction: r.direction,
+        rsiValue: r.rsi_value || 50,
+        divergenceType: r.divergence_type || "NONE",
+        divergenceStrength: r.divergence_strength || "NONE",
+        score: r.total_score,
       }));
 
   const displaySkippedCount = liveResult ? liveResult.skipped_count : skippedDb.length;
