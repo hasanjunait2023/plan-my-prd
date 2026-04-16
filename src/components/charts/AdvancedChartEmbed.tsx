@@ -38,14 +38,15 @@ function AdvancedChartEmbedInner({
     widgetInner.style.width = '100%';
     widgetContainer.appendChild(widgetInner);
 
+    // Tighter zoom — show fewer bars per timeframe
     const rangeMap: Record<string, string> = {
-      '3': '1D',
-      '15': '2D',
-      '60': '5D',
-      '240': '1M',
-      'D': '6M',
+      '3': '4H',
+      '15': '1D',
+      '60': '2D',
+      '240': '5D',
+      'D': '1M',
     };
-    const finalRange = range ?? rangeMap[interval] ?? '5D';
+    const finalRange = range ?? rangeMap[interval] ?? '2D';
 
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
