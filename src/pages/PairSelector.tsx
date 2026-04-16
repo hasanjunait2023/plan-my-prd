@@ -616,10 +616,9 @@ function PremiumPairCard({ pair, isTop }: { pair: QualifiedPair; isTop: boolean 
   );
 }
 
+// LIVE ADVANCED CHART (EMA 9/15/200 + RSI, customizable interval)
 // ====================================================================
-// LIVE ADVANCED CHART (EMA 9/15/200 + RSI, 15min)
-// ====================================================================
-function LiveAdvancedChart({ symbol, height }: { symbol: string; height: number | string }) {
+function LiveAdvancedChart({ symbol, height, interval }: { symbol: string; height: number | string; interval: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -643,7 +642,7 @@ function LiveAdvancedChart({ symbol, height }: { symbol: string; height: number 
     script.type = "text/javascript";
     script.innerHTML = JSON.stringify({
       symbol,
-      interval: "15",
+      interval,
       theme: "dark",
       style: "1",
       locale: "en",
@@ -673,7 +672,7 @@ function LiveAdvancedChart({ symbol, height }: { symbol: string; height: number 
 
     widgetContainer.appendChild(script);
     containerRef.current.appendChild(widgetContainer);
-  }, [symbol]);
+  }, [symbol, interval]);
 
   return (
     <div
