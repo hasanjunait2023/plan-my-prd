@@ -158,9 +158,19 @@ export function FloatingChartWindow() {
         className="fixed inset-0 bg-background flex flex-col"
         style={{ zIndex: 9997 }}
       >
-        <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-card/60">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xl">{base}{quote}</span>
+        <div className="flex items-center gap-2 px-2 py-2 border-b border-border/40 bg-card/60">
+          {/* Back button → returns to watchlist */}
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-md bg-primary/10 hover:bg-primary/20 active:bg-primary/30 text-primary border border-primary/30 transition shrink-0"
+            aria-label="Back to watchlist"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-[11px] font-bold">Back</span>
+          </button>
+
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <span className="text-xl shrink-0">{base}{quote}</span>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold truncate">{chartItem.symbol}</div>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -185,7 +195,7 @@ export function FloatingChartWindow() {
           </div>
           <button
             onClick={closeChart}
-            className="p-2 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+            className="p-2 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground shrink-0"
             aria-label="Close chart"
           >
             <X className="w-5 h-5" />
