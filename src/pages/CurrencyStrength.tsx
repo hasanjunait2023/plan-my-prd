@@ -23,6 +23,7 @@ import { FundamentalBias } from '@/components/correlation/FundamentalBias';
 import { PowerGrabPanel } from '@/components/correlation/PowerGrabPanel';
 import { SupplyDemandPanel } from '@/components/correlation/SupplyDemandPanel';
 import { MARKET_SESSIONS, getSessionHours, isSessionActive, getBDHour, getBDMinute } from '@/lib/timezone';
+import { TierLegend } from '@/components/correlation/TierLegend';
 
 function getDefaultTab(): string {
   const now = new Date();
@@ -342,29 +343,7 @@ export default function CurrencyStrength() {
         </CardContent>
       </Card>
     ),
-    'legend': (
-      <Card className="border-border/30 bg-card/30 backdrop-blur-sm">
-        <CardContent className="pt-5 pb-4">
-          <div className="grid grid-cols-4 gap-4 text-center">
-            {[
-              { color: 'hsl(142, 71%, 45%)', label: 'STRONG', range: '+5 to +10' },
-              { color: 'hsl(48, 96%, 53%)', label: 'NEUTRAL', range: '-3 to +4' },
-              { color: 'hsl(25, 95%, 53%)', label: 'MID WEAK', range: '-6 to -4' },
-              { color: 'hsl(0, 84%, 60%)', label: 'WEAK', range: '-10 to -7' },
-            ].map((item) => (
-              <div key={item.label} className="space-y-1.5">
-                <div
-                  className="w-3 h-3 rounded-full mx-auto"
-                  style={{ backgroundColor: item.color, boxShadow: `0 0 8px ${item.color}40` }}
-                />
-                <p className="font-bold text-foreground text-[11px] tracking-wider">{item.label}</p>
-                <p className="text-muted-foreground text-[10px] font-medium">{item.range}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    ),
+    'legend': <TierLegend />,
   }), [data, isLoading, hasData, prevSessionData, asianData, londonData, nyData, activeTab]);
 
   return (
