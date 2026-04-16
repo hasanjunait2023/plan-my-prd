@@ -27,6 +27,9 @@ interface QualifiedPair {
   atrStatus: string;
   reasoning: string;
   rank: number;
+  rsiValue?: number;
+  divergenceType?: string;
+  divergenceStrength?: string;
 }
 
 interface ScanResult {
@@ -35,7 +38,20 @@ interface ScanResult {
   session: string;
   pairs_analyzed: number;
   qualified: QualifiedPair[];
+  divergence_pairs?: DivergencePair[];
   skipped_count: number;
+  currency_scores: Record<string, number>;
+  errors?: string[];
+}
+
+interface DivergencePair {
+  pair: string;
+  direction: string;
+  rsiValue: number;
+  divergenceType: string;
+  divergenceStrength: string;
+  score: number;
+}
   currency_scores: Record<string, number>;
   errors?: string[];
 }
@@ -52,6 +68,14 @@ interface DbRecommendation {
   adr_remaining: number;
   atr_status: string;
   reasoning: string;
+  is_qualified: boolean;
+  rank: number;
+  scan_batch_id: string;
+  scanned_at: string;
+  rsi_value?: number;
+  divergence_type?: string;
+  divergence_strength?: string;
+}
   is_qualified: boolean;
   rank: number;
   scan_batch_id: string;
