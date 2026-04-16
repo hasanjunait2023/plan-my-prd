@@ -63,9 +63,14 @@ function loadTf(): string {
 
 export function FloatingChartWindow() {
   const isMobile = useIsMobile();
-  const { chartItem, closeChart } = useFloatingWatchlist();
+  const { chartItem, closeChart, openWatchlist } = useFloatingWatchlist();
   const snapshot = useStrengthSnapshot();
   const strengths = snapshot.data;
+
+  const handleBack = useCallback(() => {
+    closeChart();
+    openWatchlist();
+  }, [closeChart, openWatchlist]);
   const [state, setState] = useState<WinState>(() => {
     const saved = loadState();
     if (saved) return saved;
