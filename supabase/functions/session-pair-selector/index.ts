@@ -468,6 +468,9 @@ Deno.serve(async (req) => {
       atrStatus: string;
       reasoning: string;
       isQualified: boolean;
+      rsiValue: number;
+      divergenceType: string;
+      divergenceStrength: string;
     }
 
     const results: PairResult[] = [];
