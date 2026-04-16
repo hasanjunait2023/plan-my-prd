@@ -76,6 +76,7 @@ export function FloatingChartWindow() {
     return { x: 40, y: 40, w: DEFAULT_W, h: DEFAULT_H };
   });
   const [tf, setTf] = useState<string>(loadTf);
+  const [rangeOverride, setRangeOverride] = useState<string>('AUTO');
   const [dragging, setDragging] = useState(false);
   const [resizing, setResizing] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; orig: WinState }>({ startX: 0, startY: 0, orig: state });
