@@ -348,25 +348,30 @@ export default function CurrencyStrength() {
 
   return (
     <div className="space-y-5 max-w-6xl mx-auto">
-      {/* Header — always on top, not draggable */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shadow-[0_0_20px_hsla(142,71%,45%,0.1)]">
-            <TrendingUp className="w-6 h-6 text-primary" />
+      {/* Premium Header — bold, gradient, with status pulse */}
+      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card/40 to-card/20 backdrop-blur-md p-4 sm:p-5 shadow-[0_8px_32px_hsla(142,71%,45%,0.08)]">
+        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-12 w-56 h-56 rounded-full bg-primary/8 blur-3xl pointer-events-none" />
+        <div className="relative flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/40 flex items-center justify-center shadow-[0_0_28px_hsla(142,71%,45%,0.25)] relative">
+              <TrendingUp className="w-6 h-6 sm:w-7 sm:h-7 text-primary" strokeWidth={2.5} />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(142,71%,45%)]" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-primary via-foreground to-primary/80 bg-clip-text text-transparent">
+                Currency Strength
+              </h1>
+              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 font-semibold flex items-center gap-1.5">
+                <Activity className="w-3 h-3 text-primary" />
+                {isLoading
+                  ? 'ডেটা লোড হচ্ছে...'
+                  : lastUpdated
+                    ? `Updated · ${formatUtcTimestamp(lastUpdated)} UTC`
+                    : `${format(selectedDate, 'dd MMM yyyy')} (UTC) — কোনো ডেটা নেই`}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-extrabold text-foreground tracking-tight">
-              Currency Strength
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
-              {isLoading
-                ? 'ডেটা লোড হচ্ছে...'
-                : lastUpdated
-                  ? `আপডেট (UTC): ${formatUtcTimestamp(lastUpdated)}`
-                  : `${format(selectedDate, 'dd MMM yyyy')} (UTC) — এই তারিখে কোনো ডেটা নেই`}
-            </p>
-          </div>
-        </div>
 
         <div className="flex items-center gap-2">
           <Popover>
