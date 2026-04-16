@@ -190,8 +190,24 @@ Deno.serve(async (req) => {
       }
     }
 
-    // For "first" batch, return early — aggregation happens in "second" batch
+    // For "first" batch, self-invoke the second batch then return
     if (batch === "first") {
+      // Fire-and-forget: invoke self with second batch
+      const selfUrl = `${supabaseUrl}/functions/v1/ai-currency-scanner`;
+      fetch(selfUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          batch: "second",
+          scan_batch_id: scanBatchId,
+          timeframe,
+          session,
+        }),
+      }).catch(e => console.error("Self-invoke error:", e));
+
       return new Response(JSON.stringify({
         success: true,
         scan_batch_id: scanBatchId,
