@@ -18,8 +18,8 @@ function AdvancedChartEmbedInner({
   interval,
   height = '100%',
   range,
-  hideTopToolbar = true,
-  hideSideToolbar = true,
+  hideTopToolbar = false,
+  hideSideToolbar = false,
 }: AdvancedChartEmbedProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -70,9 +70,10 @@ function AdvancedChartEmbedInner({
       hide_top_toolbar: hideTopToolbar,
       hide_legend: false,
       enable_publishing: false,
-      withdateranges: false,
+      withdateranges: true,
       hide_side_toolbar: hideSideToolbar,
-      details: false,
+      hide_volume: false,
+      details: true,
       calendar: false,
       show_popup_button: true,
       popup_width: '1200',
