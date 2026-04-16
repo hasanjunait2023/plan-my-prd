@@ -8,6 +8,13 @@ export interface CurrencyStrengthEntry {
   strength: number; // -7..+7
   tier: StrengthTier;
   recordedAt: string;
+  timeframe: string; // session/timeframe label (e.g. "New York", "London", "1H")
+}
+
+export interface StrengthSnapshot {
+  data: Record<string, CurrencyStrengthEntry>;
+  timeframe: string | null; // which session/timeframe the data came from
+  recordedAt: string | null;
 }
 
 const MAJORS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
@@ -20,76 +27,108 @@ export function classifyStrength(score: number): StrengthTier {
   return 'WEAK';
 }
 
-let cache: { data: Record<string, CurrencyStrengthEntry>; ts: number } | null = null;
-const TTL = 60_000; // 1 min cache
-const subscribers = new Set<(d: Record<string, CurrencyStrengthEntry>) => void>();
+/**
+ * Detect current trading session by UTC hour.
+ * Matches the priority order used in app.
+ */
+export function detectCurrentSession(): string {
+  const h = new Date().getUTCHours();
+  if (h >= 15 && h < 17) return 'London Close';
+  if (h >= 13 && h < 22) return 'New York';
+  if (h >= 7 && h < 16) return 'London';
+  return 'Asian';
+}
 
-async function fetchLatestStrength(): Promise<Record<string, CurrencyStrengthEntry>> {
-  // Get the most recent batch
+let cache: { snapshot: StrengthSnapshot; ts: number } | null = null;
+const TTL = 60_000; // 1 min cache
+const subscribers = new Set<(s: StrengthSnapshot) => void>();
+
+async function fetchLatestForTimeframe(tf: string) {
   const { data: latest } = await supabase
     .from('currency_strength')
     .select('recorded_at')
+    .eq('timeframe', tf)
     .order('recorded_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-
-  if (!latest) return {};
-
+  if (!latest) return null;
   const { data } = await supabase
     .from('currency_strength')
-    .select('currency, strength, recorded_at')
+    .select('currency, strength, recorded_at, timeframe')
+    .eq('timeframe', tf)
     .eq('recorded_at', latest.recorded_at);
+  return { rows: data || [], recordedAt: latest.recorded_at as string };
+}
 
-  const map: Record<string, CurrencyStrengthEntry> = {};
-  for (const row of data || []) {
-    if (!MAJORS.includes(row.currency)) continue;
-    map[row.currency] = {
-      currency: row.currency,
-      strength: row.strength,
-      tier: classifyStrength(row.strength),
-      recordedAt: row.recorded_at,
-    };
+async function fetchSnapshot(): Promise<StrengthSnapshot> {
+  const currentSession = detectCurrentSession();
+  // Try current session first, then fallback chain
+  const fallback = [currentSession, 'New York', 'London', '1H', 'Asian', 'London Close'];
+  const tried = new Set<string>();
+
+  for (const tf of fallback) {
+    if (tried.has(tf)) continue;
+    tried.add(tf);
+    const result = await fetchLatestForTimeframe(tf);
+    if (!result || result.rows.length === 0) continue;
+    // Only accept if recent (within 24h) for current session; otherwise still ok as fallback
+    const ageMs = Date.now() - new Date(result.recordedAt).getTime();
+    const isCurrent = tf === currentSession;
+    if (isCurrent && ageMs > 24 * 3600_000) continue; // current session but stale, try fallback
+    const map: Record<string, CurrencyStrengthEntry> = {};
+    for (const row of result.rows) {
+      if (!MAJORS.includes(row.currency)) continue;
+      map[row.currency] = {
+        currency: row.currency,
+        strength: row.strength,
+        tier: classifyStrength(row.strength),
+        recordedAt: row.recorded_at,
+        timeframe: row.timeframe,
+      };
+    }
+    if (Object.keys(map).length > 0) {
+      return { data: map, timeframe: tf, recordedAt: result.recordedAt };
+    }
   }
-  return map;
+  return { data: {}, timeframe: null, recordedAt: null };
 }
 
 async function refresh() {
-  const data = await fetchLatestStrength();
-  cache = { data, ts: Date.now() };
-  subscribers.forEach((cb) => cb(data));
+  const snap = await fetchSnapshot();
+  cache = { snapshot: snap, ts: Date.now() };
+  subscribers.forEach((cb) => cb(snap));
 }
 
+const EMPTY: StrengthSnapshot = { data: {}, timeframe: null, recordedAt: null };
+
 /**
- * Returns a map of currency -> strength entry (latest snapshot, all 8 majors).
+ * Returns latest strength snapshot — prefers data from the currently-running session.
  * Cached for 60s, shared across components.
  */
-export function useCurrencyStrengths() {
-  const [strengths, setStrengths] = useState<Record<string, CurrencyStrengthEntry>>(
-    cache?.data || {}
-  );
+export function useStrengthSnapshot(): StrengthSnapshot {
+  const [snap, setSnap] = useState<StrengthSnapshot>(cache?.snapshot || EMPTY);
 
   useEffect(() => {
-    const cb = (d: Record<string, CurrencyStrengthEntry>) => setStrengths(d);
+    const cb = (s: StrengthSnapshot) => setSnap(s);
     subscribers.add(cb);
-
-    // Initial fetch if no cache or stale
     if (!cache || Date.now() - cache.ts > TTL) {
       refresh();
     } else {
-      setStrengths(cache.data);
+      setSnap(cache.snapshot);
     }
-
     return () => {
       subscribers.delete(cb);
     };
   }, []);
 
-  return strengths;
+  return snap;
 }
 
-/**
- * Get strength for a single currency (synchronous from cache; returns undefined if not loaded).
- */
+/** Backwards-compatible: just the map of currency -> entry. */
+export function useCurrencyStrengths(): Record<string, CurrencyStrengthEntry> {
+  return useStrengthSnapshot().data;
+}
+
 export function useCurrencyStrength(currency: string): CurrencyStrengthEntry | undefined {
   const all = useCurrencyStrengths();
   return all[currency];

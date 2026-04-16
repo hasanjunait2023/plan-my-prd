@@ -5,7 +5,7 @@ import { useFloatingWatchlist } from '@/contexts/FloatingWatchlistContext';
 import { getPairFlags } from '@/lib/pairFlags';
 import { cn } from '@/lib/utils';
 import AdvancedChartEmbed from '@/components/charts/AdvancedChartEmbed';
-import { useCurrencyStrengths } from '@/hooks/useCurrencyStrengths';
+import { useStrengthSnapshot } from '@/hooks/useCurrencyStrengths';
 import { PairStrengthBadges } from './StrengthBadge';
 
 const STORAGE_KEY = 'chart-window-state';
@@ -64,7 +64,8 @@ function loadTf(): string {
 export function FloatingChartWindow() {
   const isMobile = useIsMobile();
   const { chartItem, closeChart } = useFloatingWatchlist();
-  const strengths = useCurrencyStrengths();
+  const snapshot = useStrengthSnapshot();
+  const strengths = snapshot.data;
   const [state, setState] = useState<WinState>(() => {
     const saved = loadState();
     if (saved) return saved;
@@ -157,7 +158,7 @@ export function FloatingChartWindow() {
             <span className="text-xl">{base}{quote}</span>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-semibold truncate">{chartItem.symbol}</div>
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 {(baseEntry || quoteEntry) && (
                   <PairStrengthBadges
                     base={baseCur}
@@ -168,6 +169,11 @@ export function FloatingChartWindow() {
                     quoteStrength={quoteEntry?.strength}
                     size="sm"
                   />
+                )}
+                {snapshot.timeframe && (
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                    {snapshot.timeframe}
+                  </span>
                 )}
               </div>
             </div>
@@ -254,7 +260,7 @@ export function FloatingChartWindow() {
           <GripHorizontal className="w-4 h-4 text-muted-foreground shrink-0" />
           <span className="text-lg shrink-0">{base}{quote}</span>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-semibold truncate">{chartItem.symbol}</span>
               {(baseEntry || quoteEntry) && (
                 <PairStrengthBadges
@@ -265,6 +271,11 @@ export function FloatingChartWindow() {
                   baseStrength={baseEntry?.strength}
                   quoteStrength={quoteEntry?.strength}
                 />
+              )}
+              {snapshot.timeframe && (
+                <span className="text-[9px] uppercase tracking-wider text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                  {snapshot.timeframe}
+                </span>
               )}
             </div>
             <div className="text-[10px] text-muted-foreground truncate">{chartItem.name}</div>

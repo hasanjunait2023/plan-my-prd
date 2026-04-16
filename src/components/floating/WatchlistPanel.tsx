@@ -12,8 +12,9 @@ import {
 } from '@/lib/watchlistData';
 import { getPairFlags } from '@/lib/pairFlags';
 import { cn } from '@/lib/utils';
-import { useCurrencyStrengths } from '@/hooks/useCurrencyStrengths';
+import { useStrengthSnapshot } from '@/hooks/useCurrencyStrengths';
 import { PairStrengthBadges } from './StrengthBadge';
+import { Activity } from 'lucide-react';
 
 type TabKey = WatchlistCategory | 'ALL';
 
@@ -24,7 +25,7 @@ function PairRow({
 }: {
   item: WatchlistItem;
   onClick: () => void;
-  strengths: ReturnType<typeof useCurrencyStrengths>;
+  strengths: ReturnType<typeof useStrengthSnapshot>['data'];
 }) {
   const { base, quote } = getPairFlags(item.symbol);
   const baseCur = item.symbol.slice(0, 3);
@@ -70,7 +71,8 @@ export function WatchlistPanel() {
   const { watchlistOpen, closeWatchlist, openChart } = useFloatingWatchlist();
   const [tab, setTab] = useState<TabKey>('ALL');
   const [search, setSearch] = useState('');
-  const strengths = useCurrencyStrengths();
+  const snapshot = useStrengthSnapshot();
+  const strengths = snapshot.data;
 
   // Filter items
   const items = useMemo(() => {
@@ -118,6 +120,20 @@ export function WatchlistPanel() {
             <X className="w-4 h-4" />
           </button>
         </SheetHeader>
+
+        {/* Strength source banner */}
+        {snapshot.timeframe && (
+          <div className="px-3 py-1.5 border-b border-border/40 bg-muted/20 flex items-center gap-2 text-[10px] text-muted-foreground">
+            <Activity className="w-3 h-3 text-primary" />
+            <span>Strength from</span>
+            <span className="font-bold text-primary uppercase tracking-wider">{snapshot.timeframe}</span>
+            <span className="ml-auto">
+              {snapshot.recordedAt
+                ? new Date(snapshot.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : ''}
+            </span>
+          </div>
+        )}
 
         {/* Search */}
         <div className="px-3 pt-3 pb-2">
