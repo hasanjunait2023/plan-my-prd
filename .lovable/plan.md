@@ -1,45 +1,46 @@
 
 
-# Pair Selector UI Redesign — Premium & Simplified
+# RSI Divergence Detection — Pair Selector Add-on
 
-## Problem
-বর্তমান PairSelector page এ `PremiumPairCard` অনেক complicated — score ring, 6-layer breakdown bar, layer legend, metric boxes, status badges, আর mini symbol overview chart (যেটা ছোট এবং non-interactive)। অনেক visual noise।
+## কি করবো
+Pair Selector edge function যখন 1H candles fetch করে, সেই data থেকেই RSI calculate করে **price vs RSI divergence** detect করবো। Divergence পাওয়া pair গুলো আলাদা "Divergence Alerts" section এ UI তে দেখাবো।
 
-## Design Direction
-Clean, premium, card-per-pair layout। প্রতিটি qualified pair এর জন্য:
-1. **Header strip** — Flag + Pair name + BUY/SELL badge + Score (simple text, no ring)
-2. **Live TradingView Advanced Chart** — 15-minute interval, EMA 9/15/200 + RSI (same config as `PairSuggestions > InlineChart`), height **450px** (mobile-friendly বড় chart)
-3. **Expand button** — Full-screen dialog (already exists pattern)
+## Divergence Logic (1H Timeframe)
 
-সব layer breakdown bar, metric boxes (Gap/ADR/Ext), status badges — **remove**। শুধু pair name, direction, score, আর chart।
+**Bullish Divergence**: Price lower low করেছে কিন্তু RSI higher low → potential reversal up
+**Bearish Divergence**: Price higher high করেছে কিন্তু RSI lower high → potential reversal down
+
+RSI 14-period standard। শেষ 30টা candle এর মধ্যে swing highs/lows compare করে detect করবো।
 
 ## Changes
 
-### File: `src/pages/PairSelector.tsx`
+### 1. Edge Function: `session-pair-selector/index.ts`
 
-1. **Replace `PremiumPairCard`** with a simplified component:
-   - Header: `🇬🇧🇯🇵 GBP/JPY` + `BUY` badge (green/red) + score as simple text `85/105`
-   - Below header: Full TradingView Advanced Chart widget (15min, EMA 9/15/200 + RSI), height 450px
-   - Expand icon to open full-screen dialog with the same chart
-   
-2. **Remove** these sub-components (no longer needed):
-   - `MetricBox`
-   - `LayerSegment`
-   - `StatusBadge`
-   - `parseLayerScores`
-   - Score ring SVG
-   - 6-layer breakdown bar + legend
-   - Status badges row
+- **Add RSI calculation function** — standard 14-period RSI from close prices
+- **Add divergence detection function** — last 30 candles এর swing points (local highs/lows within 5-bar window) compare করে:
+  - Bullish: price swing low < previous swing low AND RSI swing low > previous RSI swing low
+  - Bearish: price swing high > previous swing high AND RSI swing high < previous swing high
+- **PairData interface** তে `rsi_value`, `divergence_type` (`"BULLISH"`, `"BEARISH"`, `"NONE"`) এবং `divergence_strength` (`"STRONG"`, `"MODERATE"`) add করবো
+- **Results** এ divergence info include করবো + DB তে store করবো
+- **Telegram message** এ divergence pairs আলাদা section এ দেখাবো
 
-3. **Replace `MiniTradingViewChart`** with the full Advanced Chart widget (reuse the same pattern from `PairSuggestions > InlineChart` — `embed-widget-advanced-chart.js` with EMA 9, 15, 200 + RSI studies, interval `"15"`)
+### 2. DB Migration: `session_pair_recommendations` table
 
-4. Chart height: **450px** inline, full viewport in expanded dialog
+- Add columns: `rsi_value numeric default 0`, `divergence_type text default 'NONE'`, `divergence_strength text default 'NONE'`
 
-### No changes to:
-- Hero header, session tabs, run button, progress bar, currency strength strip, skipped tab, empty states — these stay as-is
+### 3. UI: `src/pages/PairSelector.tsx`
+
+- Results tab এ **"🔀 Divergence Alerts"** নামে নতুন section — Priority Brief এর পরে, detailed cards এর আগে
+- শুধু `divergence_type !== 'NONE'` pairs দেখাবো
+- Card design: Pair name + flags + BULLISH/BEARISH badge (green/red) + RSI value + strength indicator + direction
+- কোনো divergence না থাকলে section hide
+
+### 4. Types update
+- `QualifiedPair` interface এ `rsi_value`, `divergence_type`, `divergence_strength` add
 
 ## Technical Notes
-- TradingView Advanced Chart widget config identical to `PairSuggestions > InlineChart` but with `interval: "15"` instead of `"60"`
-- The expand dialog reuses the existing `Dialog/DialogContent` pattern
-- Removing ~150 lines of complex sub-components, replacing with ~80 lines of clean card + chart
+
+- RSI আলাদা API call লাগবে না — existing 1H candles (201টা) থেকেই calculate হবে, তাই কোনো extra API usage নেই
+- Swing point detection: 5-bar lookback window (2 bars each side)
+- Divergence শুধু informational — pair selector এর scoring/qualification change হবে না
 
