@@ -388,68 +388,43 @@ const PairSelector = () => {
 // PRIORITY BRIEF — BUY vs SELL split, ranked by priority
 // ====================================================================
 function PriorityBrief({ pairs }: { pairs: QualifiedPair[] }) {
-  const buyPairs = pairs.filter(p => p.direction === "BUY").sort((a, b) => a.rank - b.rank);
-  const sellPairs = pairs.filter(p => p.direction === "SELL").sort((a, b) => a.rank - b.rank);
-
-  const PairRow = ({ p }: { p: QualifiedPair }) => {
-    const base = p.pair.substring(0, 3);
-    const quote = p.pair.length >= 7 ? p.pair.substring(4, 7) : p.pair.substring(3, 6);
-    const isBuy = p.direction === "BUY";
-    return (
-      <div className="flex items-center justify-between py-1.5">
-        <div className="flex items-center gap-1.5">
-          <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold ${
-            isBuy ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
-          }`}>
-            {p.rank}
-          </span>
-          <span className="text-xs">{FLAGS[base]}{FLAGS[quote]}</span>
-          <span className="text-xs font-semibold text-foreground">{base}/{quote}</span>
-        </div>
-        <span className={`text-xs font-bold font-mono ${isBuy ? "text-emerald-400" : "text-red-400"}`}>
-          {p.score}<span className="text-muted-foreground text-[9px]">/105</span>
-        </span>
-      </div>
-    );
-  };
+  const top4 = [...pairs].sort((a, b) => a.rank - b.rank).slice(0, 4);
 
   return (
     <Card className="border-border/50 bg-card/80 backdrop-blur-sm overflow-hidden">
       <div className="px-4 py-2.5 border-b border-border/30 flex items-center gap-2">
         <Target className="h-3.5 w-3.5 text-primary" />
-        <span className="text-xs font-bold text-foreground tracking-wide uppercase">Priority Brief</span>
+        <span className="text-xs font-bold text-foreground tracking-wide uppercase">Top Priority</span>
       </div>
-      <div className="grid grid-cols-2 divide-x divide-border/30">
-        {/* BUY Column */}
-        <div className="p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <ArrowUpRight className="h-3.5 w-3.5 text-emerald-400" />
-            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Buy</span>
-            <span className="text-[10px] text-muted-foreground ml-auto">{buyPairs.length}</span>
-          </div>
-          {buyPairs.length > 0 ? (
-            <div className="space-y-0.5">
-              {buyPairs.map(p => <PairRow key={p.pair} p={p} />)}
+      <div className="px-4 py-2.5 space-y-1">
+        {top4.map(p => {
+          const base = p.pair.substring(0, 3);
+          const quote = p.pair.length >= 7 ? p.pair.substring(4, 7) : p.pair.substring(3, 6);
+          const isBuy = p.direction === "BUY";
+          return (
+            <div key={p.pair} className="flex items-center justify-between py-1.5">
+              <div className="flex items-center gap-2">
+                <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold ${
+                  isBuy ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
+                }`}>
+                  {p.rank}
+                </span>
+                <span className="text-xs">{FLAGS[base]}{FLAGS[quote]}</span>
+                <span className="text-sm font-semibold text-foreground">{base}/{quote}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                  isBuy ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
+                }`}>
+                  {p.direction}
+                </span>
+                <span className={`text-xs font-bold font-mono ${isBuy ? "text-emerald-400" : "text-red-400"}`}>
+                  {p.score}<span className="text-muted-foreground text-[9px]">/105</span>
+                </span>
+              </div>
             </div>
-          ) : (
-            <p className="text-[10px] text-muted-foreground/50 italic">No buy signals</p>
-          )}
-        </div>
-        {/* SELL Column */}
-        <div className="p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <ArrowDownRight className="h-3.5 w-3.5 text-red-400" />
-            <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider">Sell</span>
-            <span className="text-[10px] text-muted-foreground ml-auto">{sellPairs.length}</span>
-          </div>
-          {sellPairs.length > 0 ? (
-            <div className="space-y-0.5">
-              {sellPairs.map(p => <PairRow key={p.pair} p={p} />)}
-            </div>
-          ) : (
-            <p className="text-[10px] text-muted-foreground/50 italic">No sell signals</p>
-          )}
-        </div>
+          );
+        })}
       </div>
     </Card>
   );
