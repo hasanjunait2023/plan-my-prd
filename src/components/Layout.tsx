@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { supabase } from '@/integrations/supabase/client';
 import { formatPairWithFlags } from '@/lib/pairFlags';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { FloatingWatchlist } from '@/components/floating/FloatingWatchlist';
 
 interface NotificationItem {
   id: string;
@@ -621,6 +622,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         onMaxChange={(mobile, desktop) => updateConfig({ maxMobile: mobile, maxDesktop: desktop })}
         isMobile={isMobile}
       />
+
+      {/* Global floating watchlist (FAB + panel + chart window) */}
+      <FloatingWatchlist />
     </div>
   );
 }
