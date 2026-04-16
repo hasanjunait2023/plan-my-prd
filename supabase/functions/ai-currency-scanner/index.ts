@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
       for (const pair of chunk) {
         try {
           processed++;
-          console.log(`[${processed}/${ALL_PAIRS.length}] Scanning ${pair}...`);
+          console.log(`[${processed}/${pairsToScan.length}] Scanning ${pair}...`);
           
           const { price, ema200 } = await fetchEmaData(pair, interval, supabase);
           const analysis = analyzePair(price, ema200);
