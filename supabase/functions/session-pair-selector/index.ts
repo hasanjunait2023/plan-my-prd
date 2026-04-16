@@ -663,6 +663,22 @@ Deno.serve(async (req) => {
             msg += `   ADR: ${r.adrRemaining.toFixed(0)}% | ATR: ${r.atrStatus}\n\n`;
           }
 
+          // Divergence alerts in telegram
+          const divergencePairs = results.filter(r => r.divergenceType !== "NONE");
+          if (divergencePairs.length > 0) {
+            msg += `━━━━━━━━━━━━━━━━━━━\n`;
+            msg += `🔀 *RSI DIVERGENCE ALERTS*\n\n`;
+            for (const dp of divergencePairs.slice(0, 5)) {
+              const dpBase = dp.pair.substring(0, 3);
+              const dpQuote = dp.pair.substring(4, 7);
+              const divEmoji = dp.divergenceType === "BULLISH" ? "🟢" : "🔴";
+              const strengthTag = dp.divergenceStrength === "STRONG" ? "💪" : "";
+              msg += `${divEmoji} ${FLAGS[dpBase] || ""}${FLAGS[dpQuote] || ""} *${dp.pair}* — ${dp.divergenceType} ${strengthTag}\n`;
+              msg += `   RSI: ${dp.rsiValue.toFixed(1)} | ${dp.divergenceStrength}\n`;
+            }
+            msg += `\n`;
+          }
+
           msg += `━━━━━━━━━━━━━━━━━━━\n`;
           msg += `❌ *SKIPPED:* ${skipped.length} pairs\n`;
           
