@@ -28,7 +28,6 @@ function TradingViewWidgetInner({ symbol, interval, showRsi = true }: TradingVie
       { id: 'MAExp@tv-basicstudies', inputs: { length: 9 } },
       { id: 'MAExp@tv-basicstudies', inputs: { length: 15 } },
       { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
-      { id: 'Volume@tv-basicstudies' },
     ];
     if (showRsi) {
       studies.push({ id: 'RSI@tv-basicstudies' });
@@ -46,12 +45,12 @@ function TradingViewWidgetInner({ symbol, interval, showRsi = true }: TradingVie
       locale: 'en',
       timezone: 'Etc/UTC',
       studies,
-      hide_top_toolbar: true,
+      hide_top_toolbar: false,
       hide_legend: false,
       enable_publishing: false,
       withdateranges: false,
       hide_side_toolbar: true,
-      hide_volume: true,
+      hide_volume: false,
       details: false,
       calendar: false,
       show_popup_button: true,
@@ -59,8 +58,11 @@ function TradingViewWidgetInner({ symbol, interval, showRsi = true }: TradingVie
       popup_height: '800',
       allow_symbol_change: false,
       save_image: true,
-      disabled_features: [],
-      enabled_features: ["session_breaks"],
+      disabled_features: ["header_compare", "header_symbol_search", "header_settings", "header_fullscreen_button"],
+      enabled_features: ["session_breaks", "items_favoriting"],
+      favorites: {
+        intervals: ["1", "3", "15", "60", "240"],
+      },
       width: '100%',
       height: '100%',
       support_host: 'https://www.tradingview.com',
