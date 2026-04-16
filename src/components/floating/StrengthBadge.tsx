@@ -45,18 +45,22 @@ export function StrengthBadge({
   }
 
   const cfg = TIER_CONFIG[tier];
+  const isFull = variant === 'full';
+  const labelText = isFull ? cfg.full : (size === 'xs' ? cfg.short : cfg.label);
   return (
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded border font-medium',
         cfg.cls,
-        size === 'xs' ? 'px-1.5 py-0 text-[9px]' : 'px-2 py-0.5 text-[10px]',
+        isFull
+          ? 'px-2 py-0.5 text-[10px]'
+          : size === 'xs' ? 'px-1.5 py-0 text-[9px]' : 'px-2 py-0.5 text-[10px]',
         className
       )}
       title={`${currency}: ${cfg.label}${strength !== undefined ? ` (${strength > 0 ? '+' : ''}${strength})` : ''}`}
     >
       {showCurrency && <span className="font-bold">{currency}</span>}
-      <span>{size === 'xs' ? cfg.short : cfg.label}</span>
+      <span>{labelText}</span>
     </span>
   );
 }
