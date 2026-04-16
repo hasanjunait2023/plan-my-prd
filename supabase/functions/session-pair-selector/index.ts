@@ -47,6 +47,106 @@ function calculateEMA(prices: number[], period: number): number {
   return ema;
 }
 
+// ====== RSI Calculation ======
+function calculateRSI(closes: number[], period = 14): number[] {
+  const rsiValues: number[] = [];
+  if (closes.length < period + 1) return rsiValues;
+
+  let avgGain = 0, avgLoss = 0;
+  for (let i = 1; i <= period; i++) {
+    const change = closes[i] - closes[i - 1];
+    if (change > 0) avgGain += change;
+    else avgLoss += Math.abs(change);
+  }
+  avgGain /= period;
+  avgLoss /= period;
+
+  rsiValues.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
+
+  for (let i = period + 1; i < closes.length; i++) {
+    const change = closes[i] - closes[i - 1];
+    const gain = change > 0 ? change : 0;
+    const loss = change < 0 ? Math.abs(change) : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    rsiValues.push(avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss));
+  }
+  return rsiValues;
+}
+
+// ====== Divergence Detection ======
+interface DivergenceResult {
+  type: "BULLISH" | "BEARISH" | "NONE";
+  strength: "STRONG" | "MODERATE" | "NONE";
+  rsiValue: number;
+}
+
+function detectDivergence(closes: number[], rsiValues: number[]): DivergenceResult {
+  // We need at least 30 data points with RSI
+  // closes are chronological (oldest first), rsiValues align with closes starting from index `period`
+  const lookback = 30;
+  const rsiOffset = closes.length - rsiValues.length; // RSI starts at this index in closes
+
+  if (rsiValues.length < lookback) {
+    return { type: "NONE", strength: "NONE", rsiValue: rsiValues.length > 0 ? rsiValues[rsiValues.length - 1] : 50 };
+  }
+
+  const currentRSI = rsiValues[rsiValues.length - 1];
+
+  // Find swing lows and highs in the last 30 candles (5-bar window: 2 bars each side)
+  const startIdx = rsiValues.length - lookback;
+  const swingLows: { idx: number; price: number; rsi: number }[] = [];
+  const swingHighs: { idx: number; price: number; rsi: number }[] = [];
+
+  for (let i = startIdx + 2; i < rsiValues.length - 2; i++) {
+    const priceIdx = i + rsiOffset;
+    const price = closes[priceIdx];
+    const rsi = rsiValues[i];
+
+    // Swing low: price lower than 2 bars on each side
+    if (
+      price <= closes[priceIdx - 1] && price <= closes[priceIdx - 2] &&
+      price <= closes[priceIdx + 1] && price <= closes[priceIdx + 2]
+    ) {
+      swingLows.push({ idx: i, price, rsi });
+    }
+
+    // Swing high: price higher than 2 bars on each side
+    if (
+      price >= closes[priceIdx - 1] && price >= closes[priceIdx - 2] &&
+      price >= closes[priceIdx + 1] && price >= closes[priceIdx + 2]
+    ) {
+      swingHighs.push({ idx: i, price, rsi });
+    }
+  }
+
+  // Check bullish divergence: last two swing lows
+  if (swingLows.length >= 2) {
+    const prev = swingLows[swingLows.length - 2];
+    const curr = swingLows[swingLows.length - 1];
+    if (curr.price < prev.price && curr.rsi > prev.rsi) {
+      const priceDiff = Math.abs((curr.price - prev.price) / prev.price) * 100;
+      const rsiDiff = curr.rsi - prev.rsi;
+      const strength = (priceDiff > 0.3 && rsiDiff > 5) ? "STRONG" : "MODERATE";
+      return { type: "BULLISH", strength, rsiValue: currentRSI };
+    }
+  }
+
+  // Check bearish divergence: last two swing highs
+  if (swingHighs.length >= 2) {
+    const prev = swingHighs[swingHighs.length - 2];
+    const curr = swingHighs[swingHighs.length - 1];
+    if (curr.price > prev.price && curr.rsi < prev.rsi) {
+      const priceDiff = Math.abs((curr.price - prev.price) / prev.price) * 100;
+      const rsiDiff = prev.rsi - curr.rsi;
+      const strength = (priceDiff > 0.3 && rsiDiff > 5) ? "STRONG" : "MODERATE";
+      return { type: "BEARISH", strength, rsiValue: currentRSI };
+    }
+  }
+
+  return { type: "NONE", strength: "NONE", rsiValue: currentRSI };
+}
+
 // ====== ATR Calculation ======
 function calculateATR(candles: { high: number; low: number; close: number }[], period: number): number {
   if (candles.length < period + 1) return 0;
