@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +11,10 @@ import {
   Play, Clock, AlertTriangle,
   XCircle, Target, Shield, Zap, Gauge, Layers,
   ArrowUpRight, ArrowDownRight, Activity,
-  RefreshCw,
+  RefreshCw, History, Download, FileText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
 
 interface QualifiedPair {
   pair: string;
