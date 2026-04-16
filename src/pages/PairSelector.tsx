@@ -354,6 +354,9 @@ const PairSelector = () => {
             ) : (
               <>
                 <PriorityBrief pairs={displayQualified} />
+                {displayDivergencePairs.length > 0 && (
+                  <DivergenceAlerts pairs={displayDivergencePairs} />
+                )}
                 {displayQualified.slice(0, 4).map((pair, idx) => (
                   <PremiumPairCard key={pair.pair} pair={pair} isTop={idx === 0} />
                 ))}
