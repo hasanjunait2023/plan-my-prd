@@ -70,6 +70,7 @@ export function WatchlistPanel() {
   const { watchlistOpen, closeWatchlist, openChart } = useFloatingWatchlist();
   const [tab, setTab] = useState<TabKey>('ALL');
   const [search, setSearch] = useState('');
+  const strengths = useCurrencyStrengths();
 
   // Filter items
   const items = useMemo(() => {
@@ -167,13 +168,13 @@ export function WatchlistPanel() {
                   {cat}
                 </div>
                 {list.map((item) => (
-                  <PairRow key={item.symbol} item={item} onClick={() => openChart(item.symbol)} />
+                  <PairRow key={item.symbol} item={item} strengths={strengths} onClick={() => openChart(item.symbol)} />
                 ))}
               </div>
             ))
           ) : (
             items.map((item) => (
-              <PairRow key={item.symbol} item={item} onClick={() => openChart(item.symbol)} />
+              <PairRow key={item.symbol} item={item} strengths={strengths} onClick={() => openChart(item.symbol)} />
             ))
           )}
         </div>
