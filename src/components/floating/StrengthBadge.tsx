@@ -76,6 +76,7 @@ export function PairStrengthBadges({
   baseStrength,
   quoteStrength,
   size = 'xs',
+  variant = 'compact',
 }: {
   base: string;
   quote: string;
@@ -84,7 +85,16 @@ export function PairStrengthBadges({
   baseStrength?: number;
   quoteStrength?: number;
   size?: 'xs' | 'sm';
+  variant?: 'compact' | 'full';
 }) {
+  if (variant === 'full') {
+    return (
+      <div className="flex flex-col gap-1">
+        <StrengthBadge currency={base} tier={baseTier} strength={baseStrength} size={size} variant="full" />
+        <StrengthBadge currency={quote} tier={quoteTier} strength={quoteStrength} size={size} variant="full" />
+      </div>
+    );
+  }
   return (
     <div className="flex items-center gap-1">
       <StrengthBadge currency={base} tier={baseTier} strength={baseStrength} size={size} />
