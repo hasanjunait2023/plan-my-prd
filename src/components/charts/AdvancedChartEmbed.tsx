@@ -65,7 +65,30 @@ function AdvancedChartEmbedInner({
         { id: 'MAExp@tv-basicstudies', inputs: { length: 15 } },
         { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
         { id: 'RSI@tv-basicstudies' },
+        { id: 'Volume@tv-basicstudies' },
       ],
+      studies_overrides: {
+        // EMA 9 — red, thin
+        'moving average exponential.plot.color': '#ef4444',
+        'moving average exponential.plot.linewidth': 1,
+        // RSI panel — compact look
+        'relative strength index.plot.color': '#eab308',
+        'relative strength index.plot.linewidth': 1,
+        'relative strength index.upper band.color': '#64748b',
+        'relative strength index.lower band.color': '#64748b',
+        'relative strength index.hlines background.color': 'rgba(100,116,139,0.05)',
+        // Volume coloring
+        'volume.volume.color.0': '#ef4444',
+        'volume.volume.color.1': '#22c55e',
+        'volume.volume ma.visible': false,
+      },
+      overrides: {
+        'paneProperties.legendProperties.showStudyTitles': true,
+        'paneProperties.legendProperties.showStudyValues': true,
+        'scalesProperties.showSeriesLastValue': true,
+        // Countdown to bar close on price scale
+        'scalesProperties.showSymbolLabels': false,
+      },
       hide_top_toolbar: hideTopToolbar,
       hide_legend: false,
       enable_publishing: false,
@@ -78,6 +101,10 @@ function AdvancedChartEmbedInner({
       popup_height: '800',
       allow_symbol_change: false,
       save_image: true,
+      enabled_features: ['countdown', 'study_templates'],
+      time_frames: [
+        { text: '1D', resolution: interval, description: '1 Day' },
+      ],
       width: '100%',
       height: '100%',
       support_host: 'https://www.tradingview.com',
