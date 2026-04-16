@@ -15,6 +15,12 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import {
+  MARKET_SESSIONS,
+  getSessionHours,
+  isSessionActive,
+  isForexClosed,
+} from "@/lib/timezone";
 
 interface QualifiedPair {
   pair: string;
@@ -90,7 +96,23 @@ const SESSION_COLORS: Record<string, string> = {
 };
 
 const PairSelector = () => {
-  const [session, setSession] = useState("London");
+  const [session, setSession] = useState(() => {
+    const now = new Date();
+    const h = now.getUTCHours();
+    const m = now.getUTCMinutes();
+    const closed = isForexClosed(now);
+    if (!closed) {
+      // Map: Tokyo/Sydney → "Asian", London → "London", New York → "New York"
+      const sessionMap: Record<string, string> = { Sydney: "Asian", Tokyo: "Asian", London: "London", "New York": "New York" };
+      for (const s of [...MARKET_SESSIONS].reverse()) {
+        const hours = getSessionHours(s, now);
+        if (isSessionActive(hours.start, hours.end, h, m) && sessionMap[s.name]) {
+          return sessionMap[s.name];
+        }
+      }
+    }
+    return "London";
+  });
   const [isRunning, setIsRunning] = useState(false);
   const [liveResult, setLiveResult] = useState<ScanResult | null>(null);
   const [progress, setProgress] = useState(0);
