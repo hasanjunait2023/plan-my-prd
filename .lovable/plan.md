@@ -1,42 +1,77 @@
 
-# Chart Enhancement Plan
 
-## কী করব
+# Floating Watchlist Enhancement Plan
 
-### 1. Drawing tool hide (Floating Chart Window)
-**File**: `src/components/floating/FloatingChartWindow.tsx`
-- দুটো `AdvancedChartEmbed` instance এ `hideSideToolbar={true}` prop pass করব
-- side toolbar = TradingView এর drawing tools (left side এর pencil/line/shape icons)
+## কোথায় কাজ হবে
+**Right-side floating Watchlist panel** (Index dashboard থেকে accessible) — `WatchlistPanel.tsx` + `StrengthBadge.tsx`।
 
-### 2. RSI toggle button (ChartPanel)
-**Files**:
-- `src/components/charts/TradingViewWidget.tsx` — `showRsi` prop add করব (default `true`)
-- `src/components/charts/ChartPanel.tsx` — timeframe buttons এর পাশে compact RSI toggle button add করব
-- প্রতিটা panel এর নিজস্ব RSI on/off state থাকবে (local state in ChartPanel)
+বর্তমানে প্রতিটা pair row-তে:
+- Left: short tier badges ("EUR M+" / "USD W")  
+- Right: numeric values (+5/-3) + ছোট Δ pill
 
-**Logic**: `showRsi=false` হলে studies array থেকে RSI বাদ যাবে, শুধু EMA 9/15/200 + Volume থাকবে।
+## কী Build/Update করব
 
-### 3. Top bar compact (ChartAnalysis)
-**File**: `src/pages/ChartAnalysis.tsx`
-- Top bar height: `h-6` → `h-5` (সব button)
-- Padding: `py-1` → `py-0.5`
-- Result: ~8-10px বেশি chart area
+### 1. Full Strength Label (left side)
+**File**: `src/components/floating/StrengthBadge.tsx` + `WatchlistPanel.tsx`
+- `PairStrengthBadges`-এ নতুন prop `variant="full"` add (default থাকবে compact যাতে FloatingChartWindow break না করে)
+- `full` mode-এ short ("M+", "W") replace হয়ে দেখাবে: **"EUR Medium Strong"**, **"USD Weak"**
+- WatchlistPanel-এর `PairRow`-এ `variant="full"` pass করব
+- Vertical stack layout (mobile-friendly, 428px viewport-এ ভাঙবে না)
 
-## Files Modified
+### 2. Extended Strength Bar with Indicator (right side)
+**Reuse**: existing `ExtendedStrengthBar` component (already built, 14px gradient bar with center marker)
+- Right column-এর numeric blocks replace করে দুটো mini ExtendedStrengthBar বসাব (base + quote)
+- Δ pill-এর জায়গায় **Bias Badge** (HQ BUY / MED SELL / NEUTRAL) — `calculateBias()` থেকে color + label
+- Bias badge হবে full-width pill, gradient background, conviction-based glow
+
+### 3. Bias Calculation Integration
+**Reuse**: `src/lib/biasCalculator.ts` (already exists)
+- প্রতিটা PairRow-এ `calculateBias(baseStrength - quoteStrength)` call হবে
+- Result: `HIGH_BUY | MEDIUM_BUY | NEUTRAL | MEDIUM_SELL | HIGH_SELL`
+- PairRow-এর border color bias-driven করব (subtle highlight)
+
+### 4. Sorting & Filtering
+**Reuse**: `BiasFilterBar` component (already exists from PairSuggestions)
+- WatchlistPanel-এর search input-এর নিচে BiasFilterBar mount করব
+- Filter chips: All | HQ Buy | Med Buy | Neutral | Med Sell | HQ Sell  
+- Sort dropdown: Differential ↓/↑ | Pair Name | Bias Quality
+- যেসব pair-এ strength data নেই (bias undefined) সেগুলো filter-এ "ALL" বাদে exclude
+- Sort apply হবে category grouping-এর ভেতরে (ALL tab-এ গ্রুপ-by-category preserve)
+
+### 5. Empty State
+- Filter result empty হলে "এই filter-এ কোনো pair নেই" + Reset button (PairSuggestions-এর pattern)
+
+## Files Modified/Created
 
 ```text
-EDIT: src/components/floating/FloatingChartWindow.tsx
-EDIT: src/components/charts/TradingViewWidget.tsx
-EDIT: src/components/charts/ChartPanel.tsx
-EDIT: src/pages/ChartAnalysis.tsx
+EDIT: src/components/floating/StrengthBadge.tsx       (add variant="full" prop)
+EDIT: src/components/floating/WatchlistPanel.tsx      (full labels + bias + filter/sort)
+NEW:  src/components/floating/PairBiasRow.tsx         (extracted enriched row component)
+```
+
+`biasCalculator.ts`, `strengthLabels.ts`, `ExtendedStrengthBar.tsx`, `BiasFilterBar.tsx` সব already আছে — শুধু reuse।
+
+## Layout (mobile 428px)
+
+```text
+┌───────────────────────────────────────┐
+│ 🇪🇺🇺🇸  EURUSD                     [HQ BUY]│
+│         Euro - US Dollar                  │
+│  EUR  Medium Strong  ████████▌ +4.2      │
+│  USD  Weak           ▌████████ -5.1      │
+│                          Δ +9.3 →         │
+└───────────────────────────────────────┘
 ```
 
 ## Design Notes
-- RSI toggle: h-5 height, 9px text "RSI"
-- Active = `bg-primary/20 text-primary`, inactive = muted
-- Mobile-first (428px viewport)
-- কোন business logic বা data flow change নেই
+- Touch target ≥48px (min-height 80px per row)
+- Bias badge: top-right, conviction-based gradient + glow
+- Bars: 10px height (compact than PairSuggestions-এর 14px, watchlist-এ density বেশি দরকার)
+- Filter chip bar: sticky-friendly, horizontal scroll
+- Color tokens: existing `biasCalculator` palette reuse
 
-## যা change হবে না
-- Currency strength, bias calculator, pair suggestions touch হবে না
-- ChartAnalysis এর drawing tool already hidden আছে — সেটাই থাকবে
+## যা Change হবে না
+- ChartAnalysis, PairSuggestions, FloatingChartWindow header — সব intact
+- StrengthBadge-এর default behavior unchanged (backward compatible)
+- Watchlist-এর search, tabs, openChart click — সব same
+
