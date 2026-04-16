@@ -25,7 +25,7 @@ function PairRow({
 }: {
   item: WatchlistItem;
   onClick: () => void;
-  strengths: ReturnType<typeof useCurrencyStrengths>;
+  strengths: ReturnType<typeof useStrengthSnapshot>['data'];
 }) {
   const { base, quote } = getPairFlags(item.symbol);
   const baseCur = item.symbol.slice(0, 3);
