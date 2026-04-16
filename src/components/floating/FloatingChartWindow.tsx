@@ -29,6 +29,16 @@ const TIMEFRAMES: { label: string; value: string }[] = [
   { label: 'D', value: 'D' },
 ];
 
+const RANGES: { label: string; value: string }[] = [
+  { label: 'Auto', value: 'AUTO' },
+  { label: '1H', value: '60M' },
+  { label: '4H', value: '4H' },
+  { label: '1D', value: '1D' },
+  { label: '1W', value: '5D' },
+  { label: '1M', value: '1M' },
+];
+
+
 function loadState(): WinState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
