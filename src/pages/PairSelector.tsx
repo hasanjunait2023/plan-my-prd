@@ -15,6 +15,12 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import {
+  MARKET_SESSIONS,
+  getSessionHours,
+  isSessionActive,
+  isForexClosed,
+} from "@/lib/timezone";
 
 interface QualifiedPair {
   pair: string;
