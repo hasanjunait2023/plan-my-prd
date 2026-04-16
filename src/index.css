@@ -128,4 +128,11 @@
   .bg-loss\/10 {
     background-color: hsl(var(--loss) / 0.1);
   }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
