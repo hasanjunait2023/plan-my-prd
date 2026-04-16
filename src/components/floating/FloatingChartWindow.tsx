@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { X, GripHorizontal } from 'lucide-react';
+import { X, GripHorizontal, ArrowLeft } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFloatingWatchlist } from '@/contexts/FloatingWatchlistContext';
 import { getPairFlags } from '@/lib/pairFlags';
