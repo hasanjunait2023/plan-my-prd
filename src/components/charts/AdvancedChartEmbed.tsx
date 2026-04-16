@@ -79,9 +79,9 @@ function AdvancedChartEmbedInner({
       popup_height: '800',
       allow_symbol_change: false,
       save_image: true,
-      enabled_features: ["items_favoriting"],
-      favorites: {
-        intervals: ["1", "3", "15", "60", "240"],
+      studies_overrides: {
+        "volume.volume.transparency": 65,
+        "volume.volume ma.visible": false,
       },
       width: '100%',
       height: '100%',
