@@ -12,11 +12,26 @@ import {
 } from '@/lib/watchlistData';
 import { getPairFlags } from '@/lib/pairFlags';
 import { cn } from '@/lib/utils';
+import { useCurrencyStrengths } from '@/hooks/useCurrencyStrengths';
+import { PairStrengthBadges } from './StrengthBadge';
 
 type TabKey = WatchlistCategory | 'ALL';
 
-function PairRow({ item, onClick }: { item: WatchlistItem; onClick: () => void }) {
+function PairRow({
+  item,
+  onClick,
+  strengths,
+}: {
+  item: WatchlistItem;
+  onClick: () => void;
+  strengths: ReturnType<typeof useCurrencyStrengths>;
+}) {
   const { base, quote } = getPairFlags(item.symbol);
+  const baseCur = item.symbol.slice(0, 3);
+  const quoteCur = item.symbol.slice(3, 6);
+  const baseEntry = strengths[baseCur];
+  const quoteEntry = strengths[quoteCur];
+
   return (
     <button
       onClick={onClick}
@@ -27,10 +42,20 @@ function PairRow({ item, onClick }: { item: WatchlistItem; onClick: () => void }
         <span className="absolute left-0 top-0 text-2xl">{base}</span>
         <span className="absolute right-0 bottom-0 text-2xl">{quote}</span>
       </div>
-      {/* Name */}
+      {/* Name + strength */}
       <div className="flex-1 min-w-0">
         <div className="text-sm font-semibold text-foreground truncate">{item.symbol}</div>
-        <div className="text-[11px] text-muted-foreground truncate">{item.name}</div>
+        <div className="text-[11px] text-muted-foreground truncate mb-1">{item.name}</div>
+        {(baseEntry || quoteEntry) && (
+          <PairStrengthBadges
+            base={baseCur}
+            quote={quoteCur}
+            baseTier={baseEntry?.tier}
+            quoteTier={quoteEntry?.tier}
+            baseStrength={baseEntry?.strength}
+            quoteStrength={quoteEntry?.strength}
+          />
+        )}
       </div>
       {/* Right side placeholder for live price (later) */}
       <div className="text-right shrink-0">
