@@ -121,8 +121,10 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const action = body.action || "scan";
     const timeframe = body.timeframe || "1H";
-    const session = body.session || null; // "London", "New York", "Asian" or null
+    const session = body.session || null;
     const interval = TIMEFRAME_MAP[timeframe] || "1h";
+    const batch = body.batch || "all"; // "first", "second", or "all"
+    const scanBatchIdInput = body.scan_batch_id || null; // shared batch ID for split runs
 
     if (action === "status") {
       const { data } = await supabase
@@ -138,19 +140,21 @@ Deno.serve(async (req) => {
     }
 
     // === SCAN using TwelveData time_series + EMA(200) calculation ===
-    const scanBatchId = crypto.randomUUID();
+    const scanBatchId = scanBatchIdInput || crypto.randomUUID();
     const pairResults: Record<string, number> = {};
     const errors: string[] = [];
     let processed = 0;
 
-    // Process 1 pair at a time with 1.5s delay between each
-    // fetchWithRotation handles key selection, 5 keys × 8 req/min = 40/min capacity
-    // 28 pairs × ~2s each = ~56s, fits within edge function timeout
+    // Split pairs based on batch parameter
+    let pairsToScan = ALL_PAIRS;
+    if (batch === "first") pairsToScan = ALL_PAIRS.slice(0, 14);
+    else if (batch === "second") pairsToScan = ALL_PAIRS.slice(14);
+
     const CHUNK_SIZE = 1;
     const CHUNK_DELAY_MS = 1500;
     
-    for (let i = 0; i < ALL_PAIRS.length; i += CHUNK_SIZE) {
-      const chunk = ALL_PAIRS.slice(i, i + CHUNK_SIZE);
+    for (let i = 0; i < pairsToScan.length; i += CHUNK_SIZE) {
+      const chunk = pairsToScan.slice(i, i + CHUNK_SIZE);
       
       // Process pairs in chunk sequentially to avoid hitting same key simultaneously
       for (const pair of chunk) {
