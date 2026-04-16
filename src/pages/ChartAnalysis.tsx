@@ -85,7 +85,7 @@ export default function ChartAnalysis() {
   return (
     <div ref={wrapperRef} className={`flex flex-col h-[calc(100vh-3.5rem)] ${isFullscreen ? 'h-screen bg-background' : ''}`}>
       {/* Top bar */}
-      <div className="flex items-center justify-between px-2 py-1 border-b border-border/20 shrink-0">
+      <div className="flex items-center justify-between px-2 py-0.5 border-b border-border/20 shrink-0">
         <div className="flex items-center gap-1">
           {/* Layout buttons */}
           {LAYOUT_OPTIONS.map(count => (
@@ -93,7 +93,7 @@ export default function ChartAnalysis() {
               key={count}
               size="sm"
               variant={chartCount === count ? 'default' : 'ghost'}
-              className={`h-6 w-6 p-0 text-[10px] font-bold ${chartCount === count ? 'bg-primary/20 text-primary' : 'text-muted-foreground'}`}
+              className={`h-5 w-5 p-0 text-[10px] font-bold ${chartCount === count ? 'bg-primary/20 text-primary' : 'text-muted-foreground'}`}
               onClick={() => handleLayoutChange(count)}
             >
               {count}
@@ -109,7 +109,7 @@ export default function ChartAnalysis() {
                 key={pair}
                 size="sm"
                 variant={symbol === pair ? 'default' : 'ghost'}
-                className={`h-6 px-2 text-[10px] shrink-0 ${symbol === pair ? 'bg-primary/20 text-primary' : 'text-muted-foreground'}`}
+                className={`h-5 px-2 text-[10px] shrink-0 ${symbol === pair ? 'bg-primary/20 text-primary' : 'text-muted-foreground'}`}
                 onClick={() => setSymbol(pair)}
               >
                 {getDisplayName(pair)}
@@ -125,15 +125,15 @@ export default function ChartAnalysis() {
                 onChange={e => setSearchInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
                 placeholder="e.g. FX:AUDUSD"
-                className="h-6 w-28 text-[10px] px-1.5 bg-background/50 border-border/30"
+                className="h-5 w-28 text-[10px] px-1.5 bg-background/50 border-border/30"
                 autoFocus
               />
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setShowSearch(false)}>
+              <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setShowSearch(false)}>
                 <X className="w-3 h-3" />
               </Button>
             </div>
           ) : (
-            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 ml-1" onClick={() => setShowSearch(true)}>
+            <Button size="sm" variant="ghost" className="h-5 w-5 p-0 ml-1" onClick={() => setShowSearch(true)}>
               <Search className="w-3 h-3 text-muted-foreground" />
             </Button>
           )}
@@ -144,13 +144,13 @@ export default function ChartAnalysis() {
             href="https://www.tradingview.com/chart/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 h-6 px-2 text-[10px] rounded-md border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+            className="inline-flex items-center gap-1 h-5 px-2 text-[10px] rounded-md border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
           >
             <ExternalLink className="w-3 h-3" />
             TradingView
           </a>
-          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={toggleFullscreen}>
-            {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+          <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={toggleFullscreen}>
+            {isFullscreen ? <Minimize className="w-3 h-3" /> : <Maximize className="w-3 h-3" />}
           </Button>
         </div>
       </div>

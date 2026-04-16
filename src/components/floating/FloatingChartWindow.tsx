@@ -244,6 +244,7 @@ export function FloatingChartWindow() {
             interval={tf}
             height="100%"
             range={rangeOverride === 'AUTO' ? undefined : rangeOverride}
+            hideSideToolbar={true}
           />
         </div>
       </div>
@@ -357,6 +358,7 @@ export function FloatingChartWindow() {
           interval={tf}
           height="100%"
           range={rangeOverride === 'AUTO' ? undefined : rangeOverride}
+          hideSideToolbar={true}
         />
       </div>
 

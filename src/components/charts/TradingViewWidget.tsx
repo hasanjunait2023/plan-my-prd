@@ -3,9 +3,10 @@ import { useEffect, useRef, memo } from 'react';
 interface TradingViewWidgetProps {
   symbol: string;
   interval: string;
+  showRsi?: boolean;
 }
 
-function TradingViewWidgetInner({ symbol, interval }: TradingViewWidgetProps) {
+function TradingViewWidgetInner({ symbol, interval, showRsi = true }: TradingViewWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -23,6 +24,15 @@ function TradingViewWidgetInner({ symbol, interval }: TradingViewWidgetProps) {
     widgetInner.style.width = '100%';
     widgetContainer.appendChild(widgetInner);
 
+    const studies: any[] = [
+      { id: 'MAExp@tv-basicstudies', inputs: { length: 9 } },
+      { id: 'MAExp@tv-basicstudies', inputs: { length: 15 } },
+      { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
+    ];
+    if (showRsi) {
+      studies.push({ id: 'RSI@tv-basicstudies' });
+    }
+
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.async = true;
@@ -34,12 +44,7 @@ function TradingViewWidgetInner({ symbol, interval }: TradingViewWidgetProps) {
       style: '1',
       locale: 'en',
       timezone: 'Etc/UTC',
-      studies: [
-        { id: 'MAExp@tv-basicstudies', inputs: { length: 9 } },
-        { id: 'MAExp@tv-basicstudies', inputs: { length: 15 } },
-        { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
-        { id: 'RSI@tv-basicstudies' },
-      ],
+      studies,
       hide_top_toolbar: true,
       hide_legend: false,
       enable_publishing: false,
@@ -61,7 +66,7 @@ function TradingViewWidgetInner({ symbol, interval }: TradingViewWidgetProps) {
 
     widgetContainer.appendChild(script);
     containerRef.current.appendChild(widgetContainer);
-  }, [symbol, interval]);
+  }, [symbol, interval, showRsi]);
 
   return <div ref={containerRef} className="w-full h-full overflow-hidden" />;
 }

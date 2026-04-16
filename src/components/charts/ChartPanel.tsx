@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import TradingViewWidget from './TradingViewWidget';
 
@@ -17,6 +18,8 @@ interface ChartPanelProps {
 }
 
 export default function ChartPanel({ symbol, interval, onIntervalChange }: ChartPanelProps) {
+  const [showRsi, setShowRsi] = useState(true);
+
   return (
     <div className="flex flex-col h-full border border-border/10 rounded overflow-hidden">
       {/* Thin timeframe bar */}
@@ -32,11 +35,24 @@ export default function ChartPanel({ symbol, interval, onIntervalChange }: Chart
             {tf.label}
           </Button>
         ))}
+
+        <div className="w-px h-3 bg-border/30 mx-0.5" />
+
+        {/* RSI toggle */}
+        <Button
+          size="sm"
+          variant={showRsi ? 'default' : 'ghost'}
+          className={`h-5 px-1.5 text-[9px] font-bold ${showRsi ? 'bg-primary/20 text-primary' : 'text-muted-foreground'}`}
+          onClick={() => setShowRsi(v => !v)}
+          title={showRsi ? 'Hide RSI' : 'Show RSI'}
+        >
+          RSI
+        </Button>
       </div>
 
       {/* Chart */}
       <div className="flex-1 min-h-0">
-        <TradingViewWidget symbol={symbol} interval={interval} />
+        <TradingViewWidget symbol={symbol} interval={interval} showRsi={showRsi} />
       </div>
     </div>
   );
