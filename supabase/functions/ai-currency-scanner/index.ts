@@ -185,8 +185,42 @@ Deno.serve(async (req) => {
       }
 
       // Delay between chunks to respect per-minute rate limits
-      if (i + CHUNK_SIZE < ALL_PAIRS.length) {
+      if (i + CHUNK_SIZE < pairsToScan.length) {
         await new Promise(r => setTimeout(r, CHUNK_DELAY_MS));
+      }
+    }
+
+    // For "first" batch, return early — aggregation happens in "second" batch
+    if (batch === "first") {
+      return new Response(JSON.stringify({
+        success: true,
+        scan_batch_id: scanBatchId,
+        batch: "first",
+        pairs_scanned: processed,
+        errors: errors.length > 0 ? errors : undefined,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // For "second" or "all" batch, load all results from this batch for aggregation
+    if (batch === "second") {
+      // Load first batch results from DB to combine
+      const { data: firstBatchResults } = await supabase
+        .from("ai_scan_results")
+        .select("pair, result")
+        .eq("scan_batch_id", scanBatchId);
+      
+      if (firstBatchResults) {
+        for (const r of firstBatchResults) {
+          // Convert stored pair key (EURUSD) back to pair format (EUR/USD)
+          const pairWithSlash = r.pair.length === 6 
+            ? `${r.pair.slice(0, 3)}/${r.pair.slice(3)}` 
+            : r.pair;
+          if (!(pairWithSlash in pairResults)) {
+            pairResults[pairWithSlash] = r.result;
+          }
+        }
       }
     }
 
