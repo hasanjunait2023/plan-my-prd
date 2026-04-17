@@ -61,10 +61,10 @@ function AdvancedChartEmbedInner({
       locale: 'en',
       timezone: 'Etc/UTC',
       studies: [
-        'MAExp@tv-basicstudies',
-        'MAExp@tv-basicstudies',
-        'MAExp@tv-basicstudies',
-        'RSI@tv-basicstudies',
+        { id: 'MAExp@tv-basicstudies', inputs: { length: 9 } },
+        { id: 'MAExp@tv-basicstudies', inputs: { length: 15 } },
+        { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
+        { id: 'RSI@tv-basicstudies' },
       ],
       hide_top_toolbar: hideTopToolbar,
       hide_legend: false,
@@ -80,7 +80,6 @@ function AdvancedChartEmbedInner({
       allow_symbol_change: false,
       save_image: true,
       studies_overrides: {
-        "moving average exponential.length": 9,
         "volume.volume.transparency": 65,
         "volume.volume ma.visible": false,
       },

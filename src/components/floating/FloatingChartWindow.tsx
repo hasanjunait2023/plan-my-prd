@@ -5,7 +5,6 @@ import { useFloatingWatchlist } from '@/contexts/FloatingWatchlistContext';
 import { getPairFlags } from '@/lib/pairFlags';
 import { cn } from '@/lib/utils';
 import AdvancedChartEmbed from '@/components/charts/AdvancedChartEmbed';
-import TimeframePills from '@/components/charts/TimeframePills';
 import { useStrengthSnapshot } from '@/hooks/useCurrencyStrengths';
 import { PairStrengthBadges } from './StrengthBadge';
 
@@ -203,9 +202,6 @@ export function FloatingChartWindow() {
           </button>
         </div>
 
-        <div className="flex items-center px-2 py-1 border-b border-border/30 bg-card/40 shrink-0">
-          <TimeframePills value={tf} onChange={setTf} />
-        </div>
         <div className="flex-1 min-h-0">
           <AdvancedChartEmbed
             symbol={chartItem.tvSymbol}
@@ -287,9 +283,6 @@ export function FloatingChartWindow() {
       </div>
 
       {/* Body */}
-      <div className="flex items-center px-2 py-1 border-b border-border/30 bg-card/40 shrink-0">
-        <TimeframePills value={tf} onChange={setTf} />
-      </div>
       <div className="flex-1 min-h-0">
         <AdvancedChartEmbed
           symbol={chartItem.tvSymbol}
