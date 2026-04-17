@@ -84,11 +84,13 @@ function LazyInlineChart({
   interval,
   enabled,
   pausedTitle,
+  compactWhenDisabled = false,
 }: {
   symbol: string;
   interval: string;
   enabled: boolean;
   pausedTitle: string;
+  compactWhenDisabled?: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -122,13 +124,18 @@ function LazyInlineChart({
   }, [enabled]);
 
   const showChart = enabled && isVisible;
+  const isCompactPlaceholder = !enabled && compactWhenDisabled;
+  const boxHeight = showChart ? '380px' : isCompactPlaceholder ? '76px' : '380px';
 
   return (
-    <div ref={hostRef} className="w-full min-h-[380px]">
+    <div ref={hostRef} className="w-full" style={{ minHeight: boxHeight }}>
       {showChart ? (
         <InlineChart symbol={symbol} interval={interval} />
       ) : (
-        <div className="flex h-[380px] items-center justify-center border-t border-border/20 bg-gradient-to-b from-muted/10 to-card/20 px-4 text-center">
+        <div
+          className="flex items-center justify-center border-t border-border/20 bg-gradient-to-b from-muted/10 to-card/20 px-4 text-center"
+          style={{ height: boxHeight }}
+        >
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold text-foreground/85">
               {enabled ? 'Chart loads when visible' : pausedTitle}
@@ -211,6 +218,7 @@ const SuggestionCard = memo(function SuggestionCard({ s }: { s: EnrichedSuggesti
           interval="60"
           enabled={inlineChartsEnabled}
           pausedTitle={pausedTitle}
+          compactWhenDisabled={isMobile}
         />
       </div>
 
