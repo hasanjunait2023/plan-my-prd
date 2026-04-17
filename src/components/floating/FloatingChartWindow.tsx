@@ -260,21 +260,21 @@ export function FloatingChartWindow() {
         zIndex: 9997,
       }}
     >
-      {/* Header */}
+      {/* Header — compact premium */}
       <div
         onPointerDown={onHeaderDown}
         onPointerMove={onHeaderMove}
         onPointerUp={onHeaderUp}
         onPointerCancel={onHeaderUp}
-        className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-card/80 backdrop-blur cursor-move select-none"
+        className="flex items-center justify-between px-2.5 py-1 border-b border-border/30 bg-gradient-to-b from-card/90 to-card/50 backdrop-blur cursor-move select-none"
         style={{ touchAction: 'none' }}
       >
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <GripHorizontal className="w-4 h-4 text-muted-foreground shrink-0" />
-          <span className="text-lg shrink-0">{base}{quote}</span>
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <GripHorizontal className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+          <span className="text-base shrink-0 leading-none">{base}{quote}</span>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-semibold truncate">{chartItem.symbol}</span>
+            <div className="flex items-center gap-1.5 flex-wrap leading-tight">
+              <span className="text-[12px] font-semibold truncate">{chartItem.symbol}</span>
               {(baseEntry || quoteEntry) && (
                 <PairStrengthBadges
                   base={baseCur}
@@ -283,64 +283,65 @@ export function FloatingChartWindow() {
                   quoteTier={quoteEntry?.tier}
                   baseStrength={baseEntry?.strength}
                   quoteStrength={quoteEntry?.strength}
+                  size="sm"
                 />
               )}
               {snapshot.timeframe && (
-                <span className="text-[9px] uppercase tracking-wider text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+                <span className="text-[8px] uppercase tracking-wider text-muted-foreground bg-muted/30 px-1 py-px rounded">
                   {snapshot.timeframe}
                 </span>
               )}
             </div>
-            <div className="text-[10px] text-muted-foreground truncate">{chartItem.name}</div>
+            <div className="text-[9px] text-muted-foreground/70 truncate leading-none mt-0.5">{chartItem.name}</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1 shrink-0" onPointerDown={(e) => e.stopPropagation()}>
           <button
             onClick={handleBack}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition mr-1"
+            className="flex items-center gap-0.5 px-1.5 py-1 rounded text-[10px] font-bold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition"
             aria-label="Back to watchlist"
             title="Back to watchlist"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back
+            <ArrowLeft className="w-3 h-3" />
           </button>
-          {TIMEFRAMES.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setTf(t.value)}
-              className={cn(
-                'px-2 py-1 rounded text-[11px] font-medium transition border',
-                tf === t.value
-                  ? 'bg-primary/15 text-primary border-primary/30'
-                  : 'bg-transparent text-muted-foreground border-transparent hover:bg-muted/40'
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
           <button
             onClick={closeChart}
-            className="ml-1 p-1.5 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+            className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground"
             aria-label="Close chart"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Range / Zoom selector */}
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/40 bg-card/40 overflow-x-auto no-scrollbar">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-1 shrink-0">Zoom</span>
+      {/* Combined Timeframe + Zoom bar */}
+      <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border/30 bg-card/40 overflow-x-auto no-scrollbar">
+        {TIMEFRAMES.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setTf(t.value)}
+            className={cn(
+              'px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap transition shrink-0',
+              tf === t.value
+                ? 'bg-primary/20 text-primary'
+                : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+        <div className="w-px h-3.5 bg-border/50 mx-1 shrink-0" />
+        <span className="text-[8px] uppercase tracking-wider text-muted-foreground/70 mr-0.5 shrink-0">Zoom</span>
         {RANGES.map((r) => (
           <button
             key={r.value}
             onClick={() => setRangeOverride(r.value)}
             className={cn(
-              'px-2 py-0.5 rounded text-[11px] font-medium whitespace-nowrap transition border shrink-0',
+              'px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap transition shrink-0',
               rangeOverride === r.value
-                ? 'bg-primary/15 text-primary border-primary/30'
-                : 'bg-transparent text-muted-foreground border-border/40 hover:text-foreground'
+                ? 'bg-accent/20 text-accent-foreground'
+                : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
             )}
           >
             {r.label}
