@@ -1,11 +1,12 @@
-import { CurrencyStrengthRecord, CURRENCY_FLAGS, generatePairSuggestions, PairSuggestion } from '@/types/correlation';
+import { CurrencyStrengthRecord, CURRENCY_FLAGS, PairSuggestion } from '@/types/correlation';
 import { Maximize2, Sparkles } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, memo } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { PairWithFlags } from '@/lib/pairFlags';
 import { calculateBias, BiasInfo } from '@/lib/biasCalculator';
 import { ExtendedStrengthBar } from './ExtendedStrengthBar';
 import { BiasFilterBar, BiasFilter, SortMode } from './BiasFilterBar';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface PairSuggestionsProps {
   data: CurrencyStrengthRecord[];
@@ -18,7 +19,7 @@ interface EnrichedSuggestion extends PairSuggestion {
   signedDiff: number;
 }
 
-function InlineChart({ symbol, interval }: { symbol: string; interval: string }) {
+function InlineChartInner({ symbol, interval }: { symbol: string; interval: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,11 +77,91 @@ function InlineChart({ symbol, interval }: { symbol: string; interval: string })
   return <div ref={containerRef} className="w-full" style={{ height: '380px' }} />;
 }
 
-function SuggestionCard({ s }: { s: EnrichedSuggestion }) {
+const InlineChart = memo(InlineChartInner);
+
+function LazyInlineChart({
+  symbol,
+  interval,
+  enabled,
+  pausedTitle,
+  compactWhenDisabled = false,
+}: {
+  symbol: string;
+  interval: string;
+  enabled: boolean;
+  pausedTitle: string;
+  compactWhenDisabled?: boolean;
+}) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) {
+      setIsVisible(false);
+      return;
+    }
+
+    const node = hostRef.current;
+    if (!node) return;
+
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      {
+        rootMargin: '280px 0px',
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [enabled]);
+
+  const showChart = enabled && isVisible;
+  const isCompactPlaceholder = !enabled && compactWhenDisabled;
+  const boxHeight = showChart ? '380px' : isCompactPlaceholder ? '76px' : '380px';
+
+  return (
+    <div ref={hostRef} className="w-full" style={{ minHeight: boxHeight }}>
+      {showChart ? (
+        <InlineChart symbol={symbol} interval={interval} />
+      ) : (
+        <div
+          className="flex items-center justify-center border-t border-border/20 bg-gradient-to-b from-muted/10 to-card/20 px-4 text-center"
+          style={{ height: boxHeight }}
+        >
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold text-foreground/85">
+              {enabled ? 'Chart loads when visible' : pausedTitle}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              {enabled
+                ? 'This keeps the page stable and avoids heavy auto-refresh behaviour.'
+                : 'Use the expand button for the full live chart.'}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const SuggestionCard = memo(function SuggestionCard({ s }: { s: EnrichedSuggestion }) {
   const [expanded, setExpanded] = useState(false);
+  const isMobile = useIsMobile();
   const { bias } = s;
   const symbol = 'FX:' + s.pair.replace('/', '');
   const [base, quote] = s.pair.split('/');
+  const inlineChartsEnabled = !expanded && !isMobile;
+  const pausedTitle = isMobile
+    ? 'Live chart opens in fullscreen on mobile'
+    : 'Inline chart paused while fullscreen is open';
 
   return (
     <>
@@ -132,7 +213,13 @@ function SuggestionCard({ s }: { s: EnrichedSuggestion }) {
         </div>
 
         {/* Inline chart */}
-        <InlineChart symbol={symbol} interval="60" />
+        <LazyInlineChart
+          symbol={symbol}
+          interval="60"
+          enabled={inlineChartsEnabled}
+          pausedTitle={pausedTitle}
+          compactWhenDisabled={isMobile}
+        />
       </div>
 
       <Dialog open={expanded} onOpenChange={setExpanded}>
@@ -153,7 +240,7 @@ function SuggestionCard({ s }: { s: EnrichedSuggestion }) {
       </Dialog>
     </>
   );
-}
+});
 
 export function PairSuggestions({ data }: PairSuggestionsProps) {
   const [filter, setFilter] = useState<BiasFilter>('ALL');
