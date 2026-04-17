@@ -287,6 +287,9 @@ export function FloatingChartWindow() {
       </div>
 
       {/* Body */}
+      <div className="flex items-center px-2 py-1 border-b border-border/30 bg-card/40 shrink-0">
+        <TimeframePills value={tf} onChange={setTf} />
+      </div>
       <div className="flex-1 min-h-0">
         <AdvancedChartEmbed
           symbol={chartItem.tvSymbol}
