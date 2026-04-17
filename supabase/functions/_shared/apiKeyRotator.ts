@@ -59,19 +59,19 @@ export async function markKeyFailed(keyId: string, sb?: SupabaseClient): Promise
     .eq("id", keyId);
 }
 
-/**
- * Fetch a URL using API key rotation. Replaces the API key placeholder in the URL.
- * The URL should contain the placeholder `__API_KEY__` where the key should go.
- * If no keys in pool, falls back to TWELVEDATA_API_KEY env var.
- */
-export async function fetchWithRotation(
-  urlTemplate: string,
-  provider: string = "twelvedata",
-  sb?: SupabaseClient
-): Promise<Response> {
-  const supabase = sb || getSupabaseAdmin();
+// Track per-minute exhaustion in-memory per function instance
+const perMinuteExhausted = new Map<string, number>(); // keyId -> timestamp ms
 
-  // Try keys from pool
+/**
+ * Internal: try the keys once. Returns Response on success, or null when all keys
+ * are temporarily blocked by per-minute limits (so caller can wait + retry).
+ * Throws only on hard daily exhaustion with no fallback.
+ */
+async function tryKeysOnce(
+  urlTemplate: string,
+  provider: string,
+  supabase: SupabaseClient
+): Promise<Response | null> {
   const { data: allKeys } = await supabase
     .from("api_key_pool")
     .select("id, api_key, label, calls_today, daily_limit, priority")
@@ -79,33 +79,28 @@ export async function fetchWithRotation(
     .eq("is_active", true)
     .order("priority", { ascending: true });
 
-  const keys = (allKeys || []).filter((k: ApiKey) => k.calls_today < k.daily_limit);
+  const now = Date.now();
+  // Filter out daily-exhausted keys AND keys we know hit per-minute limit < 65s ago
+  const keys = (allKeys || []).filter((k: ApiKey) => {
+    if (k.calls_today >= k.daily_limit) return false;
+    const blockedUntil = perMinuteExhausted.get(k.id);
+    if (blockedUntil && now - blockedUntil < 65_000) return false;
+    return true;
+  });
 
-  // Fallback to env var if no pool keys
-  if (keys.length === 0) {
-    const envKey = Deno.env.get("TWELVEDATA_API_KEY");
-    if (!envKey) throw new Error("All API credits exhausted and no fallback key available");
-    console.log("No pool keys available, using env fallback");
-    const url = urlTemplate.replace("__API_KEY__", envKey);
-    return await fetch(url);
-  }
+  if (keys.length === 0) return null; // signal caller to wait
 
   for (const key of keys) {
     const url = urlTemplate.replace("__API_KEY__", key.api_key);
     const resp = await fetch(url);
 
-    // Check for rate limit
     if (resp.status === 429) {
-      console.log(`Key "${key.label}" (priority ${key.priority}) got 429, switching...`);
+      console.log(`Key "${key.label}" got 429, marking per-minute exhausted`);
+      perMinuteExhausted.set(key.id, Date.now());
       await markKeyFailed(key.id, supabase);
-      await supabase
-        .from("api_key_pool")
-        .update({ calls_today: key.daily_limit })
-        .eq("id", key.id);
       continue;
     }
 
-    // Check for TwelveData JSON error about credits
     const contentType = resp.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const cloned = resp.clone();
@@ -114,44 +109,97 @@ export async function fetchWithRotation(
         if (json.code === 429 || (json.status === "error" && json.message?.includes("API credits"))) {
           const isPerMinute = json.message?.includes("current minute");
           const isPerDay = json.message?.includes("for the day");
-          
+
           if (isPerDay) {
-            // Daily limit — mark key as fully exhausted for today
-            console.log(`Key "${key.label}" DAILY credits exhausted: ${json.message}`);
+            console.log(`Key "${key.label}" DAILY exhausted: ${json.message}`);
             await markKeyFailed(key.id, supabase);
-            await supabase
-              .from("api_key_pool")
-              .update({ calls_today: key.daily_limit })
-              .eq("id", key.id);
+            await supabase.from("api_key_pool").update({ calls_today: key.daily_limit }).eq("id", key.id);
           } else if (isPerMinute) {
-            // Per-minute limit — just skip for now, don't mark as daily exhausted
-            console.log(`Key "${key.label}" per-minute limit hit, skipping to next key: ${json.message}`);
+            console.log(`Key "${key.label}" per-minute limit, will retry in 60s`);
+            perMinuteExhausted.set(key.id, Date.now());
             await markKeyFailed(key.id, supabase);
           } else {
-            // Unknown credit error — treat as daily exhaustion to be safe
-            console.log(`Key "${key.label}" credits error: ${json.message}`);
+            console.log(`Key "${key.label}" unknown credit error, treating as daily: ${json.message}`);
             await markKeyFailed(key.id, supabase);
-            await supabase
-              .from("api_key_pool")
-              .update({ calls_today: key.daily_limit })
-              .eq("id", key.id);
+            await supabase.from("api_key_pool").update({ calls_today: key.daily_limit }).eq("id", key.id);
           }
           continue;
         }
-      } catch { /* not json, continue */ }
+      } catch { /* not json */ }
     }
 
-    // Success — mark usage
     await markKeyUsed(key.id, supabase);
     return resp;
   }
 
-  // Return a structured fallback response instead of throwing
+  return null; // every key failed — let caller retry
+}
+
+/**
+ * Fetch a URL using API key rotation, with automatic wait+retry when ALL keys
+ * are temporarily blocked by per-minute rate limits.
+ * - URL must contain `__API_KEY__` placeholder.
+ * - Falls back to TWELVEDATA_API_KEY env var if no pool keys exist at all.
+ */
+export async function fetchWithRotation(
+  urlTemplate: string,
+  provider: string = "twelvedata",
+  sb?: SupabaseClient,
+  options: { maxWaitMs?: number; waitChunkMs?: number } = {}
+): Promise<Response> {
+  const supabase = sb || getSupabaseAdmin();
+  const maxWaitMs = options.maxWaitMs ?? 75_000; // up to ~75s of waiting in total
+  const waitChunkMs = options.waitChunkMs ?? 15_000;
+
+  // First try
+  let resp = await tryKeysOnce(urlTemplate, provider, supabase);
+  if (resp) return resp;
+
+  // Check if there are ANY pool keys at all (with daily quota left)
+  const { data: anyKeys } = await supabase
+    .from("api_key_pool")
+    .select("id, calls_today, daily_limit")
+    .eq("provider", provider)
+    .eq("is_active", true);
+  const anyDailyLeft = (anyKeys || []).some((k: any) => k.calls_today < k.daily_limit);
+
+  if (!anyDailyLeft) {
+    // No daily quota anywhere — try env fallback
+    const envKey = Deno.env.get("TWELVEDATA_API_KEY");
+    if (envKey) {
+      console.log("All pool keys daily-exhausted, using env fallback");
+      return await fetch(urlTemplate.replace("__API_KEY__", envKey));
+    }
+    return new Response(
+      JSON.stringify({ error: "SERVICE_UNAVAILABLE", fallback: true, message: "All API keys daily-exhausted" }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // We have daily quota — keys are just per-minute blocked. Wait and retry.
+  let waited = 0;
+  while (waited < maxWaitMs) {
+    const sleep = Math.min(waitChunkMs, maxWaitMs - waited);
+    console.log(`All keys per-minute blocked, waiting ${sleep}ms before retry...`);
+    await new Promise(r => setTimeout(r, sleep));
+    waited += sleep;
+
+    resp = await tryKeysOnce(urlTemplate, provider, supabase);
+    if (resp) return resp;
+  }
+
+  // Final fallback after waiting
+  const envKey = Deno.env.get("TWELVEDATA_API_KEY");
+  if (envKey) {
+    console.log("Wait timeout, using env fallback");
+    return await fetch(urlTemplate.replace("__API_KEY__", envKey));
+  }
+
   return new Response(
     JSON.stringify({
       error: "SERVICE_UNAVAILABLE",
       fallback: true,
-      message: "All API keys exhausted — please wait a minute and try again"
+      message: "All API keys per-minute blocked after wait, no env fallback"
     }),
     { status: 200, headers: { "Content-Type": "application/json" } }
   );
