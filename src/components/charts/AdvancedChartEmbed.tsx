@@ -73,6 +73,9 @@ function AdvancedChartEmbedInner({
       withdateranges: true,
       hide_side_toolbar: hideSideToolbar,
       hide_volume: true,
+      favorites: {
+        intervals: ['1', '3', '15', '60', '240'],
+      },
       details: true,
       calendar: false,
       show_popup_button: true,
