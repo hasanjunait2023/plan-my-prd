@@ -51,9 +51,6 @@ function TradingViewWidgetInner({ symbol, interval, showRsi = true }: TradingVie
       withdateranges: false,
       hide_side_toolbar: true,
       hide_volume: false,
-      favorites: {
-        intervals: ['1', '3', '15', '60', '240'],
-      },
       details: false,
       calendar: false,
       show_popup_button: true,
