@@ -66,6 +66,12 @@ function AdvancedChartEmbedInner({
         { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
         { id: 'RSI@tv-basicstudies' },
       ],
+      studies_overrides: {
+        'volume.volume.color.0': 'rgba(239,83,80,0.45)',
+        'volume.volume.color.1': 'rgba(38,166,154,0.45)',
+        'volume.volume.transparency': 60,
+        'volume.show ma': false,
+      },
       hide_top_toolbar: hideTopToolbar,
       hide_legend: false,
       enable_publishing: false,
@@ -79,10 +85,6 @@ function AdvancedChartEmbedInner({
       popup_height: '800',
       allow_symbol_change: false,
       save_image: true,
-      studies_overrides: {
-        "volume.volume.transparency": 65,
-        "volume.volume ma.visible": false,
-      },
       width: '100%',
       height: '100%',
       support_host: 'https://www.tradingview.com',
