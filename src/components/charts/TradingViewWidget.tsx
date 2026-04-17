@@ -24,13 +24,13 @@ function TradingViewWidgetInner({ symbol, interval, showRsi = true }: TradingVie
     widgetInner.style.width = '100%';
     widgetContainer.appendChild(widgetInner);
 
-    const studies: any[] = [
-      { id: 'MAExp@tv-basicstudies', inputs: { length: 9 } },
-      { id: 'MAExp@tv-basicstudies', inputs: { length: 15 } },
-      { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
+    const studies: string[] = [
+      'MAExp@tv-basicstudies',
+      'MAExp@tv-basicstudies',
+      'MAExp@tv-basicstudies',
     ];
     if (showRsi) {
-      studies.push({ id: 'RSI@tv-basicstudies' });
+      studies.push('RSI@tv-basicstudies');
     }
 
     const script = document.createElement('script');
