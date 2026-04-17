@@ -61,16 +61,11 @@ function AdvancedChartEmbedInner({
       locale: 'en',
       timezone: 'Etc/UTC',
       studies: [
-        'STD;EMA',
-        'STD;EMA',
-        'STD;EMA',
-        'STD;RSI',
+        'MAExp@tv-basicstudies',
+        'MAExp@tv-basicstudies',
+        'MAExp@tv-basicstudies',
+        'RSI@tv-basicstudies',
       ],
-      studies_overrides: {
-        "moving average exponential.length": 9,
-        "volume.volume.transparency": 65,
-        "volume.volume ma.visible": false,
-      },
       hide_top_toolbar: hideTopToolbar,
       hide_legend: false,
       enable_publishing: false,
@@ -85,6 +80,7 @@ function AdvancedChartEmbedInner({
       allow_symbol_change: false,
       save_image: true,
       studies_overrides: {
+        "moving average exponential.length": 9,
         "volume.volume.transparency": 65,
         "volume.volume ma.visible": false,
       },
