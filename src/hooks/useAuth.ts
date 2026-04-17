@@ -10,9 +10,19 @@ export function useAuth() {
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      (event, session) => {
+        // Ignore TOKEN_REFRESHED with no session change to avoid flicker
+        // Only clear user on explicit SIGNED_OUT, not on transient refresh failures
+        if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        if (session) {
+          setSession(session);
+          setUser(session.user);
+        }
         setLoading(false);
       }
     );

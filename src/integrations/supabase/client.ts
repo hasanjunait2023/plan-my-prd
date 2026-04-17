@@ -13,5 +13,31 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce',
   }
 });
+
+// When the tab/app comes back to foreground (mobile background, iframe focus loss, etc.)
+// proactively refresh the session so a stale token doesn't kick the user to /auth.
+if (typeof window !== 'undefined') {
+  const refreshIfNeeded = async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return;
+      const expiresAt = (data.session.expires_at ?? 0) * 1000;
+      // Refresh if token expires within next 60 seconds
+      if (expiresAt - Date.now() < 60_000) {
+        await supabase.auth.refreshSession();
+      }
+    } catch {
+      // ignore — onAuthStateChange will handle real failures
+    }
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshIfNeeded();
+  });
+  window.addEventListener('focus', refreshIfNeeded);
+  window.addEventListener('online', refreshIfNeeded);
+}
