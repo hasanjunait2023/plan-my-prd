@@ -13,6 +13,7 @@ import { AlignmentBadge } from "./AlignmentBadge";
 import { StreakBanner } from "./StreakBanner";
 import { MomentumChart } from "./MomentumChart";
 import { TelegramReminderCard } from "./TelegramReminderCard";
+import { AiCoachCard } from "./AiCoachCard";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -199,6 +200,9 @@ export function TodayTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* AI Coach */}
+      <AiCoachCard />
 
       {/* Evening reflection */}
       <Card>
