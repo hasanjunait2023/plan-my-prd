@@ -24,6 +24,7 @@ import { PowerGrabPanel } from '@/components/correlation/PowerGrabPanel';
 import { SupplyDemandPanel } from '@/components/correlation/SupplyDemandPanel';
 import { MARKET_SESSIONS, getSessionHours, isSessionActive, getBDHour, getBDMinute } from '@/lib/timezone';
 import { TierLegend } from '@/components/correlation/TierLegend';
+import { useSyncedPreference } from '@/contexts/PreferencesContext';
 
 function getDefaultTab(): string {
   const now = new Date();
@@ -251,12 +252,7 @@ export default function CurrencyStrength() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
-  // Persist section order to localStorage whenever it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sectionOrder));
-    } catch {}
-  }, [sectionOrder]);
+  // Section order persistence is handled by useSyncedPreference (cloud-synced)
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
@@ -433,7 +429,6 @@ export default function CurrencyStrength() {
             variant="ghost"
             size="sm"
             onClick={() => {
-              localStorage.removeItem(STORAGE_KEY);
               setSectionOrder(DEFAULT_ORDER);
             }}
             className="text-[10px] text-muted-foreground hover:text-foreground"
