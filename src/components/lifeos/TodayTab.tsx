@@ -184,6 +184,16 @@ export function TodayTab() {
         </CardContent>
       </Card>
 
+      {/* Time-block schedule */}
+      <TimeBlockTimeline
+        focus={focus}
+        resolveNode={findById}
+        ancestorChain={ancestorChain}
+        isDone={isDone}
+        toggleDone={toggleDone}
+        updateSlot={updateSlot}
+      />
+
       {/* Momentum chart */}
       <MomentumChart />
 
