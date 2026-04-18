@@ -15,6 +15,7 @@ import { defaultAccountSettings } from '@/data/mockData';
 import { registerPushSubscription, unregisterPushSubscription, isPushSubscribed } from '@/lib/pushNotification';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { FloatingBubbleSettings } from '@/components/floating/FloatingBubbleSettings';
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 
@@ -319,6 +320,9 @@ const Settings = () => {
           <p className="text-sm text-muted-foreground">Configure your trading account, rules & alerts</p>
         </div>
       </div>
+
+      {/* System-wide Floating Bubble (Native Android) */}
+      <FloatingBubbleSettings />
 
       {/* API Key Management */}
       <Card className={glassCard}>
