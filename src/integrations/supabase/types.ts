@@ -783,6 +783,39 @@ export type Database = {
           },
         ]
       }
+      lifeos_ai_insights: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          kind: string
+          metadata: Json
+          sent_to_telegram: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          kind: string
+          metadata?: Json
+          sent_to_telegram?: boolean
+          title?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          metadata?: Json
+          sent_to_telegram?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       market_scan_temp: {
         Row: {
           change_percent: number
