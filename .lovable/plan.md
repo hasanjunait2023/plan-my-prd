@@ -1,64 +1,141 @@
 
 
 ## User Goal
-App-এর ভেতরের **Floating Assistive Touch button** (watchlist + chart) — সেটা phone-এর **outside**-এ (home screen / অন্য apps-এর উপরে) floating bubble হিসেবে দেখানো।
+যেকোনো user যেই device থেকেই login করুক — তার সব **personalization settings** (nav config, theme, notification preferences, watchlist, layout choices ইত্যাদি) সব device-এ **same** থাকবে। এখন এগুলো `localStorage`-এ আছে, যেটা device-specific। এটা **cloud-synced** করতে হবে।
 
-## কঠিন সত্য (Reality Check)
+## Current State Analysis
 
-এটা **technically সম্ভব না** current setup-এ। কারণ:
+`localStorage` use করা key গুলো (device-locked, sync হয় না):
+- `tradevault-nav-config` — navbar primary items + max counts
+- `fab-position` — floating button position
+- Theme (ThemeContext)
+- Watchlist data (`src/lib/watchlistData.ts`)
+- Notification preferences (push subscription, telegram toggles)
+- Various dialog states, last-opened pairs, filter selections
 
-1. **এই app একটা PWA / web app** (browser-এ চলে, native না)। 
-2. Phone-এর অন্য apps-এর উপরে floating bubble দেখানোর জন্য Android-এ **`SYSTEM_ALERT_WINDOW`** permission দরকার (Facebook Messenger Chat Heads-এর মতো)।
-3. এই permission **শুধু native Android app**-ই নিতে পারে — PWA / browser কখনোই পারে না (security restriction)।
-4. iOS-এ এটা **একদম impossible** — Apple কোনো app-কেই system-wide overlay দেয় না (Apple-এর strict policy)।
+ইতিমধ্যে cloud-synced (Supabase-এ): trades, habits, mind thoughts, psychology logs, trading rules, account settings।
 
-অর্থাৎ — Web app বা PWA হিসেবে install করা থাকলে, button-টা শুধু app open থাকা অবস্থায়ই দেখাবে। App close/background-এ গেলে hide হয়ে যাবে।
+## Solution: `user_preferences` Table + Generic Sync Hook
 
-## সমাধান: Capacitor + Native Android Plugin
+একটা single JSON-based table বানাবো যেটা সব kind-এর preference store করবে — future-proof, কোনো নতুন setting add করতে migration লাগবে না।
 
-যদি সত্যিই এটা চান, তাহলে app-কে **Capacitor দিয়ে native Android app** বানাতে হবে এবং একটা **System Overlay (Bubble)** plugin add করতে হবে।
+### Architecture
 
-### Approach Options
+```text
+┌─────────────────────────────────────────────────┐
+│  Device A (Mobile)   ←→   Supabase   ←→   Device B (Desktop)
+│                                                 │
+│  useSyncedPreference('nav-config', default)    │
+│         ↓                                       │
+│  localStorage (instant cache)                   │
+│         ↓                                       │
+│  user_preferences table (source of truth)       │
+│         ↓                                       │
+│  Realtime subscription → other devices update   │
+└─────────────────────────────────────────────────┘
+```
 
-**Option A — Capacitor + Custom Bubble Plugin (Android only)**
-- App-কে Capacitor wrap করে native Android build করতে হবে
-- Custom Capacitor plugin বানিয়ে Android-এর `WindowManager` + `TYPE_APPLICATION_OVERLAY` ব্যবহার করতে হবে
-- User-কে phone settings থেকে "Display over other apps" permission দিতে হবে
-- Bubble click করলে app open হবে (deep link দিয়ে directly watchlist screen-এ)
-- iOS এ available থাকবে না
+### Database Schema
 
-**Option B — Quick Settings Tile + Notification Shortcut**
-- Persistent notification বানানো (always visible at top of phone)
-- Notification-এ "Open Watchlist" shortcut button থাকবে
-- Tap করলে app খুলে directly watchlist panel-এ চলে যাবে
-- বেশি simple, কিন্তু floating bubble-এর experience না
+```sql
+CREATE TABLE public.user_preferences (
+  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  preferences jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-**Option C — Android Home Screen Widget**
-- Android home screen-এ একটা small widget যেটা strength data দেখাবে
-- Tap করলে app খুলবে
-- Floating না, but always visible on home screen
+ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
 
-### Comparison
+CREATE POLICY "Users manage own preferences"
+  ON public.user_preferences FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
-| Feature | A: Floating Bubble | B: Notification | C: Widget |
-|---------|-------------------|-----------------|-----------|
-| In-app experience match | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
-| Implementation effort | High (custom plugin) | Low | Medium |
-| Works on iOS | ❌ | ⚠️ Limited | ❌ |
-| Works on Android | ✅ | ✅ | ✅ |
-| Needs special permission | ✅ Display over apps | ❌ | ❌ |
-| Currently a PWA → needs Capacitor | ✅ | ✅ | ✅ |
+ALTER PUBLICATION supabase_realtime ADD TABLE public.user_preferences;
+ALTER TABLE public.user_preferences REPLICA IDENTITY FULL;
+```
 
-## আমার Recommendation
+`preferences` JSON structure example:
+```json
+{
+  "nav": { "primaryUrls": [...], "maxMobile": 5, "maxDesktop": 6 },
+  "theme": "dark",
+  "fab": { "position": { "x": 320, "y": 600 } },
+  "watchlist": { "pairs": [...] },
+  "notifications": { "telegramSession": true, "pushEnabled": false },
+  "filters": { "lastTimeframe": "H1" }
+}
+```
 
-আপনি যেহেতু এখন একটা **PWA** (`public/manifest.json` দেখলাম, install page-ও আছে), এবং কোনো Capacitor setup নেই — তাই এই feature add করতে গেলে **পুরো architecture change** করতে হবে।
+### Core Hook: `useSyncedPreference`
 
-**আমার পরামর্শ:**
-1. **প্রথমে সিদ্ধান্ত নিন** — PWA রেখে দিবেন, নাকি Capacitor + native Android-এ migrate করবেন?
-2. যদি native-এ যান, তাহলে **Option A (Floating Bubble)** আসলেই in-app FAB-এর মতো experience দিবে, কিন্তু এটা শুধু Android-এ কাজ করবে এবং user-কে manually permission দিতে হবে।
-3. **Native build** করার জন্য আপনাকে নিজে GitHub-এ export করে Android Studio দিয়ে build করতে হবে (Lovable sandbox-এ এটা possible না)।
+```text
+useSyncedPreference<T>(key: string, defaultValue: T)
+  → returns [value, setValue]
+  
+- On mount: read localStorage instantly (no flash) → fetch from Supabase → reconcile
+- On setValue: update local state + localStorage + debounced upsert to Supabase
+- Realtime: listen to user_preferences changes → update if other device wrote newer value
+- Conflict resolution: last-write-wins by updated_at timestamp
+- Offline support: queue writes, flush on reconnect
+```
 
-## পরবর্তী Decision
+## Implementation Steps
 
-কোন path-এ যেতে চান সেটা জানালে আমি সেই অনুযায়ী implementation plan দিবো।
+### 1. Database
+- Migration: create `user_preferences` table, RLS policy, realtime enable
+
+### 2. Core sync infrastructure
+- `src/hooks/useSyncedPreference.ts` — generic hook (localStorage cache + Supabase sync + realtime)
+- `src/contexts/PreferencesContext.tsx` — single shared subscription per user (avoid N realtime channels), exposes get/set for any key
+- One-time **migration utility**: on first login after this update, read existing `localStorage` keys → upload to Supabase → mark migrated
+
+### 3. Refactor existing localStorage usages
+| File | Key | Status |
+|------|-----|--------|
+| `useNavConfig.ts` | `tradevault-nav-config` | migrate to `nav` |
+| `FloatingAssistiveButton.tsx` | `fab-position` | migrate to `fab.position` |
+| `ThemeContext.tsx` | theme key | migrate to `theme` |
+| `watchlistData.ts` | watchlist | migrate to `watchlist` |
+| Notification toggles in Settings | various | migrate to `notifications.*` |
+
+Each file: replace `useState(loadFromLS)` + `localStorage.setItem` with `useSyncedPreference('xxx', default)`.
+
+### 4. Settings page indicator
+- Settings page-এ ছোট indicator: "✓ Synced across devices" + last-sync timestamp
+- "Reset all preferences" button (clears both cloud + local)
+
+### 5. Edge cases handled
+- **Anonymous users**: fallback to localStorage-only (no sync)
+- **First device after migration**: localStorage seeds cloud
+- **Conflicting writes** (mobile + desktop simultaneously): last-write-wins, realtime updates loser
+- **Offline**: writes queued in localStorage, sync on reconnect
+- **No flash**: localStorage read first (synchronous), cloud reconcile after
+
+## What's NOT included (per-device intentionally)
+
+কিছু জিনিস device-specific থাকা উচিত — sync করবো না:
+- Push notification subscription endpoint (each device has unique browser endpoint)
+- "Install PWA" prompt dismissal
+- Service worker version
+
+## Files to Create/Modify
+
+**New:**
+- `supabase/migrations/<timestamp>_user_preferences.sql`
+- `src/hooks/useSyncedPreference.ts`
+- `src/contexts/PreferencesContext.tsx`
+- `src/lib/preferencesMigration.ts`
+
+**Modified (replace localStorage with synced hook):**
+- `src/hooks/useNavConfig.ts`
+- `src/components/floating/FloatingAssistiveButton.tsx`
+- `src/contexts/ThemeContext.tsx`
+- `src/lib/watchlistData.ts`
+- `src/pages/Settings.tsx` (add sync indicator + use synced notification toggles)
+- `src/App.tsx` (wrap with `PreferencesProvider`)
+
+## Result
+
+Mobile-এ navbar reorder করলে → 1-2 second-এর মধ্যে desktop-এও same order দেখাবে। Theme switch → instant sync। Watchlist add → both devices update। সব personalization truly **account-bound**, device-bound না।
 
