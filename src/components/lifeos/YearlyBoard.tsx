@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLifeNodes, type LifeNode } from "@/hooks/useLifeNodes";
 import { Trello, Target, Filter, CheckCircle2, Circle, Clock } from "lucide-react";
@@ -128,7 +128,7 @@ export function YearlyBoard() {
           </CardContent>
         </Card>
       ) : (
-        <ScrollArea className="w-full whitespace-nowrap">
+        <div className="w-full overflow-x-auto no-scrollbar">
           <div className="flex gap-4 pb-4">
             {years.map((year) => {
               const missionsInYear = Object.keys(byYearMission[year] ?? {});
@@ -161,7 +161,7 @@ export function YearlyBoard() {
                   </div>
 
                   {/* Cards grouped by mission */}
-                  <div className="p-3 space-y-3 max-h-[65vh] overflow-y-auto">
+                  <div className="p-3 space-y-3 max-h-[65vh] overflow-y-auto no-scrollbar">
                     {visibleMissions.length === 0 && (
                       <div className="text-xs text-muted-foreground text-center py-6 italic">
                         No goals match filter
@@ -223,8 +223,7 @@ export function YearlyBoard() {
               );
             })}
           </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
       )}
 
       {unassigned.length > 0 && (
