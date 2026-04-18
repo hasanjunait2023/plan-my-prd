@@ -383,6 +383,8 @@ export type Database = {
           rank: number
           reason: string
           source: string
+          start_hour: number | null
+          time_slot: string
           user_id: string
         }
         Insert: {
@@ -393,6 +395,8 @@ export type Database = {
           rank?: number
           reason?: string
           source?: string
+          start_hour?: number | null
+          time_slot?: string
           user_id: string
         }
         Update: {
@@ -403,6 +407,8 @@ export type Database = {
           rank?: number
           reason?: string
           source?: string
+          start_hour?: number | null
+          time_slot?: string
           user_id?: string
         }
         Relationships: [
