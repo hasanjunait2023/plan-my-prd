@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
+export type TimeSlot = "morning" | "afternoon" | "evening" | "unset";
+
 export interface DailyFocus {
   id: string;
   user_id: string;
@@ -11,6 +13,8 @@ export interface DailyFocus {
   rank: number;
   reason: string;
   source: string;
+  time_slot: TimeSlot;
+  start_hour: number | null;
   created_at: string;
 }
 
@@ -66,7 +70,7 @@ export function useDailyFocus(date: string = todayISO()) {
         if (data?.message) {
           toast({ title: "Planner", description: data.message });
         } else if (data?.generated) {
-          toast({ title: "Today's focus ready 🎯", description: "Top 3 priorities picked" });
+          toast({ title: "Today's focus ready 🎯", description: "Top 3 priorities picked + scheduled" });
         }
         await fetchFocus();
       } catch (e) {
@@ -97,10 +101,33 @@ export function useDailyFocus(date: string = todayISO()) {
         rank: nextRank,
         reason: "Manually pinned",
         source: "manual",
+        time_slot: nextRank === 1 ? "morning" : nextRank === 2 ? "afternoon" : "evening",
       } as never);
     },
     [user, date, focus.length],
   );
 
-  return { focus, loading, generating, generate, removeFocus, addManualFocus, refetch: fetchFocus };
+  const updateSlot = useCallback(
+    async (id: string, time_slot: TimeSlot, start_hour: number | null = null) => {
+      const { error } = await supabase
+        .from("daily_focus" as never)
+        .update({ time_slot, start_hour } as never)
+        .eq("id", id);
+      if (error) {
+        toast({ title: "Failed to move task", description: error.message, variant: "destructive" });
+      }
+    },
+    [],
+  );
+
+  return {
+    focus,
+    loading,
+    generating,
+    generate,
+    removeFocus,
+    addManualFocus,
+    updateSlot,
+    refetch: fetchFocus,
+  };
 }
