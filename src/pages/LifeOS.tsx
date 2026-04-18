@@ -1,10 +1,11 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Compass, Sun, Calendar, CalendarDays, Sparkles, Layers } from "lucide-react";
+import { Compass, Sun, Calendar, CalendarDays, Sparkles, Layers, Trello } from "lucide-react";
 import { PyramidView } from "@/components/lifeos/PyramidView";
 import { TodayTab } from "@/components/lifeos/TodayTab";
 import { WeekTab } from "@/components/lifeos/WeekTab";
 import { MonthTab } from "@/components/lifeos/MonthTab";
 import { VisionMissionTab } from "@/components/lifeos/VisionMissionTab";
+import { YearlyBoard } from "@/components/lifeos/YearlyBoard";
 
 export default function LifeOS() {
   return (
@@ -21,8 +22,11 @@ export default function LifeOS() {
         </div>
       </header>
 
-      <Tabs defaultValue="today" className="w-full">
-        <TabsList className="grid grid-cols-5 w-full md:w-auto">
+      <Tabs defaultValue="board" className="w-full">
+        <TabsList className="grid grid-cols-6 w-full md:w-auto">
+          <TabsTrigger value="board" className="gap-1.5">
+            <Trello className="h-4 w-4" /> <span className="hidden sm:inline">Board</span>
+          </TabsTrigger>
           <TabsTrigger value="pyramid" className="gap-1.5">
             <Layers className="h-4 w-4" /> <span className="hidden sm:inline">Pyramid</span>
           </TabsTrigger>
@@ -40,6 +44,7 @@ export default function LifeOS() {
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="board" className="mt-6"><YearlyBoard /></TabsContent>
         <TabsContent value="pyramid" className="mt-6"><PyramidView /></TabsContent>
         <TabsContent value="today" className="mt-6"><TodayTab /></TabsContent>
         <TabsContent value="week" className="mt-6"><WeekTab /></TabsContent>
