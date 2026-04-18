@@ -1,36 +1,40 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { LineChart } from 'lucide-react';
 import { useFloatingWatchlist } from '@/contexts/FloatingWatchlistContext';
+import { useSyncedPreference } from '@/contexts/PreferencesContext';
 
-const STORAGE_KEY = 'fab-position';
 const SIZE = 56;
 const EDGE_PADDING = 8;
 
 interface Pos { x: number; y: number; }
 
-function loadPos(): Pos | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw);
-    if (typeof p?.x === 'number' && typeof p?.y === 'number') return p;
-  } catch { }
-  return null;
+function defaultPos(): Pos {
+  if (typeof window !== 'undefined') {
+    return {
+      x: window.innerWidth - SIZE - EDGE_PADDING - 8,
+      y: window.innerHeight - SIZE - EDGE_PADDING - 100,
+    };
+  }
+  return { x: 16, y: 200 };
 }
 
 export function FloatingAssistiveButton() {
   const { openWatchlist } = useFloatingWatchlist();
-  const [pos, setPos] = useState<Pos>(() => {
-    const saved = loadPos();
-    if (saved) return saved;
-    if (typeof window !== 'undefined') {
-      return {
-        x: window.innerWidth - SIZE - EDGE_PADDING - 8,
-        y: window.innerHeight - SIZE - EDGE_PADDING - 100,
-      };
+  // Synced across devices — position normalised to viewport on resize
+  const [storedPos, setStoredPos] = useSyncedPreference<Pos>('fab.position', defaultPos());
+  const [pos, setPos] = useState<Pos>(() => storedPos);
+
+  // Sync local pos when cloud pushes a different value
+  useEffect(() => {
+    if (storedPos && (storedPos.x !== pos.x || storedPos.y !== pos.y)) {
+      setPos({
+        x: Math.max(EDGE_PADDING, Math.min(window.innerWidth - SIZE - EDGE_PADDING, storedPos.x)),
+        y: Math.max(EDGE_PADDING, Math.min(window.innerHeight - SIZE - EDGE_PADDING, storedPos.y)),
+      });
     }
-    return { x: 16, y: 200 };
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storedPos.x, storedPos.y]);
+
   const [dragging, setDragging] = useState(false);
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number; moved: boolean }>({
     startX: 0, startY: 0, origX: 0, origY: 0, moved: false,
@@ -73,13 +77,12 @@ export function FloatingAssistiveButton() {
     setPos({ x: newX, y: newY });
   }, [dragging]);
 
-  const onPointerUp = useCallback((e: React.PointerEvent) => {
+  const onPointerUp = useCallback(() => {
     if (!dragging) return;
     setDragging(false);
     const moved = dragState.current.moved;
 
     if (!moved) {
-      // Treat as click
       openWatchlist();
       return;
     }
@@ -89,10 +92,10 @@ export function FloatingAssistiveButton() {
       const mid = window.innerWidth / 2;
       const snappedX = p.x + SIZE / 2 < mid ? EDGE_PADDING : window.innerWidth - SIZE - EDGE_PADDING;
       const snapped = { x: snappedX, y: p.y };
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapped)); } catch { }
+      setStoredPos(snapped);
       return snapped;
     });
-  }, [dragging, openWatchlist]);
+  }, [dragging, openWatchlist, setStoredPos]);
 
   return (
     <button

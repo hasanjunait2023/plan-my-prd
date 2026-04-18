@@ -24,6 +24,7 @@ import { PowerGrabPanel } from '@/components/correlation/PowerGrabPanel';
 import { SupplyDemandPanel } from '@/components/correlation/SupplyDemandPanel';
 import { MARKET_SESSIONS, getSessionHours, isSessionActive, getBDHour, getBDMinute } from '@/lib/timezone';
 import { TierLegend } from '@/components/correlation/TierLegend';
+import { useSyncedPreference } from '@/contexts/PreferencesContext';
 
 function getDefaultTab(): string {
   const now = new Date();
@@ -209,30 +210,24 @@ function SortableSection({ id, children }: { id: string; children: ReactNode }) 
   );
 }
 
-const STORAGE_KEY = 'cs-section-order';
 const DEFAULT_ORDER = ['session', 'trade-of-day', 'summary', 'fundamental-bias', 'power-grab', 'supply-demand', 'strength-meter', 'heatmap', 'comparison', 'pair-suggestions', 'trend-chart', 'legend'];
 
-function getSavedOrder(): string[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        // Add any new sections that don't exist in saved order
-        const missing = DEFAULT_ORDER.filter(id => !parsed.includes(id));
-        if (missing.length === 0 && parsed.length === DEFAULT_ORDER.length) return parsed;
-        // Merge: keep saved order + append missing
-        return [...parsed.filter((id: string) => DEFAULT_ORDER.includes(id)), ...missing];
-      }
-    }
-  } catch {}
-  return DEFAULT_ORDER;
+function reconcileOrder(saved: string[] | null | undefined): string[] {
+  if (!Array.isArray(saved)) return DEFAULT_ORDER;
+  const filtered = saved.filter((id: string) => DEFAULT_ORDER.includes(id));
+  const missing = DEFAULT_ORDER.filter(id => !filtered.includes(id));
+  return [...filtered, ...missing];
 }
 
 export default function CurrencyStrength() {
   const [activeTab, setActiveTab] = useState(getDefaultTab);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [sectionOrder, setSectionOrder] = useState<string[]>(getSavedOrder);
+  // Cloud-synced across devices
+  const [storedOrder, setStoredOrder] = useSyncedPreference<string[]>('cs.sectionOrder', DEFAULT_ORDER);
+  const sectionOrder = reconcileOrder(storedOrder);
+  const setSectionOrder = (updater: string[] | ((prev: string[]) => string[])) => {
+    setStoredOrder(typeof updater === 'function' ? updater(sectionOrder) : updater);
+  };
   const queryClient = useQueryClient();
   const { data, isLoading, refetch, isFetching } = useCurrencyStrength(activeTab, selectedDate);
   const { data: prevSessionData } = usePreviousSessionData(activeTab, selectedDate);
@@ -257,12 +252,7 @@ export default function CurrencyStrength() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
-  // Persist section order to localStorage whenever it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sectionOrder));
-    } catch {}
-  }, [sectionOrder]);
+  // Section order persistence is handled by useSyncedPreference (cloud-synced)
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
@@ -439,7 +429,6 @@ export default function CurrencyStrength() {
             variant="ghost"
             size="sm"
             onClick={() => {
-              localStorage.removeItem(STORAGE_KEY);
               setSectionOrder(DEFAULT_ORDER);
             }}
             className="text-[10px] text-muted-foreground hover:text-foreground"

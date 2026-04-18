@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, Shield, Plus, Trash2, Bell, Send, ExternalLink, Smartphone, Key, RefreshCw, Zap } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Plus, Trash2, Bell, Send, ExternalLink, Smartphone, Key, RefreshCw, Zap, Cloud, CloudOff, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAccountSettings, useSaveAccountSettings } from '@/hooks/useAccountSettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,6 +15,9 @@ import { defaultAccountSettings } from '@/data/mockData';
 import { registerPushSubscription, unregisterPushSubscription, isPushSubscribed } from '@/lib/pushNotification';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 
@@ -35,6 +38,7 @@ const Settings = () => {
   const { user } = useAuth();
   const { data: accountSettings = defaultAccountSettings } = useAccountSettings();
   const saveSettings = useSaveAccountSettings();
+  const { isSyncing, lastSyncedAt, userId, resetAll } = usePreferences();
   const [balance, setBalance] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [maxRisk, setMaxRisk] = useState('');
@@ -314,11 +318,62 @@ const Settings = () => {
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
           <SettingsIcon className="w-5 h-5 text-primary" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
           <p className="text-sm text-muted-foreground">Configure your trading account, rules & alerts</p>
         </div>
       </div>
+
+      {/* Cross-device sync status */}
+      <Card className={glassCard}>
+        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={cn(
+              "w-9 h-9 rounded-lg flex items-center justify-center border",
+              userId ? "bg-primary/10 border-primary/20" : "bg-muted/30 border-border/30"
+            )}>
+              {isSyncing ? (
+                <Loader2 className="w-4 h-4 text-primary animate-spin" />
+              ) : userId ? (
+                <Cloud className="w-4 h-4 text-primary" />
+              ) : (
+                <CloudOff className="w-4 h-4 text-muted-foreground" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold flex items-center gap-2">
+                {userId ? (
+                  <>
+                    <span>Synced across devices</span>
+                    {isSyncing && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">syncing…</Badge>}
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">Local only — sign in to sync</span>
+                )}
+              </div>
+              <div className="text-[11px] text-muted-foreground truncate">
+                {lastSyncedAt
+                  ? `Last synced ${formatDistanceToNow(lastSyncedAt, { addSuffix: true })}`
+                  : userId ? 'Waiting for first sync…' : 'Preferences are saved on this device only'}
+              </div>
+            </div>
+          </div>
+          {userId && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={async () => {
+                if (!confirm('Reset all synced preferences (navbar, theme, layout, watchlist) on every device?')) return;
+                await resetAll();
+                toast.success('All preferences reset across devices');
+              }}
+            >
+              Reset preferences
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       {/* API Key Management */}
       <Card className={glassCard}>

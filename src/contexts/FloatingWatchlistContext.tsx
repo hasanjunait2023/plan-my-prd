@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { findWatchlistItem, type WatchlistItem } from '@/lib/watchlistData';
+import { useSyncedPreference } from './PreferencesContext';
 
 interface FloatingWatchlistContextValue {
   watchlistOpen: boolean;
   chartItem: WatchlistItem | null;
+  lastPair: string | null;
   openWatchlist: () => void;
   closeWatchlist: () => void;
   openChart: (symbol: string) => void;
@@ -13,11 +15,11 @@ interface FloatingWatchlistContextValue {
 
 const Ctx = createContext<FloatingWatchlistContextValue | null>(null);
 
-const LAST_PAIR_KEY = 'fw-last-pair';
-
 export function FloatingWatchlistProvider({ children }: { children: ReactNode }) {
   const [watchlistOpen, setWatchlistOpen] = useState(false);
   const [chartItem, setChartItem] = useState<WatchlistItem | null>(null);
+  // Last opened pair — synced across devices so user can resume on another device
+  const [lastPair, setLastPair] = useSyncedPreference<string | null>('watchlist.lastPair', null);
 
   const openWatchlist = useCallback(() => setWatchlistOpen(true), []);
   const closeWatchlist = useCallback(() => setWatchlistOpen(false), []);
@@ -26,10 +28,10 @@ export function FloatingWatchlistProvider({ children }: { children: ReactNode })
     const item = findWatchlistItem(symbol);
     if (item) {
       setChartItem(item);
-      try { localStorage.setItem(LAST_PAIR_KEY, symbol); } catch {}
+      setLastPair(symbol);
       setWatchlistOpen(false);
     }
-  }, []);
+  }, [setLastPair]);
 
   const closeChart = useCallback(() => setChartItem(null), []);
   const closeAll = useCallback(() => {
@@ -39,7 +41,7 @@ export function FloatingWatchlistProvider({ children }: { children: ReactNode })
 
   return (
     <Ctx.Provider
-      value={{ watchlistOpen, chartItem, openWatchlist, closeWatchlist, openChart, closeChart, closeAll }}
+      value={{ watchlistOpen, chartItem, lastPair, openWatchlist, closeWatchlist, openChart, closeChart, closeAll }}
     >
       {children}
     </Ctx.Provider>
