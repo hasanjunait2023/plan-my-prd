@@ -493,6 +493,75 @@ async function handleCallback(supabase: any, tgBase: string, cb: any) {
     await answerCallback(tgBase, cbId, `⏭️ ${waqtLabels[waqt] || waqt} skipped`);
     if (messageId) await editMessage(tgBase, chatId, messageId, `⏭️ <b>${waqtLabels[waqt] || waqt} নামাজ</b> — আজ আদায় করা হয়নি।\n\n🤲 পরের ওয়াক্তে ইনশাআল্লাহ।`);
 
+  } else if (cbData?.startsWith('focus_done_') && chatId) {
+    // ============ LIFE OS FOCUS COMPLETE ============
+    const focusId = cbData.replace('focus_done_', '');
+    const { data: focus } = await supabase
+      .from('daily_focus')
+      .select('id,user_id,node_id,date,rank')
+      .eq('id', focusId)
+      .maybeSingle();
+    if (!focus) {
+      await answerCallback(tgBase, cbId, '❌ Focus not found');
+      return;
+    }
+    const { data: node } = await supabase
+      .from('life_nodes')
+      .select('title')
+      .eq('id', focus.node_id)
+      .maybeSingle();
+    // Upsert log for that node + date
+    const { data: existingLog } = await supabase
+      .from('life_node_logs')
+      .select('id,done')
+      .eq('user_id', focus.user_id)
+      .eq('node_id', focus.node_id)
+      .eq('date', focus.date)
+      .maybeSingle();
+    if (existingLog) {
+      if (!existingLog.done) {
+        await supabase.from('life_node_logs').update({ done: true }).eq('id', existingLog.id);
+      }
+    } else {
+      await supabase.from('life_node_logs').insert({
+        user_id: focus.user_id,
+        node_id: focus.node_id,
+        date: focus.date,
+        done: true,
+      });
+    }
+    await answerCallback(tgBase, cbId, `✅ #${focus.rank} done!`);
+    if (messageId) {
+      await editMessage(
+        tgBase,
+        chatId,
+        messageId,
+        `✅ <b>Priority #${focus.rank}: ${node?.title || 'Task'}</b>\n\nMarked complete. Keep the momentum 🔥`,
+      );
+    }
+    return;
+
+  } else if (cbData?.startsWith('focus_skip_') && chatId) {
+    const focusId = cbData.replace('focus_skip_', '');
+    const { data: focus } = await supabase
+      .from('daily_focus')
+      .select('id,node_id,rank')
+      .eq('id', focusId)
+      .maybeSingle();
+    const { data: node } = focus
+      ? await supabase.from('life_nodes').select('title').eq('id', focus.node_id).maybeSingle()
+      : { data: null };
+    await answerCallback(tgBase, cbId, '⏭ Skipped');
+    if (messageId) {
+      await editMessage(
+        tgBase,
+        chatId,
+        messageId,
+        `⏭ <b>Priority #${focus?.rank ?? ''}: ${node?.title || 'Task'}</b>\n\nSkipped for today.`,
+      );
+    }
+    return;
+
   } else if (cbData?.startsWith('done_') && chatId) {
     const habitId = cbData.replace('done_', '');
     const { data: habit } = await supabase.from('habits').select('*').eq('id', habitId).maybeSingle();

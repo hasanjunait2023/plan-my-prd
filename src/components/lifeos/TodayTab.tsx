@@ -12,6 +12,7 @@ import { NodeFormDialog } from "./NodeFormDialog";
 import { AlignmentBadge } from "./AlignmentBadge";
 import { StreakBanner } from "./StreakBanner";
 import { MomentumChart } from "./MomentumChart";
+import { TelegramReminderCard } from "./TelegramReminderCard";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -183,6 +184,9 @@ export function TodayTab() {
 
       {/* Momentum chart */}
       <MomentumChart />
+
+      {/* Telegram accountability */}
+      <TelegramReminderCard />
 
       {/* Other daily tasks */}
       {dailyTasks.length > 0 && (
