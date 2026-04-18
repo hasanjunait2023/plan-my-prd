@@ -1,6 +1,5 @@
-import { useState, useCallback } from 'react';
-
-const STORAGE_KEY = 'tradevault-nav-config';
+import { useCallback } from 'react';
+import { useSyncedPreference } from '@/contexts/PreferencesContext';
 
 export interface NavItem {
   title: string;
@@ -26,56 +25,45 @@ const DEFAULT_PRIMARY_URLS = [
 const DEFAULT_MAX_MOBILE = 5;
 const DEFAULT_MAX_DESKTOP = 6;
 
-function loadConfig(): NavConfig {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed.primaryUrls) && parsed.primaryUrls.length >= 3) {
-        return {
-          primaryUrls: parsed.primaryUrls,
-          maxMobile: parsed.maxMobile ?? DEFAULT_MAX_MOBILE,
-          maxDesktop: parsed.maxDesktop ?? DEFAULT_MAX_DESKTOP,
-        };
-      }
-    }
-  } catch {}
-  return { primaryUrls: DEFAULT_PRIMARY_URLS, maxMobile: DEFAULT_MAX_MOBILE, maxDesktop: DEFAULT_MAX_DESKTOP };
-}
-
-function saveConfig(config: NavConfig) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-}
+const DEFAULT_CONFIG: NavConfig = {
+  primaryUrls: DEFAULT_PRIMARY_URLS,
+  maxMobile: DEFAULT_MAX_MOBILE,
+  maxDesktop: DEFAULT_MAX_DESKTOP,
+};
 
 export function useNavConfig(allItems: NavItem[]) {
-  const [config, setConfig] = useState<NavConfig>(loadConfig);
+  // Cloud-synced via PreferencesContext (mirrors across devices in realtime)
+  const [config, setConfig] = useSyncedPreference<NavConfig>('nav', DEFAULT_CONFIG);
 
-  const primaryItems = config.primaryUrls
+  // Defensive normalisation — older cached configs may be missing fields
+  const safeConfig: NavConfig = {
+    primaryUrls: Array.isArray(config?.primaryUrls) && config.primaryUrls.length >= 3
+      ? config.primaryUrls
+      : DEFAULT_PRIMARY_URLS,
+    maxMobile: typeof config?.maxMobile === 'number' ? config.maxMobile : DEFAULT_MAX_MOBILE,
+    maxDesktop: typeof config?.maxDesktop === 'number' ? config.maxDesktop : DEFAULT_MAX_DESKTOP,
+  };
+
+  const primaryItems = safeConfig.primaryUrls
     .map(url => allItems.find(i => i.url === url))
     .filter(Boolean) as NavItem[];
 
-  const toolsItems = allItems.filter(i => !config.primaryUrls.includes(i.url));
+  const toolsItems = allItems.filter(i => !safeConfig.primaryUrls.includes(i.url));
 
   const updateConfig = useCallback((updates: Partial<NavConfig>) => {
-    setConfig(prev => {
-      const newConfig = { ...prev, ...updates };
-      saveConfig(newConfig);
-      return newConfig;
-    });
-  }, []);
+    setConfig({ ...safeConfig, ...updates });
+  }, [safeConfig, setConfig]);
 
   const resetToDefault = useCallback(() => {
-    const newConfig = { primaryUrls: DEFAULT_PRIMARY_URLS, maxMobile: DEFAULT_MAX_MOBILE, maxDesktop: DEFAULT_MAX_DESKTOP };
-    setConfig(newConfig);
-    saveConfig(newConfig);
-  }, []);
+    setConfig(DEFAULT_CONFIG);
+  }, [setConfig]);
 
   return {
     primaryItems,
     toolsItems,
-    primaryUrls: config.primaryUrls,
-    maxMobile: config.maxMobile,
-    maxDesktop: config.maxDesktop,
+    primaryUrls: safeConfig.primaryUrls,
+    maxMobile: safeConfig.maxMobile,
+    maxDesktop: safeConfig.maxDesktop,
     updateConfig,
     resetToDefault,
     defaultUrls: DEFAULT_PRIMARY_URLS,

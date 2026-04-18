@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useCallback } from 'react';
+import { useSyncedPreference } from './PreferencesContext';
 
 type Theme = 'dark' | 'light';
 
@@ -10,12 +11,8 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('theme') as Theme) || 'dark';
-    }
-    return 'dark';
-  });
+  // Synced across devices via PreferencesContext
+  const [theme, setTheme] = useSyncedPreference<Theme>('theme', 'dark');
 
   useEffect(() => {
     const root = document.documentElement;
@@ -24,12 +21,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } else {
       root.classList.remove('light');
     }
-    localStorage.setItem('theme', theme);
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-  }, []);
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  }, [setTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
