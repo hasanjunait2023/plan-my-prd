@@ -185,6 +185,9 @@ export function TodayTab() {
       {/* Momentum chart */}
       <MomentumChart />
 
+      {/* Telegram accountability */}
+      <TelegramReminderCard />
+
       {/* Other daily tasks */}
       {dailyTasks.length > 0 && (
         <Card>
