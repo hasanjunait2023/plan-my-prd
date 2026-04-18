@@ -1,141 +1,193 @@
 
 
 ## User Goal
-যেকোনো user যেই device থেকেই login করুক — তার সব **personalization settings** (nav config, theme, notification preferences, watchlist, layout choices ইত্যাদি) সব device-এ **same** থাকবে। এখন এগুলো `localStorage`-এ আছে, যেটা device-specific। এটা **cloud-synced** করতে হবে।
+একটা সম্পূর্ণ **Vision-Mission-Goal driven Life OS** বানানো — যেখানে:
+- **Vision** (5-10 year) → **Mission** (yearly) → **Goals** (quarterly/monthly) → **Weekly plan** → **Daily tasks**
+- প্রতিটা task উপরের layer-এর সাথে aligned থাকবে
+- Achievement-based tracking — কতটা vision-এর কাছে পৌঁছেছেন
+- নিজেই A-Z accountable
 
-## Current State Analysis
+আলাদা একটা page: `/life-os` (sidebar item: **"Life OS"** with Compass icon)
 
-`localStorage` use করা key গুলো (device-locked, sync হয় না):
-- `tradevault-nav-config` — navbar primary items + max counts
-- `fab-position` — floating button position
-- Theme (ThemeContext)
-- Watchlist data (`src/lib/watchlistData.ts`)
-- Notification preferences (push subscription, telegram toggles)
-- Various dialog states, last-opened pairs, filter selections
-
-ইতিমধ্যে cloud-synced (Supabase-এ): trades, habits, mind thoughts, psychology logs, trading rules, account settings।
-
-## Solution: `user_preferences` Table + Generic Sync Hook
-
-একটা single JSON-based table বানাবো যেটা সব kind-এর preference store করবে — future-proof, কোনো নতুন setting add করতে migration লাগবে না।
-
-### Architecture
+## Core Concept: The Pyramid
 
 ```text
-┌─────────────────────────────────────────────────┐
-│  Device A (Mobile)   ←→   Supabase   ←→   Device B (Desktop)
-│                                                 │
-│  useSyncedPreference('nav-config', default)    │
-│         ↓                                       │
-│  localStorage (instant cache)                   │
-│         ↓                                       │
-│  user_preferences table (source of truth)       │
-│         ↓                                       │
-│  Realtime subscription → other devices update   │
-└─────────────────────────────────────────────────┘
+                    ╱ VISION ╲           (Why I exist — 5-10 yr)
+                   ╱──────────╲
+                  ╱  MISSIONS  ╲         (3-5 life areas — Trading, Health, Faith, Family, Wealth)
+                 ╱──────────────╲
+                ╱   YEARLY GOALS ╲       (Per mission, 1-3 goals/year)
+               ╱──────────────────╲
+              ╱  QUARTERLY OBJECTIVES╲   (Break yearly into 4 quarters)
+             ╱──────────────────────╲
+            ╱   MONTHLY MILESTONES   ╲   (Quarter ÷ 3)
+           ╱──────────────────────────╲
+          ╱    WEEKLY FOCUS BLOCKS     ╲ (Month ÷ 4)
+         ╱──────────────────────────────╲
+        ╱      DAILY TASKS / RITUALS     ╲ (What I actually DO today)
 ```
 
-### Database Schema
+প্রতিটা daily task একটা weekly block-এর সাথে linked, সেটা monthly milestone-এর সাথে, এভাবে উপরে vision পর্যন্ত। ফলে "আজকে এই task কেন করছি?" — উত্তর পরিষ্কার।
+
+## Database Schema
+
+**One unified `life_nodes` table** (self-referential tree — flexible, future-proof):
 
 ```sql
-CREATE TABLE public.user_preferences (
-  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  preferences jsonb NOT NULL DEFAULT '{}'::jsonb,
-  updated_at timestamptz NOT NULL DEFAULT now()
+CREATE TYPE life_node_type AS ENUM 
+  ('vision','mission','yearly','quarterly','monthly','weekly','daily');
+
+CREATE TABLE public.life_nodes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  parent_id uuid REFERENCES life_nodes(id) ON DELETE CASCADE,
+  type life_node_type NOT NULL,
+  title text NOT NULL,
+  description text DEFAULT '',
+  icon text DEFAULT 'target',          -- lucide icon name
+  color text DEFAULT '#00C9A7',
+  status text DEFAULT 'active',        -- active|completed|paused|archived
+  progress numeric DEFAULT 0,          -- 0-100, auto-rolled-up from children
+  target_value numeric,                -- optional metric (e.g. "$10k", "200 trades")
+  current_value numeric DEFAULT 0,
+  unit text DEFAULT '',                -- '%', '$', 'trades', 'days'
+  start_date date,
+  due_date date,
+  completed_at timestamptz,
+  priority int DEFAULT 2,              -- 1=critical, 2=high, 3=medium
+  sort_order int DEFAULT 0,
+  metadata jsonb DEFAULT '{}',         -- flexible: recurrence, tags, etc.
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
 );
 
-ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users manage own preferences"
-  ON public.user_preferences FOR ALL
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
-
-ALTER PUBLICATION supabase_realtime ADD TABLE public.user_preferences;
-ALTER TABLE public.user_preferences REPLICA IDENTITY FULL;
+CREATE TABLE public.life_node_logs (        -- daily check-ins / achievements
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  node_id uuid REFERENCES life_nodes(id) ON DELETE CASCADE,
+  date date NOT NULL,
+  done boolean DEFAULT false,
+  value_added numeric DEFAULT 0,        -- contribution to current_value
+  reflection text DEFAULT '',
+  created_at timestamptz DEFAULT now()
+);
 ```
 
-`preferences` JSON structure example:
-```json
-{
-  "nav": { "primaryUrls": [...], "maxMobile": 5, "maxDesktop": 6 },
-  "theme": "dark",
-  "fab": { "position": { "x": 320, "y": 600 } },
-  "watchlist": { "pairs": [...] },
-  "notifications": { "telegramSession": true, "pushEnabled": false },
-  "filters": { "lastTimeframe": "H1" }
-}
-```
+RLS: standard `auth.uid() = user_id` for both. Realtime enabled so multi-device updates instantly.
 
-### Core Hook: `useSyncedPreference`
+## Page Structure: `/life-os`
 
-```text
-useSyncedPreference<T>(key: string, defaultValue: T)
-  → returns [value, setValue]
-  
-- On mount: read localStorage instantly (no flash) → fetch from Supabase → reconcile
-- On setValue: update local state + localStorage + debounced upsert to Supabase
-- Realtime: listen to user_preferences changes → update if other device wrote newer value
-- Conflict resolution: last-write-wins by updated_at timestamp
-- Offline support: queue writes, flush on reconnect
-```
+**5 tabs** in one focused page:
 
-## Implementation Steps
+### 1. **Pyramid** (Overview / default tab)
+- Visual top-down pyramid: Vision → Missions → key goals
+- Each layer shows progress %, next milestone
+- Click any node to drill down
+- "North Star" banner at top: Vision statement + days lived this year + alignment score (% of daily tasks linked to a mission)
 
-### 1. Database
-- Migration: create `user_preferences` table, RLS policy, realtime enable
+### 2. **Today** (Daily focus)
+- Today's date + day quote
+- **Top 3 priorities** (must-do, linked to a weekly block)
+- Other daily tasks/rituals list with check-off
+- Each task shows: which weekly block → which monthly → which mission (breadcrumb chip)
+- Quick-add task with "link to..." selector
+- End-of-day reflection box (saves to `life_node_logs`)
+- Streak counter for daily ritual completion
 
-### 2. Core sync infrastructure
-- `src/hooks/useSyncedPreference.ts` — generic hook (localStorage cache + Supabase sync + realtime)
-- `src/contexts/PreferencesContext.tsx` — single shared subscription per user (avoid N realtime channels), exposes get/set for any key
-- One-time **migration utility**: on first login after this update, read existing `localStorage` keys → upload to Supabase → mark migrated
+### 3. **This Week**
+- 7-day grid (Sat-Fri or Mon-Sun based on user pref)
+- Weekly focus blocks (max 5 per week, 2-3 recommended)
+- Each block: title, target, actual, progress bar, parent monthly milestone
+- Drag tasks onto days
+- Weekly review section (Friday/Saturday): wins, lessons, next-week intent
 
-### 3. Refactor existing localStorage usages
-| File | Key | Status |
-|------|-----|--------|
-| `useNavConfig.ts` | `tradevault-nav-config` | migrate to `nav` |
-| `FloatingAssistiveButton.tsx` | `fab-position` | migrate to `fab.position` |
-| `ThemeContext.tsx` | theme key | migrate to `theme` |
-| `watchlistData.ts` | watchlist | migrate to `watchlist` |
-| Notification toggles in Settings | various | migrate to `notifications.*` |
+### 4. **This Month / Quarter**
+- Month view: milestones with progress bars, deadlines, status
+- Quarter view: roll-up of 3 months
+- "Pace" indicator: ahead/on-track/behind based on date elapsed vs progress
+- Each milestone expandable → shows child weekly blocks
 
-Each file: replace `useState(loadFromLS)` + `localStorage.setItem` with `useSyncedPreference('xxx', default)`.
+### 5. **Vision & Missions** (Long-term)
+- Vision statement editor (rich text, big quote-style display)
+- 3-5 Mission cards (e.g. *Trader Mastery*, *Deen & Discipline*, *Family*, *Wealth*, *Health*)
+- Each mission: yearly goals list + lifetime progress meter
+- "Year at a glance": 12-month strip showing milestone completion per mission
 
-### 4. Settings page indicator
-- Settings page-এ ছোট indicator: "✓ Synced across devices" + last-sync timestamp
-- "Reset all preferences" button (clears both cloud + local)
+## Key Features
 
-### 5. Edge cases handled
-- **Anonymous users**: fallback to localStorage-only (no sync)
-- **First device after migration**: localStorage seeds cloud
-- **Conflicting writes** (mobile + desktop simultaneously): last-write-wins, realtime updates loser
-- **Offline**: writes queued in localStorage, sync on reconnect
-- **No flash**: localStorage read first (synchronous), cloud reconcile after
+### Alignment Engine
+- Every daily task **must** link to a weekly block (or marked "ad-hoc")
+- Dashboard shows **Alignment Score** = (aligned tasks ÷ total tasks) × 100
+- Warning if >30% tasks are ad-hoc → "You're drifting from your mission"
 
-## What's NOT included (per-device intentionally)
+### Achievement-based Progress Roll-up
+- Daily completion → auto-updates weekly block %
+- Weekly → monthly milestone %
+- Monthly → quarterly → yearly goal %
+- Yearly → mission lifetime %
+- **One Postgres function** `recompute_node_progress(node_id)` triggered on log insert
 
-কিছু জিনিস device-specific থাকা উচিত — sync করবো না:
-- Push notification subscription endpoint (each device has unique browser endpoint)
-- "Install PWA" prompt dismissal
-- Service worker version
+### Accountability Layer
+- **Daily check-in prompt** (morning): "What 3 things will move you closer to your vision today?"
+- **Evening reflection**: "Did today honor your mission? Yes/No + note"
+- **Weekly review** (auto-prompts on Saturday): wins, gaps, next week's top 3
+- **Monthly retrospective**: alignment score, biggest win, area to improve
+- All saved to `life_node_logs` — historical accountability trail
 
-## Files to Create/Modify
+### Achievement System
+- Badges unlocked: "First Vision Set", "30-day streak", "Quarter Crusher", "Mission Mastered"
+- Year-end report: PDF-style summary of everything achieved
+- Visual "growth ring" per mission (like Apple rings)
 
-**New:**
-- `supabase/migrations/<timestamp>_user_preferences.sql`
-- `src/hooks/useSyncedPreference.ts`
-- `src/contexts/PreferencesContext.tsx`
-- `src/lib/preferencesMigration.ts`
+## Integration with Existing App
 
-**Modified (replace localStorage with synced hook):**
-- `src/hooks/useNavConfig.ts`
-- `src/components/floating/FloatingAssistiveButton.tsx`
-- `src/contexts/ThemeContext.tsx`
-- `src/lib/watchlistData.ts`
-- `src/pages/Settings.tsx` (add sync indicator + use synced notification toggles)
-- `src/App.tsx` (wrap with `PreferencesProvider`)
+- **Habits**: existing habits can be tagged to a Mission (one-time mapping in habit form)
+- **Trades**: trade pnl auto-feeds into "Wealth/Trading" mission `current_value`
+- **Mind Journal**: thoughts can be tagged to a node for reflection trail
+- **Psychology logs**: alignment with mission = bonus to daily score
+
+## Implementation Phases
+
+**Phase 1 (this build):**
+1. Migration: `life_nodes` + `life_node_logs` + RLS + realtime + roll-up function
+2. Sidebar nav item "Life OS" (Compass icon) → `/life-os`
+3. Page skeleton with 5 tabs
+4. Vision & Missions tab (CRUD)
+5. Today tab (task list + check-off + reflection)
+6. Pyramid overview (read-only visual)
+
+**Phase 2 (next):**
+- Weekly/Monthly/Quarter tabs
+- Drag-drop scheduling
+- Achievement badges + year-end report
+- Cross-module integration (habits/trades auto-feed)
+
+## Files to Create
+
+**Migration:**
+- `supabase/migrations/<ts>_life_os.sql`
+
+**Hooks:**
+- `src/hooks/useLifeNodes.ts` — CRUD + realtime
+- `src/hooks/useLifeNodeLogs.ts`
+
+**Page + components:**
+- `src/pages/LifeOS.tsx` — main page with tabs
+- `src/components/lifeos/VisionMissionTab.tsx`
+- `src/components/lifeos/TodayTab.tsx`
+- `src/components/lifeos/WeekTab.tsx` (Phase 1: placeholder)
+- `src/components/lifeos/MonthTab.tsx` (Phase 1: placeholder)
+- `src/components/lifeos/PyramidView.tsx`
+- `src/components/lifeos/NodeCard.tsx` — reusable card for any node type
+- `src/components/lifeos/NodeFormDialog.tsx` — create/edit any node
+- `src/components/lifeos/AlignmentBadge.tsx` — shows alignment score
+- `src/components/lifeos/DailyReflectionDialog.tsx`
+
+**Routing:**
+- `src/App.tsx` — add `/life-os` route
+- `src/components/Layout.tsx` — add to `ALL_NAV_ITEMS`
 
 ## Result
 
-Mobile-এ navbar reorder করলে → 1-2 second-এর মধ্যে desktop-এও same order দেখাবে। Theme switch → instant sync। Watchlist add → both devices update। সব personalization truly **account-bound**, device-bound না।
+আপনার একটা সম্পূর্ণ **personal Life OS** হবে। প্রতিদিন সকালে app খুললেই দেখবেন — আজকে কী করতে হবে এবং সেটা আপনার vision-এর সাথে কীভাবে aligned। প্রতিটা completed task পিরামিড উপরে উঠবে। বছর শেষে দেখবেন — সব daily action মিলে আপনার vision-এর দিকে কতটা এগিয়েছেন।
 
