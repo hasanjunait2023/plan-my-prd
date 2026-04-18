@@ -374,6 +374,47 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_focus: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          node_id: string
+          rank: number
+          reason: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          node_id: string
+          rank?: number
+          reason?: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          node_id?: string
+          rank?: number
+          reason?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_focus_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "life_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ema_alignments: {
         Row: {
           alignment_type: string
