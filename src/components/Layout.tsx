@@ -54,6 +54,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { title: 'Mind Journal', short: 'Mind', url: '/mind-journal', icon: Brain },
   { title: 'AI Scanner', short: 'AI', url: '/ai-scanner', icon: Brain },
   { title: 'Pair Selector', short: 'Pair', url: '/pair-selector', icon: Crosshair },
+  { title: 'Life OS', short: 'Life', url: '/life-os', icon: Compass },
   { title: 'Settings', short: 'Set', url: '/settings', icon: Settings },
 ];
 
