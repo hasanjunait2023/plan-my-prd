@@ -621,6 +621,127 @@ export type Database = {
         }
         Relationships: []
       }
+      life_node_logs: {
+        Row: {
+          created_at: string
+          date: string
+          done: boolean
+          id: string
+          node_id: string
+          reflection: string
+          user_id: string
+          value_added: number
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          done?: boolean
+          id?: string
+          node_id: string
+          reflection?: string
+          user_id: string
+          value_added?: number
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          done?: boolean
+          id?: string
+          node_id?: string
+          reflection?: string
+          user_id?: string
+          value_added?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "life_node_logs_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "life_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      life_nodes: {
+        Row: {
+          color: string
+          completed_at: string | null
+          created_at: string
+          current_value: number
+          description: string
+          due_date: string | null
+          icon: string
+          id: string
+          metadata: Json
+          parent_id: string | null
+          priority: number
+          progress: number
+          sort_order: number
+          start_date: string | null
+          status: string
+          target_value: number | null
+          title: string
+          type: Database["public"]["Enums"]["life_node_type"]
+          unit: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          completed_at?: string | null
+          created_at?: string
+          current_value?: number
+          description?: string
+          due_date?: string | null
+          icon?: string
+          id?: string
+          metadata?: Json
+          parent_id?: string | null
+          priority?: number
+          progress?: number
+          sort_order?: number
+          start_date?: string | null
+          status?: string
+          target_value?: number | null
+          title: string
+          type: Database["public"]["Enums"]["life_node_type"]
+          unit?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          completed_at?: string | null
+          created_at?: string
+          current_value?: number
+          description?: string
+          due_date?: string | null
+          icon?: string
+          id?: string
+          metadata?: Json
+          parent_id?: string | null
+          priority?: number
+          progress?: number
+          sort_order?: number
+          start_date?: string | null
+          status?: string
+          target_value?: number | null
+          title?: string
+          type?: Database["public"]["Enums"]["life_node_type"]
+          unit?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "life_nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "life_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       market_scan_temp: {
         Row: {
           change_percent: number
@@ -1289,10 +1410,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      recompute_node_progress: {
+        Args: { _node_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      life_node_type:
+        | "vision"
+        | "mission"
+        | "yearly"
+        | "quarterly"
+        | "monthly"
+        | "weekly"
+        | "daily"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1419,6 +1550,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      life_node_type: [
+        "vision",
+        "mission",
+        "yearly",
+        "quarterly",
+        "monthly",
+        "weekly",
+        "daily",
+      ],
+    },
   },
 } as const
