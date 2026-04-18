@@ -14,6 +14,7 @@ import { StreakBanner } from "./StreakBanner";
 import { MomentumChart } from "./MomentumChart";
 import { TelegramReminderCard } from "./TelegramReminderCard";
 import { AiCoachCard } from "./AiCoachCard";
+import { TimeBlockTimeline } from "./TimeBlockTimeline";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -21,7 +22,7 @@ export function TodayTab() {
   const { nodes, byType, ancestorChain, createNode, deleteNode, updateNode, findById } =
     useLifeNodes();
   const { isDone, toggleDone, saveReflection } = useLifeNodeLogs(today());
-  const { focus, generating, generate, removeFocus } = useDailyFocus(today());
+  const { focus, generating, generate, removeFocus, updateSlot } = useDailyFocus(today());
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<LifeNode | null>(null);

@@ -157,6 +157,10 @@ Deno.serve(async (req) => {
     }
 
     // Insert
+    // Smart slot assignment: rank 1 = morning (high cognition), rank 2 = afternoon, rank 3 = evening
+    const slotByRank = (rank: number): string =>
+      rank === 1 ? "morning" : rank === 2 ? "afternoon" : "evening";
+
     const rows = picked.map((p, i) => ({
       user_id: userId,
       date: today,
@@ -164,6 +168,7 @@ Deno.serve(async (req) => {
       rank: i + 1,
       reason: p.reason,
       source: "auto",
+      time_slot: slotByRank(i + 1),
     }));
 
     const { data: inserted, error: insertErr } = await admin
