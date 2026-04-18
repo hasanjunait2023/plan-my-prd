@@ -3,7 +3,6 @@ import { FloatingWatchlistProvider } from '@/contexts/FloatingWatchlistContext';
 import { FloatingAssistiveButton } from './FloatingAssistiveButton';
 import { WatchlistPanel } from './WatchlistPanel';
 import { FloatingChartWindow } from './FloatingChartWindow';
-import { BubbleDeepLinkHandler } from './BubbleDeepLinkHandler';
 
 /**
  * Mounts the floating watchlist system globally.
@@ -15,7 +14,6 @@ export function FloatingWatchlist() {
 
   return (
     <FloatingWatchlistProvider>
-      <BubbleDeepLinkHandler />
       <FloatingAssistiveButton />
       <WatchlistPanel />
       <FloatingChartWindow />
