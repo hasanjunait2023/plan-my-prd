@@ -101,6 +101,17 @@
     @apply bg-background text-foreground;
     font-family: 'Noto Serif Bengali', serif;
   }
+
+  /* Globally hide scrollbars but keep scroll functional */
+  * {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
 }
 
 @layer utilities {
