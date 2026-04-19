@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Sun, Moon, Sparkles, RefreshCw, Target, X } from "lucide-react";
+import { Plus, Sun, Moon, Sparkles, RefreshCw, Target, X, MoonStar } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useLifeNodes, type LifeNode } from "@/hooks/useLifeNodes";
 import { useLifeNodeLogs } from "@/hooks/useLifeNodeLogs";
 import { useDailyFocus } from "@/hooks/useDailyFocus";
@@ -136,6 +137,11 @@ export function TodayTab() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <AlignmentBadge score={alignmentScore} />
+            <Button asChild size="sm" variant="outline">
+              <Link to="/tomorrow">
+                <MoonStar className="h-4 w-4 mr-1" /> Plan tomorrow
+              </Link>
+            </Button>
             <Button onClick={() => { setEditing(null); setDialogOpen(true); }} size="sm" variant="outline">
               <Plus className="h-4 w-4 mr-1" /> Add
             </Button>
