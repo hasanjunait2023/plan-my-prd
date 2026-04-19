@@ -43,14 +43,18 @@ export function useLifeNodes() {
   useEffect(() => {
     fetchAll();
     if (!user) return;
-    const channel = supabase
-      .channel(`life_nodes_realtime_${user.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "life_nodes", filter: `user_id=eq.${user.id}` },
-        () => scheduleRefetch()
-      )
-      .subscribe();
+
+    const channelTopic = `life_nodes_realtime_${user.id}_${Math.random().toString(36).slice(2)}`;
+    const channel = supabase.channel(channelTopic);
+
+    channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "life_nodes", filter: `user_id=eq.${user.id}` },
+      scheduleRefetch
+    );
+
+    channel.subscribe();
+
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
