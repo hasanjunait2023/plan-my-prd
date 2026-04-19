@@ -1,109 +1,46 @@
 
-User wants daily rule memorization — morning + evening repetition flow. They want to repeat rules to internalize them.
+User wants OpenAI API instead of Lovable AI for the coaching feature. Checking secrets — `OPENROUTER_API_KEY` exists but no `OPENAI_API_KEY`. Need to ask user to add it OR clarify if OpenRouter is acceptable.
 
-Let me think about the right approach. They're on /rules page already. The existing system has:
-- `trading_rules` table with category, text, active
-- `rule_categories` with colors
-- Telegram + Push notification infrastructure already wired (used for slot pushes, habit reminders)
-- Edge function pattern established (`lifeos-slot-push` is a good template)
-- pg_cron already set up for scheduled pushes
-
-Two delivery channels needed:
-1. **In-app Memorization Mode** — flashcard-style repetition UI on /rules
-2. **Auto morning + evening Telegram/Push** — sends rules to repeat
-
-Let me design this concisely.
+Updating the plan to swap AI provider. Everything else stays the same.
 
 ---
 
-# Plan: Daily Rules Memorization System
+# Plan: Daily Rules Adherence + AI Coaching System (OpenAI version)
 
-## Goal
-Morning (6 AM) এবং Evening (10 PM) এ active rules গুলো Telegram + Push এ পাঠানো হবে, plus /rules page এ একটা **Memorize Mode** থাকবে যেখানে flashcard style এ rules repeat করা যাবে।
+Same architecture as approved before — only AI provider changes.
 
-## Part 1 — In-app "Memorize Mode" (/rules page)
+## Changes from previous plan
+- `rules-coaching-plan` edge function will call **OpenAI API** (`https://api.openai.com/v1/chat/completions`) instead of Lovable AI Gateway
+- Model: `gpt-4o-mini` (cheap, fast, great for analysis) — or `gpt-4o` if you want deeper reasoning
+- Uses tool-calling for structured output (focus rules, action items, metrics)
+- Needs new secret: **`OPENAI_API_KEY`**
 
-A new button **"Memorize Mode"** at the top of TradingRules page. Clicking it opens a fullscreen-style focused view:
+## Everything else stays identical
+- 3 tables: `daily_rule_adherence`, `rule_violations`, `coaching_plans`
+- Daily Check-in tab (9:30 PM reminder)
+- Adherence Report tab (heatmap + per-rule + patterns)
+- Coaching tab with weekly plan card
+- Auto-boost focus rules in Memorize Mode
+- 2 new pg_cron jobs (9:30 PM check-in, Sunday 10 PM coaching)
 
-```text
-┌──────────────────────────────────┐
-│  Rule 3 of 12     [Risk] •       │
-│                                  │
-│  "Never risk more than           │
-│   1% per trade"                  │
-│                                  │
-│  [ I know this ]  [ Repeat ]    │
-│      ← Prev    Next →            │
-└──────────────────────────────────┘
-```
+## What I need from you
 
-Features:
-- Shows one active rule at a time (large, centered)
-- Category color dot + name on top
-- Auto-advance every 8 seconds (toggleable)
-- "I know this" → marks confidence, moves on
-- "Repeat" → keeps rule in rotation
-- Shuffle / sequential toggle
-- Progress bar at bottom (3/12)
-- Filter by category (optional)
+**OpenAI API key লাগবে** — `OPENAI_API_KEY` secret টা add করতে হবে।
 
-Storage: lightweight `rule_memorization` table tracking `confidence_score` (0-5) per rule per user, so weak rules show more often.
+কোথায় পাবে:
+1. https://platform.openai.com/api-keys
+2. "Create new secret key" → copy
+3. Build শুরু করার আগে আমি secret add করার জন্য prompt দিব
 
-## Part 2 — Scheduled Morning + Evening Pushes
+## Open Questions
 
-New edge function `rules-memorize-push` that:
-- Fetches user's active rules
-- Picks 3-5 rules (prioritizing low-confidence ones)
-- Sends as numbered Telegram message + Web Push
-- Morning message: "🌅 আজকের দিন শুরু — এই rules মাথায় রাখো"
-- Evening message: "🌙 দিন শেষ — কাল এর জন্য এই rules রিভাইজ করো"
+1. **Model choice**: 
+   - `gpt-4o-mini` — cheap (~$0.15/1M tokens), fast, যথেষ্ট ভালো analysis (recommended)
+   - `gpt-4o` — better reasoning, ~10x dam, deep insight
+   - `gpt-5` — latest, best, dam beshi
 
-Two new pg_cron jobs:
-- **Morning**: 6:00 AM Dhaka (00:00 UTC)
-- **Evening**: 10:00 PM Dhaka (16:00 UTC)
+2. **Check-in time**: 9:30 PM ঠিক আছে?
 
-Both buttons added to `TelegramReminderCard.tsx` for manual testing.
+3. **Trade linking**: violated rule কে specific trade এর সাথে link করার option চাও? (default: skip)
 
-## Part 3 — Settings on /rules page
-
-Small "Daily Reminders" card at top showing:
-- ✅ Morning push: 6 AM (toggle on/off)
-- ✅ Evening push: 10 PM (toggle on/off)
-- Number of rules per push: 3 / 5 / All (slider)
-
-Stored in `alert_settings` (add `rules_morning_push`, `rules_evening_push`, `rules_per_push` columns).
-
-## Technical Changes
-
-**Database migration**:
-- New table `rule_memorization` (user_id, rule_id, confidence_score, last_shown_at, repeat_count)
-- Add columns to `alert_settings`: `rules_morning_push bool`, `rules_evening_push bool`, `rules_per_push int default 5`
-
-**New files**:
-- `supabase/functions/rules-memorize-push/index.ts` — sends Telegram + Push
-- `src/components/rules/MemorizeMode.tsx` — fullscreen flashcard component
-- `src/components/rules/DailyReminderCard.tsx` — toggle settings card
-- `src/hooks/useRuleMemorization.ts` — confidence tracking
-
-**Edited files**:
-- `src/pages/TradingRules.tsx` — add "Memorize Mode" button + reminder card
-- `src/components/lifeos/TelegramReminderCard.tsx` — add test buttons for rule pushes
-
-**Cron jobs** (2 new):
-- 6 AM Dhaka morning push
-- 10 PM Dhaka evening push
-
-## Build Order
-1. Database migration (table + alert_settings columns)
-2. Memorize Mode UI (most immediate value)
-3. Edge function + cron jobs
-4. Daily Reminder settings card
-5. Test buttons
-
-## Open Question
-Repetition strategy — চাও:
-- **Spaced repetition** (low-confidence rules show more often, smart)
-- **Simple rotation** (সব rules সমান ভাবে rotate হবে)
-- **Random shuffle** (প্রতিবার এলোমেলো)
-
-Default suggestion: **spaced repetition** — যে rules তুমি "Repeat" চাপবে সেগুলো বেশি বার আসবে, "I know this" চাপলে কম আসবে। এটাই memorization এ সবচেয়ে effective।
+Default: `gpt-4o-mini`, 9:30 PM, no trade linking।
