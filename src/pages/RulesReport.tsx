@@ -1,21 +1,41 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, BarChart3, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdherenceReport } from '@/components/rules/AdherenceReport';
 import { CoachingPlanCard } from '@/components/rules/CoachingPlanCard';
-import { useAdherenceHistory, useViolationsHistory } from '@/hooks/useDailyAdherence';
+import { DateRangeSelector, type RangePreset } from '@/components/rules/DateRangeSelector';
+import { useAdherenceHistory, useViolationsHistory, type DateRange } from '@/hooks/useDailyAdherence';
 import { useTradingRules } from '@/hooks/useTradingRules';
 import { exportAdherencePdf } from '@/lib/exportAdherencePdf';
 
+const fmt = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const initialRange = (): DateRange => {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - 29);
+  return { from: fmt(from), to: fmt(to) };
+};
+
 const RulesReport = () => {
-  const { data: history = [] } = useAdherenceHistory(30);
-  const { data: violations = [] } = useViolationsHistory(30);
+  const [preset, setPreset] = useState<RangePreset>('30d');
+  const [range, setRange] = useState<DateRange>(initialRange);
+
+  const { data: history = [] } = useAdherenceHistory(range);
+  const { data: violations = [] } = useViolationsHistory(range);
   const { data: rules = [] } = useTradingRules();
 
+  const windowDays = useMemo(() => {
+    const from = new Date(range.from);
+    const to = new Date(range.to);
+    return Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000) + 1);
+  }, [range]);
+
   const exportData = useMemo(() => {
-    const last7 = history.slice(0, 7);
+    const recentSlice = history.slice(0, Math.min(7, history.length));
     const avg = (arr: typeof history) =>
       arr.length === 0 ? 0 : Math.round(arr.reduce((a, b) => a + Number(b.adherence_score), 0) / arr.length);
     let perfectStreak = 0;
@@ -24,7 +44,7 @@ const RulesReport = () => {
       else break;
     }
     const stats = {
-      last7Avg: avg(last7),
+      last7Avg: avg(recentSlice),
       last30Avg: avg(history),
       perfectStreak,
       totalLogs: history.length,
@@ -49,7 +69,6 @@ const RulesReport = () => {
       .map(r => ({ ...r, adherencePct: Math.round(((totalDays - r.violations) / totalDays) * 100) }))
       .sort((a, b) => b.violations - a.violations);
 
-    // Patterns (mirrored from AdherenceReport)
     const patterns: string[] = [];
     if (history.length > 0) {
       const byMood = new Map<string, { violations: number; days: number }>();
@@ -94,7 +113,7 @@ const RulesReport = () => {
 
   const handleExport = () => {
     if (history.length === 0) {
-      toast.error('No data to export — submit a check-in first');
+      toast.error('No data to export in this range');
       return;
     }
     try {
@@ -112,6 +131,7 @@ const RulesReport = () => {
         ruleBreakdown: exportData.ruleBreakdown,
         patterns: exportData.patterns,
         stats: exportData.stats,
+        rangeLabel: `${range.from} → ${range.to} (${windowDays}d)`,
       });
       toast.success('Report downloaded');
     } catch (e) {
@@ -162,10 +182,25 @@ const RulesReport = () => {
             </Button>
           </div>
         </div>
+
+        {/* Date range selector */}
+        <div className="relative mt-5 flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-xs text-muted-foreground">
+            Showing <span className="text-foreground font-medium">{windowDays} days</span> · {range.from} → {range.to}
+          </p>
+          <DateRangeSelector
+            preset={preset}
+            range={range}
+            onChange={(p, r) => {
+              setPreset(p);
+              setRange(r);
+            }}
+          />
+        </div>
       </div>
 
       {/* Full report */}
-      <AdherenceReport />
+      <AdherenceReport range={range} />
 
       {/* Coaching plan below */}
       <CoachingPlanCard />
