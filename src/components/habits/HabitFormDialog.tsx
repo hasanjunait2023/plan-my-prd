@@ -9,7 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Archive, Trash2, Zap, Palmtree } from 'lucide-react';
+import { Archive, Trash2, Zap, Palmtree, Compass } from 'lucide-react';
+import { useLifeNodes } from '@/hooks/useLifeNodes';
 
 const CATEGORIES = ['general', 'trading', 'health', 'learning'];
 
