@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Sun, Moon, Bell, Send } from 'lucide-react';
+import { Sun, Moon, Bell, Send, ClipboardCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -15,12 +15,13 @@ export function DailyReminderCard() {
   const [morning, setMorning] = useState(true);
   const [evening, setEvening] = useState(true);
   const [perPush, setPerPush] = useState(5);
+  const [checkin, setCheckin] = useState(true);
 
   useEffect(() => {
     (async () => {
       const { data } = await (supabase as any)
         .from('alert_settings')
-        .select('id,rules_morning_push,rules_evening_push,rules_per_push')
+        .select('id,rules_morning_push,rules_evening_push,rules_per_push,rules_checkin_push')
         .limit(1)
         .maybeSingle();
       if (data) {
@@ -28,6 +29,7 @@ export function DailyReminderCard() {
         setMorning(data.rules_morning_push ?? true);
         setEvening(data.rules_evening_push ?? true);
         setPerPush(data.rules_per_push ?? 5);
+        setCheckin(data.rules_checkin_push ?? true);
       }
       setLoading(false);
     })();
@@ -122,6 +124,21 @@ export function DailyReminderCard() {
               </div>
             </div>
             <Switch checked={evening} onCheckedChange={onToggleEvening} disabled={saving} />
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-lg border border-border/20 bg-background/40 sm:col-span-2">
+            <div className="flex items-center gap-2">
+              <ClipboardCheck className="w-4 h-4 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Daily Check-in nudge</p>
+                <p className="text-[11px] text-muted-foreground">9:30 PM Dhaka — fills your AI coach data</p>
+              </div>
+            </div>
+            <Switch
+              checked={checkin}
+              onCheckedChange={(v) => { setCheckin(v); persist({ rules_checkin_push: v }); }}
+              disabled={saving}
+            />
           </div>
         </div>
 
