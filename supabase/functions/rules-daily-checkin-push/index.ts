@@ -13,6 +13,7 @@ Deno.serve(async (req) => {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+  const tgBase = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -44,6 +45,7 @@ Deno.serve(async (req) => {
     const submittedSet = new Set((submitted ?? []).map((r: any) => r.user_id));
 
     let telegramSent = 0;
+    let telegramRefreshed = 0;
     let pushSent = 0;
     let skipped = 0;
 
@@ -68,46 +70,32 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Telegram (inline keyboard) — broadcast to enabled chats, store state per chat
+      // Telegram (inline keyboard) — refresh existing pending reminder in-place when possible
       for (const s of enabled) {
         try {
-          // Delete previous pending reminder so chat stays clean
+          const chatId = Number(s.telegram_chat_id);
           const { data: prev } = await supabase
             .from("telegram_checkin_state")
             .select("message_id,status")
-            .eq("chat_id", Number(s.telegram_chat_id))
+            .eq("chat_id", chatId)
             .eq("date", today)
             .maybeSingle();
-          if (prev?.message_id && prev.status !== "submitted") {
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteMessage`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: s.telegram_chat_id, message_id: prev.message_id }),
-            }).catch(() => {});
-          }
 
-          const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: s.telegram_chat_id,
-              text,
-              parse_mode: "HTML",
-              reply_markup: inlineKeyboard,
-            }),
-          });
-          const data = await r.json();
-          if (r.ok && data.result?.message_id) {
-            telegramSent++;
-            // Initialize state row
+          const refreshed = await refreshExistingReminder(tgBase, chatId, prev, text, inlineKeyboard);
+          const nextMessageId = refreshed ? prev?.message_id ?? null : await sendTelegramReminder(tgBase, chatId, text, inlineKeyboard);
+
+          if (nextMessageId) {
+            if (refreshed) telegramRefreshed++;
+            else telegramSent++;
+
             await supabase
               .from("telegram_checkin_state")
               .upsert(
                 {
-                  chat_id: Number(s.telegram_chat_id),
+                  chat_id: chatId,
                   date: today,
                   user_id: ownerUserId,
-                  message_id: data.result.message_id,
+                  message_id: nextMessageId,
                   selected_rule_ids: [],
                   reasons: {},
                   status: "awaiting_choice",
@@ -117,7 +105,7 @@ Deno.serve(async (req) => {
               );
           }
         } catch (e) {
-          console.error("telegram send error", e);
+          console.error("telegram reminder error", e);
         }
       }
 
@@ -135,16 +123,81 @@ Deno.serve(async (req) => {
 
     await supabase.from("alert_log").insert({
       alert_type: "rules_checkin_push",
-      message: `Daily check-in nudge: ${telegramSent} Telegram, ${pushSent} Push, ${skipped} already submitted`,
-      metadata: { telegramSent, pushSent, skipped, totalUsers: userIds.length },
+      message: `Daily check-in nudge: ${telegramSent} new, ${telegramRefreshed} refreshed, ${pushSent} Push, ${skipped} already submitted`,
+      metadata: { telegramSent, telegramRefreshed, pushSent, skipped, totalUsers: userIds.length },
     });
 
-    return json({ ok: true, telegramSent, pushSent, skipped, totalUsers: userIds.length });
+    return json({ ok: true, telegramSent, telegramRefreshed, pushSent, skipped, totalUsers: userIds.length });
   } catch (e) {
     console.error("[rules-daily-checkin-push]", e);
     return json({ error: (e as Error).message }, 500);
   }
 });
+
+async function refreshExistingReminder(
+  tgBase: string,
+  chatId: number,
+  prev: { message_id?: number | null; status?: string } | null | undefined,
+  text: string,
+  reply_markup: unknown,
+): Promise<boolean> {
+  if (!prev?.message_id || prev.status === "submitted") return false;
+
+  try {
+    const r = await fetch(`${tgBase}/editMessageText`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: prev.message_id,
+        text,
+        parse_mode: "HTML",
+        reply_markup,
+      }),
+    });
+
+    const data = await r.json().catch(() => null);
+    if (r.ok) return true;
+    if (data?.description?.includes("message is not modified")) return true;
+
+    console.error("refresh reminder edit error", data);
+    return false;
+  } catch (e) {
+    console.error("refresh reminder edit exception", e);
+    return false;
+  }
+}
+
+async function sendTelegramReminder(
+  tgBase: string,
+  chatId: number,
+  text: string,
+  reply_markup: unknown,
+): Promise<number | null> {
+  try {
+    const r = await fetch(`${tgBase}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "HTML",
+        reply_markup,
+      }),
+    });
+
+    const data = await r.json().catch(() => null);
+    if (!r.ok) {
+      console.error("telegram send error", data);
+      return null;
+    }
+
+    return data?.result?.message_id ?? null;
+  } catch (e) {
+    console.error("telegram send exception", e);
+    return null;
+  }
+}
 
 async function sendPush(supabase: any, userId: string, title: string, body: string, tag: string, url: string): Promise<boolean> {
   try {
