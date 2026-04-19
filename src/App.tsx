@@ -30,6 +30,7 @@ import MindJournal from "./pages/MindJournal.tsx";
 import AiScanner from "./pages/AiScanner.tsx";
 import PairSelector from "./pages/PairSelector.tsx";
 import LifeOS from "./pages/LifeOS.tsx";
+import TomorrowPlanner from "./pages/TomorrowPlanner.tsx";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
                   <Route path="/ai-scanner" element={<AiScanner />} />
                   <Route path="/pair-selector" element={<PairSelector />} />
                   <Route path="/life-os" element={<LifeOS />} />
+                  <Route path="/tomorrow" element={<TomorrowPlanner />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Layout>
