@@ -312,9 +312,29 @@ const TradingRules = () => {
       {/* Daily reminders */}
       <DailyReminderCard />
 
-      <RulesTabs activeRules={activeRules} />
+      <Tabs defaultValue={(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab')) || 'rules'} className="space-y-5">
+        <TabsList className="grid w-full grid-cols-5 h-11 bg-card/60 border border-border/40 backdrop-blur-sm">
+          <TabsTrigger value="rules" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+            <ListChecks className="w-4 h-4" /><span className="hidden sm:inline">Rules</span>
+          </TabsTrigger>
+          <TabsTrigger value="checkin" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+            <Moon className="w-4 h-4" /><span className="hidden sm:inline">Check-in</span>
+          </TabsTrigger>
+          <TabsTrigger value="report" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+            <BarChart3 className="w-4 h-4" /><span className="hidden sm:inline">Report</span>
+          </TabsTrigger>
+          <TabsTrigger value="coach" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+            <Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Coach</span>
+          </TabsTrigger>
+          <TabsTrigger value="confidence" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+            <Activity className="w-4 h-4" /><span className="hidden sm:inline">Confidence</span>
+          </TabsTrigger>
+        </TabsList>
 
-      <Tabs value={(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab')) || 'rules'} className="space-y-5">
+        <TabsContent value="checkin" className="mt-0"><DailyCheckinTab /></TabsContent>
+        <TabsContent value="report" className="mt-0"><AdherenceReport /></TabsContent>
+        <TabsContent value="coach" className="mt-0"><CoachingPlanCard /></TabsContent>
+
         <TabsContent value="rules" className="space-y-5 mt-0">
       {/* Add new rule */}
       <Card className="border-border/40 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
