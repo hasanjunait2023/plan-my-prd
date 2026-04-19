@@ -41,7 +41,7 @@ export const useUpdateRule = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, text, category }: { id: string; text?: string; category?: string }) => {
-      const patch: Record<string, unknown> = {};
+      const patch: { text?: string; category?: string } = {};
       if (text !== undefined) patch.text = text;
       if (category !== undefined) patch.category = category;
       const { error } = await supabase.from('trading_rules').update(patch).eq('id', id);
