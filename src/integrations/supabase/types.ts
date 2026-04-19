@@ -1468,6 +1468,7 @@ export type Database = {
       trading_rules: {
         Row: {
           active: boolean
+          category: string
           created_at: string
           id: string
           text: string
@@ -1475,6 +1476,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          category?: string
           created_at?: string
           id?: string
           text: string
@@ -1482,6 +1484,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          category?: string
           created_at?: string
           id?: string
           text?: string
