@@ -13,6 +13,9 @@ export function useLifeNodes() {
   const { user } = useAuth();
   const [nodes, setNodes] = useState<LifeNode[]>([]);
   const [loading, setLoading] = useState(true);
+  // Debounce cascading realtime updates so a single tick that triggers
+  // many recursive parent recomputes doesn't refetch the whole tree N times.
+  const debounceRef = useRef<number | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (!user) return;
@@ -29,10 +32,6 @@ export function useLifeNodes() {
     setLoading(false);
   }, [user]);
 
-  // Debounce cascading realtime updates so a single tick that triggers
-  // many recursive parent recomputes doesn't refetch the whole tree N times
-  // (which causes the page to "reset" and feel like sections collapsed).
-  const debounceRef = useRef<number | null>(null);
   const scheduleRefetch = useCallback(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
