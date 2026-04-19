@@ -408,6 +408,26 @@ async function handleCallback(supabase: any, tgBase: string, cb: any) {
   const chatId = cb.message?.chat?.id;
   const messageId = cb.message?.message_id;
   const today = new Date().toISOString().split('T')[0];
+
+  // ============ ROUTE: Rules check-in callbacks ============
+  if (cbData?.startsWith('rules_chk:')) {
+    try {
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+      const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      await fetch(`${SUPABASE_URL}/functions/v1/rules-telegram-checkin-poll`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${SERVICE_KEY}`,
+        },
+        body: JSON.stringify({ callback_query: cb }),
+      });
+    } catch (e) {
+      console.error('rules_chk forward error', e);
+    }
+    return;
+  }
+
   const waqtLabels: Record<string, string> = { fajr: 'ফজর', dhuhr: 'যোহর', asr: 'আসর', maghrib: 'মাগরিব', isha: 'এশা' };
   const waqtNames: Record<string, string[]> = {
     fajr: ['ফজর', 'Fajr', 'fajr'],
