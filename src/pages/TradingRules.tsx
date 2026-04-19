@@ -304,6 +304,19 @@ const TradingRules = () => {
       {/* Daily reminders */}
       <DailyReminderCard />
 
+      <Tabs defaultValue="rules" className="space-y-5">
+        <TabsList className="grid w-full grid-cols-2 h-11 bg-card/60 border border-border/40 backdrop-blur-sm">
+          <TabsTrigger value="rules" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+            <ListChecks className="w-4 h-4" />
+            My Rules
+          </TabsTrigger>
+          <TabsTrigger value="confidence" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+            <Activity className="w-4 h-4" />
+            Confidence
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="rules" className="space-y-5 mt-0">
       {/* Add new rule */}
       <Card className="border-border/40 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
         <div className="h-1 bg-gradient-to-r from-primary/60 via-primary/30 to-transparent" />
