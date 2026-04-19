@@ -24,6 +24,20 @@ Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
   const tgBase = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
+  // Direct callback delivery mode (forwarded by habit-telegram-poll)
+  if (req.method === "POST") {
+    try {
+      const body = await req.json().catch(() => ({}));
+      if (body?.callback_query) {
+        await handleCallback(supabase, tgBase, body.callback_query);
+        return json({ ok: true, processed: 1, mode: "direct" });
+      }
+    } catch (e) {
+      console.error("direct callback error", e);
+      return json({ ok: false, error: (e as Error).message }, 500);
+    }
+  }
+
   // Read offset
   const { data: state } = await supabase
     .from("telegram_rules_state")
