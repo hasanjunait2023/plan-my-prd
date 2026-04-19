@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
-import { Shield, Plus, Trash2, Pencil, Check, X, ChevronsUpDown, Tag, Palette } from 'lucide-react';
+import { Shield, Plus, Trash2, Pencil, Check, X, ChevronsUpDown, Tag, Palette, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useTradingRules,
@@ -18,6 +18,8 @@ import {
 } from '@/hooks/useTradingRules';
 import { useRuleCategories, useUpsertRuleCategory } from '@/hooks/useRuleCategories';
 import { TradingRule } from '@/types/trade';
+import { MemorizeMode } from '@/components/rules/MemorizeMode';
+import { DailyReminderCard } from '@/components/rules/DailyReminderCard';
 
 const DEFAULT_CATEGORIES = ['Risk', 'Entry', 'Exit', 'Psychology', 'General'];
 
@@ -157,6 +159,7 @@ const TradingRules = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [editCategory, setEditCategory] = useState('General');
+  const [memorizeOpen, setMemorizeOpen] = useState(false);
 
   // Build color map: saved rows override fallback
   const colorMap = useMemo(() => {
@@ -245,13 +248,24 @@ const TradingRules = () => {
         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
           <Shield className="w-5 h-5 text-primary" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">Trading Rules</h1>
           <p className="text-sm text-muted-foreground">
             Your personal trading rules, grouped by category
           </p>
         </div>
+        <Button
+          onClick={() => setMemorizeOpen(true)}
+          disabled={rules.filter((r) => r.active).length === 0}
+          className="gap-1.5"
+        >
+          <Brain className="w-4 h-4" />
+          Memorize
+        </Button>
       </div>
+
+      {/* Daily reminders */}
+      <DailyReminderCard />
 
       {/* Add new rule */}
       <Card className="border-border/30 bg-card/50">
@@ -417,6 +431,13 @@ const TradingRules = () => {
           </Card>
         ))
       )}
+
+      <MemorizeMode
+        open={memorizeOpen}
+        onClose={() => setMemorizeOpen(false)}
+        rules={rules}
+        colorFor={getColor}
+      />
     </div>
   );
 };
