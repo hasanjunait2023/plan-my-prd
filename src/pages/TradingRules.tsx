@@ -312,48 +312,9 @@ const TradingRules = () => {
       {/* Daily reminders */}
       <DailyReminderCard />
 
-      <RulesTabs />
-    </div>
-  );
-};
+      <RulesTabs activeRules={activeRules} />
 
-const RulesTabs = () => {
-  const [params, setParams] = useSearchParams();
-  const tab = params.get('tab') || 'rules';
-  const setTab = (v: string) => setParams((p) => { p.set('tab', v); return p; }, { replace: true });
-  return (
-      <Tabs value={tab} onValueChange={setTab} className="space-y-5">
-        <TabsList className="grid w-full grid-cols-5 h-11 bg-card/60 border border-border/40 backdrop-blur-sm">
-          <TabsTrigger value="rules" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
-            <ListChecks className="w-4 h-4" /><span className="hidden sm:inline">Rules</span>
-          </TabsTrigger>
-          <TabsTrigger value="checkin" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
-            <Moon className="w-4 h-4" /><span className="hidden sm:inline">Check-in</span>
-          </TabsTrigger>
-          <TabsTrigger value="report" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
-            <BarChart3 className="w-4 h-4" /><span className="hidden sm:inline">Report</span>
-          </TabsTrigger>
-          <TabsTrigger value="coach" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
-            <Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Coach</span>
-          </TabsTrigger>
-          <TabsTrigger value="confidence" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
-            <Activity className="w-4 h-4" /><span className="hidden sm:inline">Confidence</span>
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="checkin" className="mt-0"><DailyCheckinTab /></TabsContent>
-        <TabsContent value="report" className="mt-0"><AdherenceReport /></TabsContent>
-        <TabsContent value="coach" className="mt-0"><CoachingPlanCard /></TabsContent>
-        <TabsContent value="confidence" className="mt-0"><span /></TabsContent>
-        <TabsContent value="rules" className="mt-0"><span /></TabsContent>
-      </Tabs>
-  );
-};
-
-const _Unused = () => {
-  return (
-    <div>
-      <Tabs defaultValue="rules"><TabsList />
-
+      <Tabs value={(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab')) || 'rules'} className="space-y-5">
         <TabsContent value="rules" className="space-y-5 mt-0">
       {/* Add new rule */}
       <Card className="border-border/40 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
