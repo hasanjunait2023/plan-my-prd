@@ -9,9 +9,15 @@ export const useTradingRules = () => {
       const { data, error } = await supabase
         .from('trading_rules')
         .select('*')
+        .order('category', { ascending: true })
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return (data || []).map(r => ({ id: r.id, text: r.text, active: r.active })) as TradingRule[];
+      return (data || []).map(r => ({
+        id: r.id,
+        text: r.text,
+        active: r.active,
+        category: (r as any).category || 'General',
+      })) as TradingRule[];
     },
   });
 };
@@ -19,10 +25,26 @@ export const useTradingRules = () => {
 export const useInsertRule = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (text: string) => {
+    mutationFn: async ({ text, category }: { text: string; category: string }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
-      const { error } = await supabase.from('trading_rules').insert({ text, user_id: session.user.id });
+      const { error } = await supabase
+        .from('trading_rules')
+        .insert({ text, category, user_id: session.user.id } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trading_rules'] }),
+  });
+};
+
+export const useUpdateRule = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, text, category }: { id: string; text?: string; category?: string }) => {
+      const patch: Record<string, unknown> = {};
+      if (text !== undefined) patch.text = text;
+      if (category !== undefined) patch.category = category;
+      const { error } = await supabase.from('trading_rules').update(patch).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trading_rules'] }),
