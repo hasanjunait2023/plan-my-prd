@@ -528,6 +528,12 @@ const TradingRules = () => {
           })}
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="confidence" className="mt-0">
+          <ConfidenceOverview rules={rules} colorFor={getColor} />
+        </TabsContent>
+      </Tabs>
 
       <MemorizeMode
         open={memorizeOpen}
