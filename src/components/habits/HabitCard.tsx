@@ -120,6 +120,15 @@ export function HabitCard({ habit, isCompleted, weekLogs, monthLogs = [], onComp
                   <Palmtree className="w-3 h-3" /> Vacation
                 </span>
               )}
+              {linkedMission && (
+                <span
+                  className="flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                  style={{ background: `${linkedMission.color}22`, color: linkedMission.color }}
+                  title={`Linked to mission: ${linkedMission.title}`}
+                >
+                  <Compass className="w-3 h-3" /> {linkedMission.title}
+                </span>
+              )}
             </div>
 
             {habit.description && (
