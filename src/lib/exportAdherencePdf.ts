@@ -51,6 +51,11 @@ export function exportAdherencePdf(data: AdherenceExportData) {
     timeStyle: 'short',
   });
   doc.text(`Generated ${generated}`, margin, y + 42);
+  if (data.rangeLabel) {
+    doc.setTextColor(60, 60, 70);
+    doc.text(`Range: ${data.rangeLabel}`, margin, y + 56);
+    y += 14;
+  }
   y += 70;
 
   // Stats overview
