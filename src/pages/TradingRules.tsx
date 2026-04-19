@@ -159,6 +159,7 @@ const TradingRules = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [editCategory, setEditCategory] = useState('General');
+  const [memorizeOpen, setMemorizeOpen] = useState(false);
 
   // Build color map: saved rows override fallback
   const colorMap = useMemo(() => {
