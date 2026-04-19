@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, Flame, BarChart3, Target, Sparkles } from 'lucide-react';
-import { useAdherenceHistory, useViolationsHistory } from '@/hooks/useDailyAdherence';
+import { useAdherenceHistory, useViolationsHistory, type DateRange } from '@/hooks/useDailyAdherence';
 import { useTradingRules } from '@/hooks/useTradingRules';
 import { cn } from '@/lib/utils';
 
@@ -21,14 +21,30 @@ const scoreText = (s: number) => {
   return 'text-rose-400';
 };
 
-export function AdherenceReport() {
-  const { data: history = [] } = useAdherenceHistory(30);
-  const { data: violations = [] } = useViolationsHistory(30);
+interface AdherenceReportProps {
+  range?: DateRange | number;
+}
+
+export function AdherenceReport({ range = 30 }: AdherenceReportProps = {}) {
+  const { data: history = [] } = useAdherenceHistory(range);
+  const { data: violations = [] } = useViolationsHistory(range);
   const { data: rules = [] } = useTradingRules();
 
+  // Calculate window length in days for heatmap & label
+  const windowDays = useMemo(() => {
+    if (typeof range === 'number') return range;
+    const from = new Date(range.from);
+    const to = new Date(range.to);
+    return Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000) + 1);
+  }, [range]);
+
+  const rangeEndDate = useMemo(() => {
+    if (typeof range === 'number') return new Date();
+    return new Date(range.to);
+  }, [range]);
+
   const stats = useMemo(() => {
-    const last7 = history.slice(0, 7);
-    const last30 = history;
+    const recentSlice = history.slice(0, Math.min(7, history.length));
     const avg = (arr: typeof history) =>
       arr.length === 0 ? 0 : Math.round(arr.reduce((a, b) => a + Number(b.adherence_score), 0) / arr.length);
     let perfectStreak = 0;
@@ -37,26 +53,26 @@ export function AdherenceReport() {
       else break;
     }
     return {
-      last7Avg: avg(last7),
-      last30Avg: avg(last30),
+      recentAvg: avg(recentSlice),
+      rangeAvg: avg(history),
       perfectStreak,
       totalLogs: history.length,
     };
   }, [history]);
 
-  // 30-day heatmap (oldest to newest)
+  // Heatmap (oldest to newest within window)
   const heatmap = useMemo(() => {
     const days: Array<{ date: string; score: number | null }> = [];
-    const today = new Date();
     const map = new Map(history.map(h => [h.date, Number(h.adherence_score)]));
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(today);
+    const cap = Math.min(windowDays, 120); // hard cap for visual sanity
+    for (let i = cap - 1; i >= 0; i--) {
+      const d = new Date(rangeEndDate);
       d.setDate(d.getDate() - i);
       const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       days.push({ date: ds, score: map.has(ds) ? map.get(ds)! : null });
     }
     return days;
-  }, [history]);
+  }, [history, windowDays, rangeEndDate]);
 
   // Per-rule breakdown
   const ruleBreakdown = useMemo(() => {
@@ -147,15 +163,15 @@ export function AdherenceReport() {
       {/* Overview cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard icon={<Flame className="w-4 h-4 text-amber-400" />} label="Perfect streak" value={`${stats.perfectStreak}d`} />
-        <StatCard icon={<TrendingUp className="w-4 h-4 text-primary" />} label="7-day avg" value={`${stats.last7Avg}%`} accent={scoreText(stats.last7Avg)} />
-        <StatCard icon={<Target className="w-4 h-4 text-indigo-400" />} label="30-day avg" value={`${stats.last30Avg}%`} accent={scoreText(stats.last30Avg)} />
+        <StatCard icon={<TrendingUp className="w-4 h-4 text-primary" />} label="Recent 7d avg" value={`${stats.recentAvg}%`} accent={scoreText(stats.recentAvg)} />
+        <StatCard icon={<Target className="w-4 h-4 text-indigo-400" />} label={`${windowDays}d avg`} value={`${stats.rangeAvg}%`} accent={scoreText(stats.rangeAvg)} />
         <StatCard icon={<BarChart3 className="w-4 h-4 text-emerald-400" />} label="Total logs" value={String(stats.totalLogs)} />
       </div>
 
       {/* Heatmap */}
       <Card className="border-border/40 bg-card/60">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm">30-day Adherence Heatmap</CardTitle>
+          <CardTitle className="text-sm">{Math.min(windowDays, 120)}-day Adherence Heatmap</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-15 gap-1.5" style={{ gridTemplateColumns: 'repeat(15, minmax(0, 1fr))' }}>

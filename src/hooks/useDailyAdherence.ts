@@ -51,17 +51,29 @@ export const useTodayAdherence = () => {
   });
 };
 
-export const useAdherenceHistory = (days = 30) => {
+export interface DateRange {
+  from: string; // YYYY-MM-DD inclusive
+  to: string;   // YYYY-MM-DD inclusive
+}
+
+const daysToRange = (days: number): DateRange => {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - (days - 1));
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return { from: fmt(from), to: fmt(to) };
+};
+
+export const useAdherenceHistory = (daysOrRange: number | DateRange = 30) => {
+  const range = typeof daysOrRange === 'number' ? daysToRange(daysOrRange) : daysOrRange;
   return useQuery({
-    queryKey: ['daily_adherence', 'history', days],
+    queryKey: ['daily_adherence', 'history', range.from, range.to],
     queryFn: async () => {
-      const since = new Date();
-      since.setDate(since.getDate() - days);
-      const sinceStr = since.toISOString().slice(0, 10);
       const { data, error } = await (supabase as any)
         .from('daily_rule_adherence')
         .select('*')
-        .gte('date', sinceStr)
+        .gte('date', range.from)
+        .lte('date', range.to)
         .order('date', { ascending: false });
       if (error) throw error;
       return (data || []) as DailyAdherence[];
@@ -69,17 +81,16 @@ export const useAdherenceHistory = (days = 30) => {
   });
 };
 
-export const useViolationsHistory = (days = 30) => {
+export const useViolationsHistory = (daysOrRange: number | DateRange = 30) => {
+  const range = typeof daysOrRange === 'number' ? daysToRange(daysOrRange) : daysOrRange;
   return useQuery({
-    queryKey: ['rule_violations', 'history', days],
+    queryKey: ['rule_violations', 'history', range.from, range.to],
     queryFn: async () => {
-      const since = new Date();
-      since.setDate(since.getDate() - days);
-      const sinceStr = since.toISOString().slice(0, 10);
       const { data, error } = await (supabase as any)
         .from('rule_violations')
         .select('*')
-        .gte('date', sinceStr)
+        .gte('date', range.from)
+        .lte('date', range.to)
         .order('date', { ascending: false });
       if (error) throw error;
       return (data || []) as RuleViolation[];
