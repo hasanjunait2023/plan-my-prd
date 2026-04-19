@@ -145,10 +145,12 @@ const CategoryCombobox = ({ value, onChange, options, colorMap, className, size 
 
 const TradingRules = () => {
   const { data: rules = [], isLoading } = useTradingRules();
+  const { data: categoryRows = [] } = useRuleCategories();
   const insertRule = useInsertRule();
   const updateRule = useUpdateRule();
   const deleteRule = useDeleteRule();
   const toggleRule = useToggleRule();
+  const upsertCategory = useUpsertRuleCategory();
 
   const [newRule, setNewRule] = useState('');
   const [newCategory, setNewCategory] = useState('General');
@@ -156,12 +158,20 @@ const TradingRules = () => {
   const [editText, setEditText] = useState('');
   const [editCategory, setEditCategory] = useState('General');
 
-  // Build category list from existing data + defaults
+  // Build color map: saved rows override fallback
+  const colorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of categoryRows) map[c.name] = c.color;
+    return map;
+  }, [categoryRows]);
+
+  // Build category list from existing data + defaults + saved categories
   const allCategories = useMemo(() => {
     const set = new Set<string>(DEFAULT_CATEGORIES);
     for (const r of rules) set.add(r.category || 'General');
+    for (const c of categoryRows) set.add(c.name);
     return Array.from(set);
-  }, [rules]);
+  }, [rules, categoryRows]);
 
   // Group rules by category
   const grouped = useMemo(() => {
@@ -173,6 +183,18 @@ const TradingRules = () => {
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [rules]);
+
+  const getColor = (cat: string) => colorMap[cat] || fallbackColor(cat);
+
+  const handlePickColor = async (category: string, color: string) => {
+    try {
+      await upsertCategory.mutateAsync({ name: category, color });
+      toast.success('Color updated');
+    } catch {
+      toast.error('Failed to save color');
+    }
+  };
+
 
   const handleAdd = async () => {
     const text = newRule.trim();
