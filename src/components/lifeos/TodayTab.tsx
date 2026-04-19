@@ -137,6 +137,11 @@ export function TodayTab() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <AlignmentBadge score={alignmentScore} />
+            <Button asChild size="sm" variant="outline">
+              <Link to="/tomorrow">
+                <MoonStar className="h-4 w-4 mr-1" /> Plan tomorrow
+              </Link>
+            </Button>
             <Button onClick={() => { setEditing(null); setDialogOpen(true); }} size="sm" variant="outline">
               <Plus className="h-4 w-4 mr-1" /> Add
             </Button>
