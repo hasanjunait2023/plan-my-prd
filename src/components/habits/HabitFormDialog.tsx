@@ -32,11 +32,14 @@ interface HabitFormDialogProps {
 export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDialogProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { byType: lifeNodesByType } = useLifeNodes();
+  const missions = lifeNodesByType('mission');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [submissionTime, setSubmissionTime] = useState('07:00');
   const [timezone, setTimezone] = useState('Asia/Dhaka');
   const [category, setCategory] = useState('general');
+  const [missionId, setMissionId] = useState<string>('none');
   const [vacationStart, setVacationStart] = useState('');
   const [vacationEnd, setVacationEnd] = useState('');
   const [saving, setSaving] = useState(false);
