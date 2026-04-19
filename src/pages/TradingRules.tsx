@@ -4,9 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
-import { Shield, Plus, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Shield, Plus, Trash2, Pencil, Check, X, ChevronsUpDown, Tag } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   useTradingRules,
   useInsertRule,
@@ -17,6 +19,98 @@ import {
 import { TradingRule } from '@/types/trade';
 
 const DEFAULT_CATEGORIES = ['Risk', 'Entry', 'Exit', 'Psychology', 'General'];
+
+interface CategoryComboboxProps {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  className?: string;
+  size?: 'sm' | 'md';
+}
+
+const CategoryCombobox = ({ value, onChange, options, className, size = 'md' }: CategoryComboboxProps) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const trimmed = query.trim();
+  const exists = options.some((o) => o.toLowerCase() === trimmed.toLowerCase());
+  const heightClass = size === 'sm' ? 'h-8 text-xs' : 'h-10 text-sm';
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          className={cn('justify-between font-normal', heightClass, className)}
+        >
+          <span className="flex items-center gap-1.5 truncate">
+            <Tag className="w-3.5 h-3.5 opacity-60" />
+            {value || 'Category'}
+          </span>
+          <ChevronsUpDown className="w-3.5 h-3.5 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-56" align="start">
+        <Command>
+          <CommandInput
+            placeholder="Search or create…"
+            value={query}
+            onValueChange={setQuery}
+          />
+          <CommandList>
+            <CommandEmpty>
+              {trimmed ? (
+                <button
+                  type="button"
+                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded"
+                  onClick={() => {
+                    onChange(trimmed);
+                    setQuery('');
+                    setOpen(false);
+                  }}
+                >
+                  <Plus className="w-3.5 h-3.5 inline mr-1" />
+                  Create "{trimmed}"
+                </button>
+              ) : (
+                <span className="text-sm text-muted-foreground px-2">No categories</span>
+              )}
+            </CommandEmpty>
+            <CommandGroup>
+              {options.map((opt) => (
+                <CommandItem
+                  key={opt}
+                  value={opt}
+                  onSelect={() => {
+                    onChange(opt);
+                    setQuery('');
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={cn('w-3.5 h-3.5 mr-2', value === opt ? 'opacity-100' : 'opacity-0')} />
+                  {opt}
+                </CommandItem>
+              ))}
+              {trimmed && !exists && (
+                <CommandItem
+                  value={`__create_${trimmed}`}
+                  onSelect={() => {
+                    onChange(trimmed);
+                    setQuery('');
+                    setOpen(false);
+                  }}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-2" />
+                  Create "{trimmed}"
+                </CommandItem>
+              )}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 const TradingRules = () => {
   const { data: rules = [], isLoading } = useTradingRules();
@@ -120,18 +214,12 @@ const TradingRules = () => {
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
               className="flex-1"
             />
-            <Select value={newCategory} onValueChange={setNewCategory}>
-              <SelectTrigger className="sm:w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {allCategories.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CategoryCombobox
+              value={newCategory}
+              onChange={setNewCategory}
+              options={allCategories}
+              className="sm:w-44"
+            />
             <Button onClick={handleAdd} disabled={!newRule.trim() || insertRule.isPending}>
               <Plus className="w-4 h-4 mr-1" /> Add
             </Button>
@@ -185,18 +273,13 @@ const TradingRules = () => {
                           className="flex-1 h-8 text-sm"
                           autoFocus
                         />
-                        <Select value={editCategory} onValueChange={setEditCategory}>
-                          <SelectTrigger className="w-32 h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {allCategories.map((c) => (
-                              <SelectItem key={c} value={c}>
-                                {c}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <CategoryCombobox
+                          value={editCategory}
+                          onChange={setEditCategory}
+                          options={allCategories}
+                          className="w-36"
+                          size="sm"
+                        />
                         <Button size="icon" variant="ghost" onClick={saveEdit} className="h-8 w-8">
                           <Check className="w-4 h-4 text-emerald-400" />
                         </Button>
