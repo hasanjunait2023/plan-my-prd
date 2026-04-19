@@ -44,6 +44,7 @@ export function NodeFormDialog({ open, onOpenChange, initialType, parentId, edit
   const [unit, setUnit] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
   const [priority, setPriority] = useState<string>("2");
+  const [module, setModule] = useState<string>("none");
 
   useEffect(() => {
     if (editing) {
@@ -54,6 +55,7 @@ export function NodeFormDialog({ open, onOpenChange, initialType, parentId, edit
       setUnit(editing.unit ?? "");
       setDueDate(editing.due_date ?? "");
       setPriority(String(editing.priority ?? 2));
+      setModule((editing.metadata as any)?.module ?? "none");
     } else {
       setTitle("");
       setDescription("");
@@ -62,11 +64,14 @@ export function NodeFormDialog({ open, onOpenChange, initialType, parentId, edit
       setUnit("");
       setDueDate("");
       setPriority("2");
+      setModule("none");
     }
   }, [editing, initialType, open]);
 
   const handleSubmit = async () => {
     if (!title.trim()) return;
+    const metadata: Record<string, any> = {};
+    if (type === "mission" && module !== "none") metadata.module = module;
     await onSubmit({
       title: title.trim(),
       description: description.trim(),
@@ -76,6 +81,7 @@ export function NodeFormDialog({ open, onOpenChange, initialType, parentId, edit
       unit,
       due_date: dueDate || null,
       priority: Number(priority),
+      metadata,
     });
     onOpenChange(false);
   };
