@@ -200,6 +200,9 @@ export type Database = {
           news_alert: boolean
           price_spike_alert: boolean
           risk_breach_alert: boolean
+          rules_evening_push: boolean
+          rules_morning_push: boolean
+          rules_per_push: number
           session_reminder_alert: boolean
           telegram_chat_id: string | null
           updated_at: string
@@ -225,6 +228,9 @@ export type Database = {
           news_alert?: boolean
           price_spike_alert?: boolean
           risk_breach_alert?: boolean
+          rules_evening_push?: boolean
+          rules_morning_push?: boolean
+          rules_per_push?: number
           session_reminder_alert?: boolean
           telegram_chat_id?: string | null
           updated_at?: string
@@ -250,6 +256,9 @@ export type Database = {
           news_alert?: boolean
           price_spike_alert?: boolean
           risk_breach_alert?: boolean
+          rules_evening_push?: boolean
+          rules_morning_push?: boolean
+          rules_per_push?: number
           session_reminder_alert?: boolean
           telegram_chat_id?: string | null
           updated_at?: string
@@ -1192,6 +1201,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      rule_memorization: {
+        Row: {
+          confidence_score: number
+          id: string
+          last_shown_at: string | null
+          repeat_count: number
+          rule_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence_score?: number
+          id?: string
+          last_shown_at?: string | null
+          repeat_count?: number
+          rule_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confidence_score?: number
+          id?: string
+          last_shown_at?: string | null
+          repeat_count?: number
+          rule_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rule_memorization_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "trading_rules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       session_pair_recommendations: {
         Row: {
