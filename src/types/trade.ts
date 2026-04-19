@@ -85,6 +85,7 @@ export interface TradingRule {
   id: string;
   text: string;
   active: boolean;
+  category: string;
 }
 
 export interface AccountSettings {
