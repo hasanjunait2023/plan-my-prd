@@ -22,6 +22,7 @@ interface Props {
     unit?: string;
     due_date?: string | null;
     priority?: number;
+    metadata?: Record<string, any>;
   }) => Promise<void> | void;
 }
 
