@@ -241,45 +241,86 @@ const TradingRules = () => {
     }
   };
 
+  const totalRules = rules.length;
+  const activeRules = rules.filter((r) => r.active).length;
+  const totalCategories = grouped.length;
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
-          <Shield className="w-5 h-5 text-primary" />
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      {/* Premium Hero Header */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-primary/15 via-card to-card p-6 sm:p-8 shadow-lg">
+        {/* Decorative glow */}
+        <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-primary/20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-20 w-72 h-72 rounded-full bg-primary/10 blur-3xl" />
+
+        <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
+          <div className="flex items-center gap-4 flex-1">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-2xl bg-primary/30 blur-xl" />
+              <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg ring-1 ring-primary/40">
+                <Shield className="w-7 h-7 text-primary-foreground" strokeWidth={2.2} />
+              </div>
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
+                Trading Rules
+              </h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Discipline is freedom — your edge, codified
+              </p>
+            </div>
+          </div>
+
+          <Button
+            onClick={() => setMemorizeOpen(true)}
+            disabled={activeRules === 0}
+            size="lg"
+            className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary hover:to-primary text-primary-foreground shadow-lg shadow-primary/30 border-0"
+          >
+            <Brain className="w-4 h-4" />
+            Memorize Mode
+          </Button>
         </div>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">Trading Rules</h1>
-          <p className="text-sm text-muted-foreground">
-            Your personal trading rules, grouped by category
-          </p>
+
+        {/* Stats strip */}
+        <div className="relative grid grid-cols-3 gap-3 mt-6 pt-6 border-t border-border/40">
+          <div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground/80 font-medium">Total</div>
+            <div className="text-2xl font-bold mt-0.5">{totalRules}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground/80 font-medium">Active</div>
+            <div className="text-2xl font-bold mt-0.5 text-primary">{activeRules}</div>
+          </div>
+          <div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground/80 font-medium">Categories</div>
+            <div className="text-2xl font-bold mt-0.5">{totalCategories}</div>
+          </div>
         </div>
-        <Button
-          onClick={() => setMemorizeOpen(true)}
-          disabled={rules.filter((r) => r.active).length === 0}
-          className="gap-1.5"
-        >
-          <Brain className="w-4 h-4" />
-          Memorize
-        </Button>
       </div>
 
       {/* Daily reminders */}
       <DailyReminderCard />
 
       {/* Add new rule */}
-      <Card className="border-border/30 bg-card/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Add a rule</CardTitle>
+      <Card className="border-border/40 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-primary/60 via-primary/30 to-transparent" />
+        <CardHeader className="pb-3 pt-4">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center">
+              <Plus className="w-3.5 h-3.5 text-primary" />
+            </div>
+            Add a new rule
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-2 flex-col sm:flex-row">
             <Input
-              placeholder="Write your rule…"
+              placeholder="e.g. Never risk more than 1% per trade…"
               value={newRule}
               onChange={(e) => setNewRule(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-              className="flex-1"
+              className="flex-1 h-10 bg-background/60 border-border/50 focus-visible:ring-primary/40"
             />
             <CategoryCombobox
               value={newCategory}
@@ -288,8 +329,12 @@ const TradingRules = () => {
               colorMap={colorMap}
               className="sm:w-44"
             />
-            <Button onClick={handleAdd} disabled={!newRule.trim() || insertRule.isPending}>
-              <Plus className="w-4 h-4 mr-1" /> Add
+            <Button
+              onClick={handleAdd}
+              disabled={!newRule.trim() || insertRule.isPending}
+              className="gap-1.5 shadow-md shadow-primary/20"
+            >
+              <Plus className="w-4 h-4" /> Add
             </Button>
           </div>
         </CardContent>
@@ -297,139 +342,176 @@ const TradingRules = () => {
 
       {/* Rules grouped by category */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>
+        <div className="flex items-center justify-center py-16">
+          <div className="w-6 h-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+        </div>
       ) : rules.length === 0 ? (
-        <Card className="border-border/30 bg-card/50">
-          <CardContent className="p-8 text-center">
-            <Shield className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+        <Card className="border-dashed border-border/50 bg-card/30">
+          <CardContent className="p-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-primary/60" />
+            </div>
+            <h3 className="text-base font-semibold mb-1">No rules yet</h3>
             <p className="text-sm text-muted-foreground">
-              No rules yet. Add your first rule above.
+              Add your first trading rule above to start building your edge.
             </p>
           </CardContent>
         </Card>
       ) : (
-        grouped.map(([category, items]) => (
-          <Card
-            key={category}
-            className="border-border/30 bg-card/50 border-l-4"
-            style={{ borderLeftColor: getColor(category) }}
-          >
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      title="Pick color"
-                      className="w-3 h-3 rounded-full border border-border/40 hover:scale-110 transition-transform shrink-0"
-                      style={{ backgroundColor: getColor(category) }}
-                    />
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-2" align="start">
-                    <div className="flex items-center gap-1.5 mb-1.5 px-1">
-                      <Palette className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Pick a color</span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {PRESET_COLORS.map((c) => (
+        <div className="space-y-4">
+          {grouped.map(([category, items]) => {
+            const color = getColor(category);
+            const activeCount = items.filter((i) => i.active).length;
+            return (
+              <Card
+                key={category}
+                className="group relative border-border/40 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              >
+                {/* Left color stripe */}
+                <div
+                  className="absolute left-0 top-0 bottom-0 w-1"
+                  style={{ backgroundColor: color }}
+                />
+                {/* Subtle category-tinted glow */}
+                <div
+                  className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-[0.07] blur-2xl"
+                  style={{ backgroundColor: color }}
+                />
+
+                <CardHeader className="pb-3 pl-6">
+                  <CardTitle className="text-sm flex items-center gap-2.5">
+                    <Popover>
+                      <PopoverTrigger asChild>
                         <button
-                          key={c}
                           type="button"
-                          onClick={() => handlePickColor(category, c)}
-                          className={cn(
-                            'w-6 h-6 rounded-full border-2 hover:scale-110 transition-transform',
-                            getColor(category).toLowerCase() === c.toLowerCase()
-                              ? 'border-foreground'
-                              : 'border-border/30'
-                          )}
-                          style={{ backgroundColor: c }}
+                          title="Pick color"
+                          className="relative w-3.5 h-3.5 rounded-full ring-2 ring-background hover:scale-125 transition-transform shrink-0 shadow-sm"
+                          style={{ backgroundColor: color, boxShadow: `0 0 0 1px ${color}40, 0 0 8px ${color}60` }}
                         />
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                {category}
-                <Badge variant="secondary" className="text-[10px]">
-                  {items.length}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {items.map((rule) => {
-                const isEditing = editingId === rule.id;
-                return (
-                  <div
-                    key={rule.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border/20 bg-background/40"
-                  >
-                    <Switch
-                      checked={rule.active}
-                      onCheckedChange={(checked) =>
-                        toggleRule.mutate({ id: rule.id, active: checked })
-                      }
-                    />
-                    {isEditing ? (
-                      <>
-                        <Input
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                          className="flex-1 h-8 text-sm"
-                          autoFocus
-                        />
-                        <CategoryCombobox
-                          value={editCategory}
-                          onChange={setEditCategory}
-                          options={allCategories}
-                          colorMap={colorMap}
-                          className="w-36"
-                          size="sm"
-                        />
-                        <Button size="icon" variant="ghost" onClick={saveEdit} className="h-8 w-8">
-                          <Check className="w-4 h-4 text-emerald-400" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => setEditingId(null)}
-                          className="h-8 w-8"
-                        >
-                          <X className="w-4 h-4 text-muted-foreground" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <span
-                          className={`flex-1 text-sm ${
-                            rule.active ? 'text-foreground' : 'text-muted-foreground/60 line-through'
-                          }`}
-                        >
-                          {rule.text}
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-3" align="start">
+                        <div className="flex items-center gap-1.5 mb-2 px-1">
+                          <Palette className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs font-medium text-muted-foreground">Pick a color</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                          {PRESET_COLORS.map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => handlePickColor(category, c)}
+                              className={cn(
+                                'w-7 h-7 rounded-full border-2 hover:scale-110 transition-transform shadow-sm',
+                                color.toLowerCase() === c.toLowerCase()
+                                  ? 'border-foreground ring-2 ring-foreground/20'
+                                  : 'border-border/30'
+                              )}
+                              style={{ backgroundColor: c }}
+                            />
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <span className="font-semibold tracking-tight text-base">{category}</span>
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] font-medium px-1.5 py-0 h-5 bg-background/60 border border-border/40"
+                    >
+                      {activeCount}/{items.length}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1.5 pl-6">
+                  {items.map((rule, idx) => {
+                    const isEditing = editingId === rule.id;
+                    return (
+                      <div
+                        key={rule.id}
+                        className={cn(
+                          'group/row flex items-center gap-3 p-3 rounded-xl border transition-all',
+                          rule.active
+                            ? 'border-border/30 bg-background/40 hover:bg-background/70 hover:border-border/60'
+                            : 'border-border/20 bg-background/20 opacity-60 hover:opacity-100'
+                        )}
+                      >
+                        <span className="text-[10px] font-mono text-muted-foreground/50 w-5 tabular-nums">
+                          {String(idx + 1).padStart(2, '0')}
                         </span>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => startEdit(rule)}
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleDelete(rule.id)}
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        ))
+                        <Switch
+                          checked={rule.active}
+                          onCheckedChange={(checked) =>
+                            toggleRule.mutate({ id: rule.id, active: checked })
+                          }
+                        />
+                        {isEditing ? (
+                          <>
+                            <Input
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                              className="flex-1 h-8 text-sm"
+                              autoFocus
+                            />
+                            <CategoryCombobox
+                              value={editCategory}
+                              onChange={setEditCategory}
+                              options={allCategories}
+                              colorMap={colorMap}
+                              className="w-36"
+                              size="sm"
+                            />
+                            <Button size="icon" variant="ghost" onClick={saveEdit} className="h-8 w-8">
+                              <Check className="w-4 h-4 text-primary" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => setEditingId(null)}
+                              className="h-8 w-8"
+                            >
+                              <X className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <span
+                              className={cn(
+                                'flex-1 text-sm leading-relaxed',
+                                rule.active
+                                  ? 'text-foreground'
+                                  : 'text-muted-foreground/60 line-through'
+                              )}
+                            >
+                              {rule.text}
+                            </span>
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => startEdit(rule)}
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => handleDelete(rule.id)}
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
 
       <MemorizeMode
