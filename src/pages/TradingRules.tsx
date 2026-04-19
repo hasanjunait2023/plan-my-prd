@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
-import { Shield, Plus, Trash2, Pencil, Check, X, ChevronsUpDown, Tag } from 'lucide-react';
+import { Shield, Plus, Trash2, Pencil, Check, X, ChevronsUpDown, Tag, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useTradingRules,
@@ -16,19 +16,39 @@ import {
   useToggleRule,
   useUpdateRule,
 } from '@/hooks/useTradingRules';
+import { useRuleCategories, useUpsertRuleCategory } from '@/hooks/useRuleCategories';
 import { TradingRule } from '@/types/trade';
 
 const DEFAULT_CATEGORIES = ['Risk', 'Entry', 'Exit', 'Psychology', 'General'];
+
+const PRESET_COLORS = [
+  '#00C9A7', // teal (default)
+  '#3B82F6', // blue
+  '#A855F7', // purple
+  '#EC4899', // pink
+  '#EF4444', // red
+  '#F59E0B', // amber
+  '#10B981', // emerald
+  '#64748B', // slate
+];
+
+// Simple deterministic fallback color from a string
+const fallbackColor = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return PRESET_COLORS[h % PRESET_COLORS.length];
+};
 
 interface CategoryComboboxProps {
   value: string;
   onChange: (v: string) => void;
   options: string[];
+  colorMap: Record<string, string>;
   className?: string;
   size?: 'sm' | 'md';
 }
 
-const CategoryCombobox = ({ value, onChange, options, className, size = 'md' }: CategoryComboboxProps) => {
+const CategoryCombobox = ({ value, onChange, options, colorMap, className, size = 'md' }: CategoryComboboxProps) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const trimmed = query.trim();
@@ -44,7 +64,14 @@ const CategoryCombobox = ({ value, onChange, options, className, size = 'md' }: 
           className={cn('justify-between font-normal', heightClass, className)}
         >
           <span className="flex items-center gap-1.5 truncate">
-            <Tag className="w-3.5 h-3.5 opacity-60" />
+            {value ? (
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0 border border-border/30"
+                style={{ backgroundColor: colorMap[value] || fallbackColor(value) }}
+              />
+            ) : (
+              <Tag className="w-3.5 h-3.5 opacity-60" />
+            )}
             {value || 'Category'}
           </span>
           <ChevronsUpDown className="w-3.5 h-3.5 opacity-50 shrink-0" />
@@ -88,6 +115,10 @@ const CategoryCombobox = ({ value, onChange, options, className, size = 'md' }: 
                   }}
                 >
                   <Check className={cn('w-3.5 h-3.5 mr-2', value === opt ? 'opacity-100' : 'opacity-0')} />
+                  <span
+                    className="w-2.5 h-2.5 rounded-full mr-2 border border-border/30"
+                    style={{ backgroundColor: colorMap[opt] || fallbackColor(opt) }}
+                  />
                   {opt}
                 </CommandItem>
               ))}
@@ -114,10 +145,12 @@ const CategoryCombobox = ({ value, onChange, options, className, size = 'md' }: 
 
 const TradingRules = () => {
   const { data: rules = [], isLoading } = useTradingRules();
+  const { data: categoryRows = [] } = useRuleCategories();
   const insertRule = useInsertRule();
   const updateRule = useUpdateRule();
   const deleteRule = useDeleteRule();
   const toggleRule = useToggleRule();
+  const upsertCategory = useUpsertRuleCategory();
 
   const [newRule, setNewRule] = useState('');
   const [newCategory, setNewCategory] = useState('General');
@@ -125,12 +158,20 @@ const TradingRules = () => {
   const [editText, setEditText] = useState('');
   const [editCategory, setEditCategory] = useState('General');
 
-  // Build category list from existing data + defaults
+  // Build color map: saved rows override fallback
+  const colorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of categoryRows) map[c.name] = c.color;
+    return map;
+  }, [categoryRows]);
+
+  // Build category list from existing data + defaults + saved categories
   const allCategories = useMemo(() => {
     const set = new Set<string>(DEFAULT_CATEGORIES);
     for (const r of rules) set.add(r.category || 'General');
+    for (const c of categoryRows) set.add(c.name);
     return Array.from(set);
-  }, [rules]);
+  }, [rules, categoryRows]);
 
   // Group rules by category
   const grouped = useMemo(() => {
@@ -142,6 +183,18 @@ const TradingRules = () => {
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [rules]);
+
+  const getColor = (cat: string) => colorMap[cat] || fallbackColor(cat);
+
+  const handlePickColor = async (category: string, color: string) => {
+    try {
+      await upsertCategory.mutateAsync({ name: category, color });
+      toast.success('Color updated');
+    } catch {
+      toast.error('Failed to save color');
+    }
+  };
+
 
   const handleAdd = async () => {
     const text = newRule.trim();
@@ -218,6 +271,7 @@ const TradingRules = () => {
               value={newCategory}
               onChange={setNewCategory}
               options={allCategories}
+              colorMap={colorMap}
               className="sm:w-44"
             />
             <Button onClick={handleAdd} disabled={!newRule.trim() || insertRule.isPending}>
@@ -241,9 +295,45 @@ const TradingRules = () => {
         </Card>
       ) : (
         grouped.map(([category, items]) => (
-          <Card key={category} className="border-border/30 bg-card/50">
+          <Card
+            key={category}
+            className="border-border/30 bg-card/50 border-l-4"
+            style={{ borderLeftColor: getColor(category) }}
+          >
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      title="Pick color"
+                      className="w-3 h-3 rounded-full border border-border/40 hover:scale-110 transition-transform shrink-0"
+                      style={{ backgroundColor: getColor(category) }}
+                    />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-2" align="start">
+                    <div className="flex items-center gap-1.5 mb-1.5 px-1">
+                      <Palette className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Pick a color</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {PRESET_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => handlePickColor(category, c)}
+                          className={cn(
+                            'w-6 h-6 rounded-full border-2 hover:scale-110 transition-transform',
+                            getColor(category).toLowerCase() === c.toLowerCase()
+                              ? 'border-foreground'
+                              : 'border-border/30'
+                          )}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
                 {category}
                 <Badge variant="secondary" className="text-[10px]">
                   {items.length}
@@ -277,6 +367,7 @@ const TradingRules = () => {
                           value={editCategory}
                           onChange={setEditCategory}
                           options={allCategories}
+                          colorMap={colorMap}
                           className="w-36"
                           size="sm"
                         />
