@@ -53,20 +53,49 @@ export function useLifeNodeLogs(date: string = todayISO()) {
     async (nodeId: string, done: boolean) => {
       if (!user) return;
       const existing = logs.find((l) => l.node_id === nodeId);
+
+      // Optimistic update — flip UI immediately so user can keep ticking other items
+      // without waiting for DB roundtrip / realtime cascade.
       if (existing) {
+        setLogs((prev) =>
+          prev.map((l) => (l.id === existing.id ? { ...l, done } : l))
+        );
         const { error } = await supabase
           .from("life_node_logs")
           .update({ done })
           .eq("id", existing.id);
-        if (error) toast({ title: "Failed", description: error.message, variant: "destructive" });
+        if (error) {
+          // Roll back on failure
+          setLogs((prev) =>
+            prev.map((l) => (l.id === existing.id ? { ...l, done: !done } : l))
+          );
+          toast({ title: "Failed", description: error.message, variant: "destructive" });
+        }
       } else {
-        const { error } = await supabase.from("life_node_logs").insert({
+        const tempId = `temp-${nodeId}-${Date.now()}`;
+        const optimistic: LifeNodeLog = {
+          id: tempId,
           user_id: user.id,
           node_id: nodeId,
           date,
           done,
-        });
-        if (error) toast({ title: "Failed", description: error.message, variant: "destructive" });
+          value_added: 0,
+          reflection: "",
+          created_at: new Date().toISOString(),
+        } as LifeNodeLog;
+        setLogs((prev) => [...prev, optimistic]);
+        const { data, error } = await supabase
+          .from("life_node_logs")
+          .insert({ user_id: user.id, node_id: nodeId, date, done })
+          .select()
+          .single();
+        if (error) {
+          setLogs((prev) => prev.filter((l) => l.id !== tempId));
+          toast({ title: "Failed", description: error.message, variant: "destructive" });
+        } else if (data) {
+          // Replace temp row with real row
+          setLogs((prev) => prev.map((l) => (l.id === tempId ? (data as LifeNodeLog) : l)));
+        }
       }
     },
     [user, logs, date]
