@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useLifeNodes } from "@/hooks/useLifeNodes";
 import { Sparkles } from "lucide-react";
+import { AchievementsPanel } from "./AchievementsPanel";
 
 const LAYERS: { type: any; label: string; widthClass: string }[] = [
   { type: "vision", label: "VISION", widthClass: "w-[30%]" },
@@ -22,6 +23,9 @@ export function PyramidView() {
 
   return (
     <div className="space-y-6">
+      {/* Achievements */}
+      <AchievementsPanel />
+
       {/* Banner */}
       <Card className="border-primary/30 bg-gradient-to-br from-primary/10 via-transparent to-transparent">
         <CardContent className="p-5 flex items-center gap-4 flex-wrap">
