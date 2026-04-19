@@ -52,6 +52,7 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
       setSubmissionTime(editHabit.submission_time?.slice(0, 5) || '07:00');
       setTimezone(editHabit.timezone || 'Asia/Dhaka');
       setCategory(editHabit.category || 'general');
+      setMissionId(editHabit.mission_id || 'none');
       setVacationStart(editHabit.vacation_start || '');
       setVacationEnd(editHabit.vacation_end || '');
     } else {
@@ -60,6 +61,7 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
       setSubmissionTime('07:00');
       setTimezone('Asia/Dhaka');
       setCategory('general');
+      setMissionId('none');
       setVacationStart('');
       setVacationEnd('');
       setShowTemplates(false);
