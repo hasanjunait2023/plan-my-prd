@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
-import { Shield, Plus, Trash2, Pencil, Check, X, ChevronsUpDown, Tag, Palette, Brain } from 'lucide-react';
+import { Shield, Plus, Trash2, Pencil, Check, X, ChevronsUpDown, Tag, Palette, Brain, ListChecks, Activity } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {
   useTradingRules,
@@ -20,6 +21,7 @@ import { useRuleCategories, useUpsertRuleCategory } from '@/hooks/useRuleCategor
 import { TradingRule } from '@/types/trade';
 import { MemorizeMode } from '@/components/rules/MemorizeMode';
 import { DailyReminderCard } from '@/components/rules/DailyReminderCard';
+import { ConfidenceOverview } from '@/components/rules/ConfidenceOverview';
 
 const DEFAULT_CATEGORIES = ['Risk', 'Entry', 'Exit', 'Psychology', 'General'];
 
