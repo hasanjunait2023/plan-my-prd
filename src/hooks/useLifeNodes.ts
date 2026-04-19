@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -29,21 +29,34 @@ export function useLifeNodes() {
     setLoading(false);
   }, [user]);
 
+  // Debounce cascading realtime updates so a single tick that triggers
+  // many recursive parent recomputes doesn't refetch the whole tree N times
+  // (which causes the page to "reset" and feel like sections collapsed).
+  const debounceRef = useRef<number | null>(null);
+  const scheduleRefetch = useCallback(() => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      fetchAll();
+      debounceRef.current = null;
+    }, 350);
+  }, [fetchAll]);
+
   useEffect(() => {
     fetchAll();
     if (!user) return;
     const channel = supabase
-      .channel("life_nodes_realtime")
+      .channel(`life_nodes_realtime_${user.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "life_nodes", filter: `user_id=eq.${user.id}` },
-        () => fetchAll()
+        () => scheduleRefetch()
       )
       .subscribe();
     return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
-  }, [user, fetchAll]);
+  }, [user, fetchAll, scheduleRefetch]);
 
   const createNode = useCallback(
     async (input: Omit<LifeNodeInsert, "user_id">) => {
