@@ -83,6 +83,21 @@ Deno.serve(async (req) => {
 
       for (const s of enabled) {
         try {
+          // Delete previous pending reminder so chat stays clean
+          const { data: prev } = await supabase
+            .from("telegram_checkin_state")
+            .select("message_id,status")
+            .eq("chat_id", Number(s.telegram_chat_id))
+            .eq("date", today)
+            .maybeSingle();
+          if (prev?.message_id && prev.status !== "submitted") {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: s.telegram_chat_id, message_id: prev.message_id }),
+            }).catch(() => {});
+          }
+
           const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
