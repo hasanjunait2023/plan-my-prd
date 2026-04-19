@@ -196,6 +196,21 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label className="text-xs flex items-center gap-1.5">
+              <Compass className="w-3 h-3" /> Linked Mission
+              <span className="text-[10px] text-muted-foreground/60">(rolls into Life OS)</span>
+            </Label>
+            <Select value={missionId} onValueChange={setMissionId}>
+              <SelectTrigger><SelectValue placeholder="No mission" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No mission (ad-hoc)</SelectItem>
+                {missions.map(m => (
+                  <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Daily Deadline</Label>
