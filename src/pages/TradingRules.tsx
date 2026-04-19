@@ -431,6 +431,13 @@ const TradingRules = () => {
           </Card>
         ))
       )}
+
+      <MemorizeMode
+        open={memorizeOpen}
+        onClose={() => setMemorizeOpen(false)}
+        rules={rules}
+        colorFor={getColor}
+      />
     </div>
   );
 };
