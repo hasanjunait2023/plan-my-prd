@@ -22,6 +22,7 @@ import { TradingRule } from '@/types/trade';
 import { MemorizeMode } from '@/components/rules/MemorizeMode';
 import { DailyReminderCard } from '@/components/rules/DailyReminderCard';
 import { ConfidenceOverview } from '@/components/rules/ConfidenceOverview';
+import { MemorizeStreakBanner } from '@/components/rules/MemorizeStreakBanner';
 
 const DEFAULT_CATEGORIES = ['Risk', 'Entry', 'Exit', 'Psychology', 'General'];
 
@@ -300,6 +301,9 @@ const TradingRules = () => {
           </div>
         </div>
       </div>
+
+      {/* Streak banner */}
+      <MemorizeStreakBanner />
 
       {/* Daily reminders */}
       <DailyReminderCard />

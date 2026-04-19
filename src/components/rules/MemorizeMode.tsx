@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { TradingRule } from '@/types/trade';
 import { useRuleMemorization, useUpdateMemorization } from '@/hooks/useRuleMemorization';
+import { useLogMemorizeSession } from '@/hooks/useMemorizeStreak';
 import { cn } from '@/lib/utils';
 
 interface MemorizeModeProps {
@@ -29,6 +30,13 @@ const AUTO_ADVANCE_MS = 8000;
 export function MemorizeMode({ open, onClose, rules, colorFor }: MemorizeModeProps) {
   const { data: memos = [] } = useRuleMemorization();
   const updateMemo = useUpdateMemorization();
+  const logSession = useLogMemorizeSession();
+
+  // Log session once when dialog opens
+  useEffect(() => {
+    if (open) logSession.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const [shuffle, setShuffle] = useState(true);
   const [autoPlay, setAutoPlay] = useState(true);

@@ -872,6 +872,27 @@ export type Database = {
         }
         Relationships: []
       }
+      memorize_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          session_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          session_date: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          session_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mind_thoughts: {
         Row: {
           content: string
