@@ -34,6 +34,8 @@ function getMilestoneBadge(streak: number) {
 
 export function HabitCard({ habit, isCompleted, weekLogs, monthLogs = [], onComplete, onEdit, onUndo, canUndo }: HabitCardProps) {
   const [showMonthly, setShowMonthly] = useState(false);
+  const { findById } = useLifeNodes();
+  const linkedMission = habit.mission_id ? findById(habit.mission_id) : null;
 
   const {
     attributes,
