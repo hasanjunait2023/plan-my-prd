@@ -623,6 +623,7 @@ export type Database = {
           description: string
           id: string
           longest_streak: number
+          mission_id: string | null
           name: string
           sort_order: number
           submission_time: string
@@ -640,6 +641,7 @@ export type Database = {
           description?: string
           id?: string
           longest_streak?: number
+          mission_id?: string | null
           name: string
           sort_order?: number
           submission_time?: string
@@ -657,6 +659,7 @@ export type Database = {
           description?: string
           id?: string
           longest_streak?: number
+          mission_id?: string | null
           name?: string
           sort_order?: number
           submission_time?: string
@@ -666,7 +669,15 @@ export type Database = {
           vacation_end?: string | null
           vacation_start?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "habits_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "life_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       life_node_logs: {
         Row: {
@@ -1307,6 +1318,7 @@ export type Database = {
           id: string
           improvement_notes: string
           lot_size: number
+          mission_id: string | null
           mistakes: string[]
           outcome: string
           pair: string
@@ -1356,6 +1368,7 @@ export type Database = {
           id?: string
           improvement_notes?: string
           lot_size?: number
+          mission_id?: string | null
           mistakes?: string[]
           outcome?: string
           pair: string
@@ -1405,6 +1418,7 @@ export type Database = {
           id?: string
           improvement_notes?: string
           lot_size?: number
+          mission_id?: string | null
           mistakes?: string[]
           outcome?: string
           pair?: string
@@ -1441,7 +1455,15 @@ export type Database = {
           user_id?: string | null
           what_went_well?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "trades_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "life_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trading_rules: {
         Row: {
@@ -1490,6 +1512,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      recompute_mission_habit_value: {
+        Args: { _mission_id: string }
+        Returns: undefined
+      }
+      recompute_mission_trading_value: {
+        Args: { _mission_id: string }
+        Returns: undefined
+      }
       recompute_node_progress: {
         Args: { _node_id: string }
         Returns: undefined
