@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { TradingRule } from '@/types/trade';
 import { useRuleMemorization, useUpdateMemorization } from '@/hooks/useRuleMemorization';
+import { useLogMemorizeSession } from '@/hooks/useMemorizeStreak';
 import { cn } from '@/lib/utils';
 
 interface MemorizeModeProps {
