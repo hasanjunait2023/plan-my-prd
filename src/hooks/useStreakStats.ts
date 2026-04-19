@@ -127,7 +127,7 @@ export function useStreakStats(): StreakStats & { refetch: () => void } {
     fetch();
     if (!user) return;
     const channel = supabase
-      .channel("streak_stats")
+      .channel(`streak_stats_${user.id}_${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "life_node_logs", filter: `user_id=eq.${user.id}` },
