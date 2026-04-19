@@ -302,6 +302,9 @@ const TradingRules = () => {
         </div>
       </div>
 
+      {/* Streak banner */}
+      <MemorizeStreakBanner />
+
       {/* Daily reminders */}
       <DailyReminderCard />
 
