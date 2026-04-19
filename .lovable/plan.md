@@ -1,193 +1,109 @@
 
+User wants daily rule memorization — morning + evening repetition flow. They want to repeat rules to internalize them.
 
-## User Goal
-একটা সম্পূর্ণ **Vision-Mission-Goal driven Life OS** বানানো — যেখানে:
-- **Vision** (5-10 year) → **Mission** (yearly) → **Goals** (quarterly/monthly) → **Weekly plan** → **Daily tasks**
-- প্রতিটা task উপরের layer-এর সাথে aligned থাকবে
-- Achievement-based tracking — কতটা vision-এর কাছে পৌঁছেছেন
-- নিজেই A-Z accountable
+Let me think about the right approach. They're on /rules page already. The existing system has:
+- `trading_rules` table with category, text, active
+- `rule_categories` with colors
+- Telegram + Push notification infrastructure already wired (used for slot pushes, habit reminders)
+- Edge function pattern established (`lifeos-slot-push` is a good template)
+- pg_cron already set up for scheduled pushes
 
-আলাদা একটা page: `/life-os` (sidebar item: **"Life OS"** with Compass icon)
+Two delivery channels needed:
+1. **In-app Memorization Mode** — flashcard-style repetition UI on /rules
+2. **Auto morning + evening Telegram/Push** — sends rules to repeat
 
-## Core Concept: The Pyramid
+Let me design this concisely.
+
+---
+
+# Plan: Daily Rules Memorization System
+
+## Goal
+Morning (6 AM) এবং Evening (10 PM) এ active rules গুলো Telegram + Push এ পাঠানো হবে, plus /rules page এ একটা **Memorize Mode** থাকবে যেখানে flashcard style এ rules repeat করা যাবে।
+
+## Part 1 — In-app "Memorize Mode" (/rules page)
+
+A new button **"Memorize Mode"** at the top of TradingRules page. Clicking it opens a fullscreen-style focused view:
 
 ```text
-                    ╱ VISION ╲           (Why I exist — 5-10 yr)
-                   ╱──────────╲
-                  ╱  MISSIONS  ╲         (3-5 life areas — Trading, Health, Faith, Family, Wealth)
-                 ╱──────────────╲
-                ╱   YEARLY GOALS ╲       (Per mission, 1-3 goals/year)
-               ╱──────────────────╲
-              ╱  QUARTERLY OBJECTIVES╲   (Break yearly into 4 quarters)
-             ╱──────────────────────╲
-            ╱   MONTHLY MILESTONES   ╲   (Quarter ÷ 3)
-           ╱──────────────────────────╲
-          ╱    WEEKLY FOCUS BLOCKS     ╲ (Month ÷ 4)
-         ╱──────────────────────────────╲
-        ╱      DAILY TASKS / RITUALS     ╲ (What I actually DO today)
+┌──────────────────────────────────┐
+│  Rule 3 of 12     [Risk] •       │
+│                                  │
+│  "Never risk more than           │
+│   1% per trade"                  │
+│                                  │
+│  [ I know this ]  [ Repeat ]    │
+│      ← Prev    Next →            │
+└──────────────────────────────────┘
 ```
 
-প্রতিটা daily task একটা weekly block-এর সাথে linked, সেটা monthly milestone-এর সাথে, এভাবে উপরে vision পর্যন্ত। ফলে "আজকে এই task কেন করছি?" — উত্তর পরিষ্কার।
+Features:
+- Shows one active rule at a time (large, centered)
+- Category color dot + name on top
+- Auto-advance every 8 seconds (toggleable)
+- "I know this" → marks confidence, moves on
+- "Repeat" → keeps rule in rotation
+- Shuffle / sequential toggle
+- Progress bar at bottom (3/12)
+- Filter by category (optional)
 
-## Database Schema
+Storage: lightweight `rule_memorization` table tracking `confidence_score` (0-5) per rule per user, so weak rules show more often.
 
-**One unified `life_nodes` table** (self-referential tree — flexible, future-proof):
+## Part 2 — Scheduled Morning + Evening Pushes
 
-```sql
-CREATE TYPE life_node_type AS ENUM 
-  ('vision','mission','yearly','quarterly','monthly','weekly','daily');
+New edge function `rules-memorize-push` that:
+- Fetches user's active rules
+- Picks 3-5 rules (prioritizing low-confidence ones)
+- Sends as numbered Telegram message + Web Push
+- Morning message: "🌅 আজকের দিন শুরু — এই rules মাথায় রাখো"
+- Evening message: "🌙 দিন শেষ — কাল এর জন্য এই rules রিভাইজ করো"
 
-CREATE TABLE public.life_nodes (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  parent_id uuid REFERENCES life_nodes(id) ON DELETE CASCADE,
-  type life_node_type NOT NULL,
-  title text NOT NULL,
-  description text DEFAULT '',
-  icon text DEFAULT 'target',          -- lucide icon name
-  color text DEFAULT '#00C9A7',
-  status text DEFAULT 'active',        -- active|completed|paused|archived
-  progress numeric DEFAULT 0,          -- 0-100, auto-rolled-up from children
-  target_value numeric,                -- optional metric (e.g. "$10k", "200 trades")
-  current_value numeric DEFAULT 0,
-  unit text DEFAULT '',                -- '%', '$', 'trades', 'days'
-  start_date date,
-  due_date date,
-  completed_at timestamptz,
-  priority int DEFAULT 2,              -- 1=critical, 2=high, 3=medium
-  sort_order int DEFAULT 0,
-  metadata jsonb DEFAULT '{}',         -- flexible: recurrence, tags, etc.
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
+Two new pg_cron jobs:
+- **Morning**: 6:00 AM Dhaka (00:00 UTC)
+- **Evening**: 10:00 PM Dhaka (16:00 UTC)
 
-CREATE TABLE public.life_node_logs (        -- daily check-ins / achievements
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  node_id uuid REFERENCES life_nodes(id) ON DELETE CASCADE,
-  date date NOT NULL,
-  done boolean DEFAULT false,
-  value_added numeric DEFAULT 0,        -- contribution to current_value
-  reflection text DEFAULT '',
-  created_at timestamptz DEFAULT now()
-);
-```
+Both buttons added to `TelegramReminderCard.tsx` for manual testing.
 
-RLS: standard `auth.uid() = user_id` for both. Realtime enabled so multi-device updates instantly.
+## Part 3 — Settings on /rules page
 
-## Page Structure: `/life-os`
+Small "Daily Reminders" card at top showing:
+- ✅ Morning push: 6 AM (toggle on/off)
+- ✅ Evening push: 10 PM (toggle on/off)
+- Number of rules per push: 3 / 5 / All (slider)
 
-**5 tabs** in one focused page:
+Stored in `alert_settings` (add `rules_morning_push`, `rules_evening_push`, `rules_per_push` columns).
 
-### 1. **Pyramid** (Overview / default tab)
-- Visual top-down pyramid: Vision → Missions → key goals
-- Each layer shows progress %, next milestone
-- Click any node to drill down
-- "North Star" banner at top: Vision statement + days lived this year + alignment score (% of daily tasks linked to a mission)
+## Technical Changes
 
-### 2. **Today** (Daily focus)
-- Today's date + day quote
-- **Top 3 priorities** (must-do, linked to a weekly block)
-- Other daily tasks/rituals list with check-off
-- Each task shows: which weekly block → which monthly → which mission (breadcrumb chip)
-- Quick-add task with "link to..." selector
-- End-of-day reflection box (saves to `life_node_logs`)
-- Streak counter for daily ritual completion
+**Database migration**:
+- New table `rule_memorization` (user_id, rule_id, confidence_score, last_shown_at, repeat_count)
+- Add columns to `alert_settings`: `rules_morning_push bool`, `rules_evening_push bool`, `rules_per_push int default 5`
 
-### 3. **This Week**
-- 7-day grid (Sat-Fri or Mon-Sun based on user pref)
-- Weekly focus blocks (max 5 per week, 2-3 recommended)
-- Each block: title, target, actual, progress bar, parent monthly milestone
-- Drag tasks onto days
-- Weekly review section (Friday/Saturday): wins, lessons, next-week intent
+**New files**:
+- `supabase/functions/rules-memorize-push/index.ts` — sends Telegram + Push
+- `src/components/rules/MemorizeMode.tsx` — fullscreen flashcard component
+- `src/components/rules/DailyReminderCard.tsx` — toggle settings card
+- `src/hooks/useRuleMemorization.ts` — confidence tracking
 
-### 4. **This Month / Quarter**
-- Month view: milestones with progress bars, deadlines, status
-- Quarter view: roll-up of 3 months
-- "Pace" indicator: ahead/on-track/behind based on date elapsed vs progress
-- Each milestone expandable → shows child weekly blocks
+**Edited files**:
+- `src/pages/TradingRules.tsx` — add "Memorize Mode" button + reminder card
+- `src/components/lifeos/TelegramReminderCard.tsx` — add test buttons for rule pushes
 
-### 5. **Vision & Missions** (Long-term)
-- Vision statement editor (rich text, big quote-style display)
-- 3-5 Mission cards (e.g. *Trader Mastery*, *Deen & Discipline*, *Family*, *Wealth*, *Health*)
-- Each mission: yearly goals list + lifetime progress meter
-- "Year at a glance": 12-month strip showing milestone completion per mission
+**Cron jobs** (2 new):
+- 6 AM Dhaka morning push
+- 10 PM Dhaka evening push
 
-## Key Features
+## Build Order
+1. Database migration (table + alert_settings columns)
+2. Memorize Mode UI (most immediate value)
+3. Edge function + cron jobs
+4. Daily Reminder settings card
+5. Test buttons
 
-### Alignment Engine
-- Every daily task **must** link to a weekly block (or marked "ad-hoc")
-- Dashboard shows **Alignment Score** = (aligned tasks ÷ total tasks) × 100
-- Warning if >30% tasks are ad-hoc → "You're drifting from your mission"
+## Open Question
+Repetition strategy — চাও:
+- **Spaced repetition** (low-confidence rules show more often, smart)
+- **Simple rotation** (সব rules সমান ভাবে rotate হবে)
+- **Random shuffle** (প্রতিবার এলোমেলো)
 
-### Achievement-based Progress Roll-up
-- Daily completion → auto-updates weekly block %
-- Weekly → monthly milestone %
-- Monthly → quarterly → yearly goal %
-- Yearly → mission lifetime %
-- **One Postgres function** `recompute_node_progress(node_id)` triggered on log insert
-
-### Accountability Layer
-- **Daily check-in prompt** (morning): "What 3 things will move you closer to your vision today?"
-- **Evening reflection**: "Did today honor your mission? Yes/No + note"
-- **Weekly review** (auto-prompts on Saturday): wins, gaps, next week's top 3
-- **Monthly retrospective**: alignment score, biggest win, area to improve
-- All saved to `life_node_logs` — historical accountability trail
-
-### Achievement System
-- Badges unlocked: "First Vision Set", "30-day streak", "Quarter Crusher", "Mission Mastered"
-- Year-end report: PDF-style summary of everything achieved
-- Visual "growth ring" per mission (like Apple rings)
-
-## Integration with Existing App
-
-- **Habits**: existing habits can be tagged to a Mission (one-time mapping in habit form)
-- **Trades**: trade pnl auto-feeds into "Wealth/Trading" mission `current_value`
-- **Mind Journal**: thoughts can be tagged to a node for reflection trail
-- **Psychology logs**: alignment with mission = bonus to daily score
-
-## Implementation Phases
-
-**Phase 1 (this build):**
-1. Migration: `life_nodes` + `life_node_logs` + RLS + realtime + roll-up function
-2. Sidebar nav item "Life OS" (Compass icon) → `/life-os`
-3. Page skeleton with 5 tabs
-4. Vision & Missions tab (CRUD)
-5. Today tab (task list + check-off + reflection)
-6. Pyramid overview (read-only visual)
-
-**Phase 2 (next):**
-- Weekly/Monthly/Quarter tabs
-- Drag-drop scheduling
-- Achievement badges + year-end report
-- Cross-module integration (habits/trades auto-feed)
-
-## Files to Create
-
-**Migration:**
-- `supabase/migrations/<ts>_life_os.sql`
-
-**Hooks:**
-- `src/hooks/useLifeNodes.ts` — CRUD + realtime
-- `src/hooks/useLifeNodeLogs.ts`
-
-**Page + components:**
-- `src/pages/LifeOS.tsx` — main page with tabs
-- `src/components/lifeos/VisionMissionTab.tsx`
-- `src/components/lifeos/TodayTab.tsx`
-- `src/components/lifeos/WeekTab.tsx` (Phase 1: placeholder)
-- `src/components/lifeos/MonthTab.tsx` (Phase 1: placeholder)
-- `src/components/lifeos/PyramidView.tsx`
-- `src/components/lifeos/NodeCard.tsx` — reusable card for any node type
-- `src/components/lifeos/NodeFormDialog.tsx` — create/edit any node
-- `src/components/lifeos/AlignmentBadge.tsx` — shows alignment score
-- `src/components/lifeos/DailyReflectionDialog.tsx`
-
-**Routing:**
-- `src/App.tsx` — add `/life-os` route
-- `src/components/Layout.tsx` — add to `ALL_NAV_ITEMS`
-
-## Result
-
-আপনার একটা সম্পূর্ণ **personal Life OS** হবে। প্রতিদিন সকালে app খুললেই দেখবেন — আজকে কী করতে হবে এবং সেটা আপনার vision-এর সাথে কীভাবে aligned। প্রতিটা completed task পিরামিড উপরে উঠবে। বছর শেষে দেখবেন — সব daily action মিলে আপনার vision-এর দিকে কতটা এগিয়েছেন।
-
+Default suggestion: **spaced repetition** — যে rules তুমি "Repeat" চাপবে সেগুলো বেশি বার আসবে, "I know this" চাপলে কম আসবে। এটাই memorization এ সবচেয়ে effective।
