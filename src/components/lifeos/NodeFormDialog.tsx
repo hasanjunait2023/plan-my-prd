@@ -22,6 +22,7 @@ interface Props {
     unit?: string;
     due_date?: string | null;
     priority?: number;
+    metadata?: Record<string, any>;
   }) => Promise<void> | void;
 }
 
@@ -43,6 +44,7 @@ export function NodeFormDialog({ open, onOpenChange, initialType, parentId, edit
   const [unit, setUnit] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
   const [priority, setPriority] = useState<string>("2");
+  const [module, setModule] = useState<string>("none");
 
   useEffect(() => {
     if (editing) {
@@ -53,6 +55,7 @@ export function NodeFormDialog({ open, onOpenChange, initialType, parentId, edit
       setUnit(editing.unit ?? "");
       setDueDate(editing.due_date ?? "");
       setPriority(String(editing.priority ?? 2));
+      setModule((editing.metadata as any)?.module ?? "none");
     } else {
       setTitle("");
       setDescription("");
@@ -61,11 +64,14 @@ export function NodeFormDialog({ open, onOpenChange, initialType, parentId, edit
       setUnit("");
       setDueDate("");
       setPriority("2");
+      setModule("none");
     }
   }, [editing, initialType, open]);
 
   const handleSubmit = async () => {
     if (!title.trim()) return;
+    const metadata: Record<string, any> = {};
+    if (type === "mission" && module !== "none") metadata.module = module;
     await onSubmit({
       title: title.trim(),
       description: description.trim(),
@@ -75,6 +81,7 @@ export function NodeFormDialog({ open, onOpenChange, initialType, parentId, edit
       unit,
       due_date: dueDate || null,
       priority: Number(priority),
+      metadata,
     });
     onOpenChange(false);
   };
@@ -132,6 +139,21 @@ export function NodeFormDialog({ open, onOpenChange, initialType, parentId, edit
               </Select>
             </div>
           </div>
+          {type === "mission" && (
+            <div>
+              <Label>Auto-feed source (optional)</Label>
+              <Select value={module} onValueChange={setModule}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="trading">Trading PnL (auto-sums closed trades)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Pick "Trading PnL" to make this mission's current value auto-update from your closed trades.
+              </p>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

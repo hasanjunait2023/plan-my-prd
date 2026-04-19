@@ -9,7 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Archive, Trash2, Zap, Palmtree } from 'lucide-react';
+import { Archive, Trash2, Zap, Palmtree, Compass } from 'lucide-react';
+import { useLifeNodes } from '@/hooks/useLifeNodes';
 
 const CATEGORIES = ['general', 'trading', 'health', 'learning'];
 
@@ -31,11 +32,14 @@ interface HabitFormDialogProps {
 export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDialogProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { byType: lifeNodesByType } = useLifeNodes();
+  const missions = lifeNodesByType('mission');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [submissionTime, setSubmissionTime] = useState('07:00');
   const [timezone, setTimezone] = useState('Asia/Dhaka');
   const [category, setCategory] = useState('general');
+  const [missionId, setMissionId] = useState<string>('none');
   const [vacationStart, setVacationStart] = useState('');
   const [vacationEnd, setVacationEnd] = useState('');
   const [saving, setSaving] = useState(false);
@@ -48,6 +52,7 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
       setSubmissionTime(editHabit.submission_time?.slice(0, 5) || '07:00');
       setTimezone(editHabit.timezone || 'Asia/Dhaka');
       setCategory(editHabit.category || 'general');
+      setMissionId(editHabit.mission_id || 'none');
       setVacationStart(editHabit.vacation_start || '');
       setVacationEnd(editHabit.vacation_end || '');
     } else {
@@ -56,6 +61,7 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
       setSubmissionTime('07:00');
       setTimezone('Asia/Dhaka');
       setCategory('general');
+      setMissionId('none');
       setVacationStart('');
       setVacationEnd('');
       setShowTemplates(false);
@@ -87,6 +93,7 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
         submission_time: submissionTime,
         timezone,
         category,
+        mission_id: missionId === 'none' ? null : missionId,
         vacation_start: vacationStart || null,
         vacation_end: vacationEnd || null,
       };
@@ -185,6 +192,21 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
               <SelectContent>
                 {CATEGORIES.map(c => (
                   <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs flex items-center gap-1.5">
+              <Compass className="w-3 h-3" /> Linked Mission
+              <span className="text-[10px] text-muted-foreground/60">(rolls into Life OS)</span>
+            </Label>
+            <Select value={missionId} onValueChange={setMissionId}>
+              <SelectTrigger><SelectValue placeholder="No mission" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No mission (ad-hoc)</SelectItem>
+                {missions.map(m => (
+                  <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

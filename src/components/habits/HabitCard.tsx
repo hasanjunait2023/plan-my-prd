@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Flame, Pencil, Clock, Undo2, ChevronDown, ChevronUp, GripVertical, Palmtree } from 'lucide-react';
+import { Check, Flame, Pencil, Clock, Undo2, ChevronDown, ChevronUp, GripVertical, Palmtree, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PhaseProgress } from './PhaseProgress';
@@ -8,6 +8,7 @@ import { MonthlyHeatmap } from './MonthlyHeatmap';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { isWithinInterval, parseISO } from 'date-fns';
+import { useLifeNodes } from '@/hooks/useLifeNodes';
 
 interface HabitCardProps {
   habit: any;
@@ -33,6 +34,8 @@ function getMilestoneBadge(streak: number) {
 
 export function HabitCard({ habit, isCompleted, weekLogs, monthLogs = [], onComplete, onEdit, onUndo, canUndo }: HabitCardProps) {
   const [showMonthly, setShowMonthly] = useState(false);
+  const { findById } = useLifeNodes();
+  const linkedMission = habit.mission_id ? findById(habit.mission_id) : null;
 
   const {
     attributes,
@@ -115,6 +118,15 @@ export function HabitCard({ habit, isCompleted, weekLogs, monthLogs = [], onComp
               {isOnVacation && (
                 <span className="flex items-center gap-0.5 text-[10px] font-medium text-cyan-400 bg-cyan-400/15 px-1.5 py-0.5 rounded-full">
                   <Palmtree className="w-3 h-3" /> Vacation
+                </span>
+              )}
+              {linkedMission && (
+                <span
+                  className="flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                  style={{ background: `${linkedMission.color}22`, color: linkedMission.color }}
+                  title={`Linked to mission: ${linkedMission.title}`}
+                >
+                  <Compass className="w-3 h-3" /> {linkedMission.title}
                 </span>
               )}
             </div>
