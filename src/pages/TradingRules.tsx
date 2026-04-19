@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
-import { Shield, Plus, Trash2, Pencil, Check, X, ChevronsUpDown, Tag, Palette, Brain, ListChecks, Activity } from 'lucide-react';
+import { Shield, Plus, Trash2, Pencil, Check, X, ChevronsUpDown, Tag, Palette, Brain, ListChecks, Activity, Moon, BarChart3, Sparkles } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import {
@@ -23,6 +23,10 @@ import { MemorizeMode } from '@/components/rules/MemorizeMode';
 import { DailyReminderCard } from '@/components/rules/DailyReminderCard';
 import { ConfidenceOverview } from '@/components/rules/ConfidenceOverview';
 import { MemorizeStreakBanner } from '@/components/rules/MemorizeStreakBanner';
+import { DailyCheckinTab } from '@/components/rules/DailyCheckinTab';
+import { AdherenceReport } from '@/components/rules/AdherenceReport';
+import { CoachingPlanCard } from '@/components/rules/CoachingPlanCard';
+import { useSearchParams } from 'react-router-dom';
 
 const DEFAULT_CATEGORIES = ['Risk', 'Entry', 'Exit', 'Psychology', 'General'];
 
@@ -308,17 +312,47 @@ const TradingRules = () => {
       {/* Daily reminders */}
       <DailyReminderCard />
 
-      <Tabs defaultValue="rules" className="space-y-5">
-        <TabsList className="grid w-full grid-cols-2 h-11 bg-card/60 border border-border/40 backdrop-blur-sm">
+      <RulesTabs />
+    </div>
+  );
+};
+
+const RulesTabs = () => {
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') || 'rules';
+  const setTab = (v: string) => setParams((p) => { p.set('tab', v); return p; }, { replace: true });
+  return (
+      <Tabs value={tab} onValueChange={setTab} className="space-y-5">
+        <TabsList className="grid w-full grid-cols-5 h-11 bg-card/60 border border-border/40 backdrop-blur-sm">
           <TabsTrigger value="rules" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
-            <ListChecks className="w-4 h-4" />
-            My Rules
+            <ListChecks className="w-4 h-4" /><span className="hidden sm:inline">Rules</span>
+          </TabsTrigger>
+          <TabsTrigger value="checkin" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+            <Moon className="w-4 h-4" /><span className="hidden sm:inline">Check-in</span>
+          </TabsTrigger>
+          <TabsTrigger value="report" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+            <BarChart3 className="w-4 h-4" /><span className="hidden sm:inline">Report</span>
+          </TabsTrigger>
+          <TabsTrigger value="coach" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
+            <Sparkles className="w-4 h-4" /><span className="hidden sm:inline">Coach</span>
           </TabsTrigger>
           <TabsTrigger value="confidence" className="gap-1.5 data-[state=active]:bg-primary/15 data-[state=active]:text-primary">
-            <Activity className="w-4 h-4" />
-            Confidence
+            <Activity className="w-4 h-4" /><span className="hidden sm:inline">Confidence</span>
           </TabsTrigger>
         </TabsList>
+        <TabsContent value="checkin" className="mt-0"><DailyCheckinTab /></TabsContent>
+        <TabsContent value="report" className="mt-0"><AdherenceReport /></TabsContent>
+        <TabsContent value="coach" className="mt-0"><CoachingPlanCard /></TabsContent>
+        <TabsContent value="confidence" className="mt-0"><span /></TabsContent>
+        <TabsContent value="rules" className="mt-0"><span /></TabsContent>
+      </Tabs>
+  );
+};
+
+const _Unused = () => {
+  return (
+    <div>
+      <Tabs defaultValue="rules"><TabsList />
 
         <TabsContent value="rules" className="space-y-5 mt-0">
       {/* Add new rule */}
