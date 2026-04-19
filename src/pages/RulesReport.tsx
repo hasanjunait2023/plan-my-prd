@@ -1,10 +1,125 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, BarChart3 } from 'lucide-react';
+import { ArrowLeft, BarChart3, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { AdherenceReport } from '@/components/rules/AdherenceReport';
 import { CoachingPlanCard } from '@/components/rules/CoachingPlanCard';
+import { useAdherenceHistory, useViolationsHistory } from '@/hooks/useDailyAdherence';
+import { useTradingRules } from '@/hooks/useTradingRules';
+import { exportAdherencePdf } from '@/lib/exportAdherencePdf';
 
 const RulesReport = () => {
+  const { data: history = [] } = useAdherenceHistory(30);
+  const { data: violations = [] } = useViolationsHistory(30);
+  const { data: rules = [] } = useTradingRules();
+
+  const exportData = useMemo(() => {
+    const last7 = history.slice(0, 7);
+    const avg = (arr: typeof history) =>
+      arr.length === 0 ? 0 : Math.round(arr.reduce((a, b) => a + Number(b.adherence_score), 0) / arr.length);
+    let perfectStreak = 0;
+    for (const h of history) {
+      if (Number(h.adherence_score) === 100) perfectStreak++;
+      else break;
+    }
+    const stats = {
+      last7Avg: avg(last7),
+      last30Avg: avg(history),
+      perfectStreak,
+      totalLogs: history.length,
+    };
+
+    const counts = new Map<string, { rule_id: string; text: string; category: string; violations: number }>();
+    for (const r of rules) {
+      counts.set(r.id, { rule_id: r.id, text: r.text, category: r.category || 'General', violations: 0 });
+    }
+    for (const v of violations) {
+      const existing = counts.get(v.rule_id);
+      if (existing) existing.violations++;
+      else counts.set(v.rule_id, {
+        rule_id: v.rule_id,
+        text: v.rule_text_snapshot || '(deleted rule)',
+        category: v.category_snapshot || 'General',
+        violations: 1,
+      });
+    }
+    const totalDays = Math.max(1, history.length);
+    const ruleBreakdown = Array.from(counts.values())
+      .map(r => ({ ...r, adherencePct: Math.round(((totalDays - r.violations) / totalDays) * 100) }))
+      .sort((a, b) => b.violations - a.violations);
+
+    // Patterns (mirrored from AdherenceReport)
+    const patterns: string[] = [];
+    if (history.length > 0) {
+      const byMood = new Map<string, { violations: number; days: number }>();
+      for (const h of history) {
+        const m = byMood.get(h.mood) ?? { violations: 0, days: 0 };
+        m.days++;
+        m.violations += h.violated_count;
+        byMood.set(h.mood, m);
+      }
+      const moodEntries = Array.from(byMood.entries())
+        .filter(([, v]) => v.days >= 2)
+        .map(([k, v]) => ({ mood: k, avg: v.violations / v.days }))
+        .sort((a, b) => b.avg - a.avg);
+      if (moodEntries.length > 0 && moodEntries[0].avg > 0.5) {
+        patterns.push(`Violations spike when mood = "${moodEntries[0].mood}" (avg ${moodEntries[0].avg.toFixed(1)} per day)`);
+      }
+      const highTradeDays = history.filter(h => h.trades_count >= 3);
+      if (highTradeDays.length >= 2) {
+        const avgV = highTradeDays.reduce((a, b) => a + b.violated_count, 0) / highTradeDays.length;
+        if (avgV > 0.5) patterns.push(`Days with 3+ trades average ${avgV.toFixed(1)} violations — overtrading risk`);
+      }
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const byDow = new Map<number, { violations: number; days: number }>();
+      for (const h of history) {
+        const dow = new Date(h.date).getDay();
+        const m = byDow.get(dow) ?? { violations: 0, days: 0 };
+        m.days++;
+        m.violations += h.violated_count;
+        byDow.set(dow, m);
+      }
+      const worstDow = Array.from(byDow.entries())
+        .filter(([, v]) => v.days >= 2)
+        .map(([k, v]) => ({ day: dayNames[k], avg: v.violations / v.days }))
+        .sort((a, b) => b.avg - a.avg)[0];
+      if (worstDow && worstDow.avg > 0.5) {
+        patterns.push(`${worstDow.day}s show the most violations (avg ${worstDow.avg.toFixed(1)})`);
+      }
+    }
+
+    return { stats, ruleBreakdown, patterns };
+  }, [history, violations, rules]);
+
+  const handleExport = () => {
+    if (history.length === 0) {
+      toast.error('No data to export — submit a check-in first');
+      return;
+    }
+    try {
+      exportAdherencePdf({
+        history: history.map(h => ({
+          date: h.date,
+          adherence_score: Number(h.adherence_score),
+          followed_count: h.followed_count,
+          violated_count: h.violated_count,
+          total_rules: h.total_rules,
+          trades_count: h.trades_count,
+          mood: h.mood,
+          general_note: h.general_note,
+        })),
+        ruleBreakdown: exportData.ruleBreakdown,
+        patterns: exportData.patterns,
+        stats: exportData.stats,
+      });
+      toast.success('Report downloaded');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to export PDF');
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
       {/* Hero */}
@@ -30,12 +145,22 @@ const RulesReport = () => {
             </div>
           </div>
 
-          <Button asChild variant="outline" size="sm" className="gap-1.5">
-            <Link to="/rules">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Rules
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleExport}
+              size="sm"
+              className="gap-1.5 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-md shadow-primary/20"
+            >
+              <Download className="w-4 h-4" />
+              Export PDF
+            </Button>
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link to="/rules">
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 
