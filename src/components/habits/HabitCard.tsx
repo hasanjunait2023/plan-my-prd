@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Flame, Pencil, Clock, Undo2, ChevronDown, ChevronUp, GripVertical, Palmtree } from 'lucide-react';
+import { Check, Flame, Pencil, Clock, Undo2, ChevronDown, ChevronUp, GripVertical, Palmtree, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PhaseProgress } from './PhaseProgress';
@@ -8,6 +8,7 @@ import { MonthlyHeatmap } from './MonthlyHeatmap';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { isWithinInterval, parseISO } from 'date-fns';
+import { useLifeNodes } from '@/hooks/useLifeNodes';
 
 interface HabitCardProps {
   habit: any;
