@@ -25,6 +25,7 @@ export interface AdherenceExportData {
     perfectStreak: number;
     totalLogs: number;
   };
+  rangeLabel?: string;
 }
 
 export function exportAdherencePdf(data: AdherenceExportData) {
