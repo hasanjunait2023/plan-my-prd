@@ -139,6 +139,21 @@ export function NodeFormDialog({ open, onOpenChange, initialType, parentId, edit
               </Select>
             </div>
           </div>
+          {type === "mission" && (
+            <div>
+              <Label>Auto-feed source (optional)</Label>
+              <Select value={module} onValueChange={setModule}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="trading">Trading PnL (auto-sums closed trades)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Pick "Trading PnL" to make this mission's current value auto-update from your closed trades.
+              </p>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
