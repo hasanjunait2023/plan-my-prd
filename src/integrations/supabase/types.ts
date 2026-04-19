@@ -200,6 +200,7 @@ export type Database = {
           news_alert: boolean
           price_spike_alert: boolean
           risk_breach_alert: boolean
+          rules_checkin_push: boolean
           rules_evening_push: boolean
           rules_morning_push: boolean
           rules_per_push: number
@@ -228,6 +229,7 @@ export type Database = {
           news_alert?: boolean
           price_spike_alert?: boolean
           risk_breach_alert?: boolean
+          rules_checkin_push?: boolean
           rules_evening_push?: boolean
           rules_morning_push?: boolean
           rules_per_push?: number
@@ -256,6 +258,7 @@ export type Database = {
           news_alert?: boolean
           price_spike_alert?: boolean
           risk_breach_alert?: boolean
+          rules_checkin_push?: boolean
           rules_evening_push?: boolean
           rules_morning_push?: boolean
           rules_per_push?: number
@@ -305,6 +308,45 @@ export type Database = {
           last_used_at?: string | null
           priority?: number
           provider?: string
+        }
+        Relationships: []
+      }
+      coaching_plans: {
+        Row: {
+          action_items: Json
+          created_at: string
+          focus_rule_ids: string[]
+          id: string
+          metrics: Json
+          model: string
+          sent_to_telegram: boolean
+          summary: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          action_items?: Json
+          created_at?: string
+          focus_rule_ids?: string[]
+          id?: string
+          metrics?: Json
+          model?: string
+          sent_to_telegram?: boolean
+          summary?: string
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          action_items?: Json
+          created_at?: string
+          focus_rule_ids?: string[]
+          id?: string
+          metrics?: Json
+          model?: string
+          sent_to_telegram?: boolean
+          summary?: string
+          user_id?: string
+          week_start?: string
         }
         Relationships: []
       }
@@ -429,6 +471,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      daily_rule_adherence: {
+        Row: {
+          adherence_score: number
+          created_at: string
+          date: string
+          followed_count: number
+          general_note: string
+          id: string
+          mood: string
+          submitted_at: string
+          total_rules: number
+          trades_count: number
+          updated_at: string
+          user_id: string
+          violated_count: number
+        }
+        Insert: {
+          adherence_score?: number
+          created_at?: string
+          date: string
+          followed_count?: number
+          general_note?: string
+          id?: string
+          mood?: string
+          submitted_at?: string
+          total_rules?: number
+          trades_count?: number
+          updated_at?: string
+          user_id: string
+          violated_count?: number
+        }
+        Update: {
+          adherence_score?: number
+          created_at?: string
+          date?: string
+          followed_count?: number
+          general_note?: string
+          id?: string
+          mood?: string
+          submitted_at?: string
+          total_rules?: number
+          trades_count?: number
+          updated_at?: string
+          user_id?: string
+          violated_count?: number
+        }
+        Relationships: []
       }
       ema_alignments: {
         Row: {
@@ -1260,6 +1350,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rule_violations: {
+        Row: {
+          category_snapshot: string
+          created_at: string
+          date: string
+          id: string
+          mood: string
+          reason: string
+          rule_id: string
+          rule_text_snapshot: string
+          trade_id: string | null
+          user_id: string
+        }
+        Insert: {
+          category_snapshot?: string
+          created_at?: string
+          date: string
+          id?: string
+          mood?: string
+          reason?: string
+          rule_id: string
+          rule_text_snapshot?: string
+          trade_id?: string | null
+          user_id: string
+        }
+        Update: {
+          category_snapshot?: string
+          created_at?: string
+          date?: string
+          id?: string
+          mood?: string
+          reason?: string
+          rule_id?: string
+          rule_text_snapshot?: string
+          trade_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       session_pair_recommendations: {
         Row: {
