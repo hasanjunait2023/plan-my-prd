@@ -3,15 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Send, Sun, Moon, Save, MessageCircle } from "lucide-react";
+import { Sun, Moon, Save, MessageCircle, CloudSun } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+
+type TestKey = "morning" | "afternoon" | "evening" | "review";
 
 export function TelegramReminderCard() {
   const [chatId, setChatId] = useState("");
   const [savedChatId, setSavedChatId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState<"morning" | "evening" | null>(null);
+  const [testing, setTesting] = useState<TestKey | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -51,19 +53,27 @@ export function TelegramReminderCard() {
     toast({ title: "Saved ✅", description: "Telegram chat ID linked" });
   };
 
-  const trigger = async (which: "morning" | "evening") => {
+  const trigger = async (which: TestKey) => {
     if (!savedChatId) {
       toast({ title: "Save chat ID first", variant: "destructive" });
       return;
     }
     setTesting(which);
     try {
-      const fn = which === "morning" ? "lifeos-morning-push" : "lifeos-evening-review";
-      const { data, error } = await supabase.functions.invoke(fn);
+      let data: any, error: any;
+      if (which === "review") {
+        ({ data, error } = await supabase.functions.invoke("lifeos-evening-review"));
+      } else {
+        ({ data, error } = await supabase.functions.invoke("lifeos-slot-push", {
+          body: { slot: which },
+        }));
+      }
       if (error) throw error;
+      const sent = data?.telegramSent ?? data?.sent ?? 0;
+      const pushSent = data?.pushSent ?? 0;
       toast({
-        title: which === "morning" ? "☀️ Morning push sent" : "🌙 Evening review sent",
-        description: `Check Telegram. Sent: ${data?.sent ?? 0}`,
+        title: `Sent: ${which}`,
+        description: `Telegram: ${sent} · Push: ${pushSent}`,
       });
     } catch (e) {
       toast({
@@ -81,17 +91,15 @@ export function TelegramReminderCard() {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <MessageCircle className="h-4 w-4 text-blue-500" />
-          Telegram Accountability
+          Telegram + Push Accountability
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-xs text-muted-foreground space-y-1">
-          <p>
-            ☀️ <b>7:00 AM</b> — Top 3 priorities + ✅ buttons
-          </p>
-          <p>
-            🌙 <b>9:00 PM</b> — Completion review with stats
-          </p>
+          <p>☀️ <b>6:00 AM</b> — Morning slot tasks (Telegram + Push)</p>
+          <p>🌤 <b>12:00 PM</b> — Afternoon slot tasks</p>
+          <p>🌙 <b>6:00 PM</b> — Evening slot tasks</p>
+          <p>📊 <b>9:00 PM</b> — Daily review with stats</p>
         </div>
 
         <div className="space-y-2">
@@ -121,7 +129,7 @@ export function TelegramReminderCard() {
             >
               @userinfobot
             </a>{" "}
-            on Telegram.
+            on Telegram. Push needs notifications enabled in Settings.
           </p>
         </div>
 
@@ -139,11 +147,29 @@ export function TelegramReminderCard() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => trigger("afternoon")}
+              disabled={testing !== null}
+            >
+              <CloudSun className="h-4 w-4 mr-1" />
+              {testing === "afternoon" ? "Sending…" : "Test afternoon"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => trigger("evening")}
               disabled={testing !== null}
             >
               <Moon className="h-4 w-4 mr-1" />
               {testing === "evening" ? "Sending…" : "Test evening"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => trigger("review")}
+              disabled={testing !== null}
+            >
+              <Moon className="h-4 w-4 mr-1" />
+              {testing === "review" ? "Sending…" : "Test 9PM review"}
             </Button>
           </div>
         )}
