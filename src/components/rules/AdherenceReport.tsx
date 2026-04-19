@@ -44,8 +44,7 @@ export function AdherenceReport({ range = 30 }: AdherenceReportProps = {}) {
   }, [range]);
 
   const stats = useMemo(() => {
-    const last7 = history.slice(0, 7);
-    const last30 = history;
+    const recentSlice = history.slice(0, Math.min(7, history.length));
     const avg = (arr: typeof history) =>
       arr.length === 0 ? 0 : Math.round(arr.reduce((a, b) => a + Number(b.adherence_score), 0) / arr.length);
     let perfectStreak = 0;
@@ -54,8 +53,8 @@ export function AdherenceReport({ range = 30 }: AdherenceReportProps = {}) {
       else break;
     }
     return {
-      last7Avg: avg(last7),
-      last30Avg: avg(last30),
+      recentAvg: avg(recentSlice),
+      rangeAvg: avg(history),
       perfectStreak,
       totalLogs: history.length,
     };
