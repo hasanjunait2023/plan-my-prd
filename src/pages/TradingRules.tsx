@@ -26,7 +26,7 @@ import { MemorizeStreakBanner } from '@/components/rules/MemorizeStreakBanner';
 import { DailyCheckinTab } from '@/components/rules/DailyCheckinTab';
 import { AdherenceReport } from '@/components/rules/AdherenceReport';
 import { CoachingPlanCard } from '@/components/rules/CoachingPlanCard';
-import { useSearchParams } from 'react-router-dom';
+
 
 const DEFAULT_CATEGORIES = ['Risk', 'Entry', 'Exit', 'Psychology', 'General'];
 
