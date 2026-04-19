@@ -1525,6 +1525,57 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_checkin_state: {
+        Row: {
+          chat_id: number
+          date: string
+          message_id: number | null
+          reasons: Json
+          selected_rule_ids: string[]
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat_id: number
+          date: string
+          message_id?: number | null
+          reasons?: Json
+          selected_rule_ids?: string[]
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chat_id?: number
+          date?: string
+          message_id?: number | null
+          reasons?: Json
+          selected_rule_ids?: string[]
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      telegram_rules_state: {
+        Row: {
+          id: number
+          update_offset: number
+          updated_at: string
+        }
+        Insert: {
+          id: number
+          update_offset?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          update_offset?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
           confidence_level: number
