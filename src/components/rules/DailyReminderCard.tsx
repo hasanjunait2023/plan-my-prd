@@ -37,13 +37,13 @@ export function DailyReminderCard() {
     setSaving(true);
     try {
       if (settingsId) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('alert_settings')
           .update(patch)
           .eq('id', settingsId);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('alert_settings')
           .insert(patch)
           .select('id')
