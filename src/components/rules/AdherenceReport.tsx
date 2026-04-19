@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, Flame, BarChart3, Target, Sparkles } from 'lucide-react';
-import { useAdherenceHistory, useViolationsHistory } from '@/hooks/useDailyAdherence';
+import { useAdherenceHistory, useViolationsHistory, type DateRange } from '@/hooks/useDailyAdherence';
 import { useTradingRules } from '@/hooks/useTradingRules';
 import { cn } from '@/lib/utils';
 
@@ -21,10 +21,27 @@ const scoreText = (s: number) => {
   return 'text-rose-400';
 };
 
-export function AdherenceReport() {
-  const { data: history = [] } = useAdherenceHistory(30);
-  const { data: violations = [] } = useViolationsHistory(30);
+interface AdherenceReportProps {
+  range?: DateRange | number;
+}
+
+export function AdherenceReport({ range = 30 }: AdherenceReportProps = {}) {
+  const { data: history = [] } = useAdherenceHistory(range);
+  const { data: violations = [] } = useViolationsHistory(range);
   const { data: rules = [] } = useTradingRules();
+
+  // Calculate window length in days for heatmap & label
+  const windowDays = useMemo(() => {
+    if (typeof range === 'number') return range;
+    const from = new Date(range.from);
+    const to = new Date(range.to);
+    return Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000) + 1);
+  }, [range]);
+
+  const rangeEndDate = useMemo(() => {
+    if (typeof range === 'number') return new Date();
+    return new Date(range.to);
+  }, [range]);
 
   const stats = useMemo(() => {
     const last7 = history.slice(0, 7);
