@@ -271,6 +271,7 @@ const TradingRules = () => {
               value={newCategory}
               onChange={setNewCategory}
               options={allCategories}
+              colorMap={colorMap}
               className="sm:w-44"
             />
             <Button onClick={handleAdd} disabled={!newRule.trim() || insertRule.isPending}>
@@ -294,9 +295,45 @@ const TradingRules = () => {
         </Card>
       ) : (
         grouped.map(([category, items]) => (
-          <Card key={category} className="border-border/30 bg-card/50">
+          <Card
+            key={category}
+            className="border-border/30 bg-card/50 border-l-4"
+            style={{ borderLeftColor: getColor(category) }}
+          >
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      title="Pick color"
+                      className="w-3 h-3 rounded-full border border-border/40 hover:scale-110 transition-transform shrink-0"
+                      style={{ backgroundColor: getColor(category) }}
+                    />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-2" align="start">
+                    <div className="flex items-center gap-1.5 mb-1.5 px-1">
+                      <Palette className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Pick a color</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {PRESET_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => handlePickColor(category, c)}
+                          className={cn(
+                            'w-6 h-6 rounded-full border-2 hover:scale-110 transition-transform',
+                            getColor(category).toLowerCase() === c.toLowerCase()
+                              ? 'border-foreground'
+                              : 'border-border/30'
+                          )}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
                 {category}
                 <Badge variant="secondary" className="text-[10px]">
                   {items.length}
@@ -330,6 +367,7 @@ const TradingRules = () => {
                           value={editCategory}
                           onChange={setEditCategory}
                           options={allCategories}
+                          colorMap={colorMap}
                           className="w-36"
                           size="sm"
                         />
