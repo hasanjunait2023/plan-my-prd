@@ -61,19 +61,19 @@ export function AdherenceReport({ range = 30 }: AdherenceReportProps = {}) {
     };
   }, [history]);
 
-  // 30-day heatmap (oldest to newest)
+  // Heatmap (oldest to newest within window)
   const heatmap = useMemo(() => {
     const days: Array<{ date: string; score: number | null }> = [];
-    const today = new Date();
     const map = new Map(history.map(h => [h.date, Number(h.adherence_score)]));
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(today);
+    const cap = Math.min(windowDays, 120); // hard cap for visual sanity
+    for (let i = cap - 1; i >= 0; i--) {
+      const d = new Date(rangeEndDate);
       d.setDate(d.getDate() - i);
       const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       days.push({ date: ds, score: map.has(ds) ? map.get(ds)! : null });
     }
     return days;
-  }, [history]);
+  }, [history, windowDays, rangeEndDate]);
 
   // Per-rule breakdown
   const ruleBreakdown = useMemo(() => {
