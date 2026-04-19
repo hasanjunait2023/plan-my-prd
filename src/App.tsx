@@ -23,6 +23,7 @@ import MT5Connection from "./pages/MT5Connection.tsx";
 import ChartAnalysis from "./pages/ChartAnalysis.tsx";
 import Auth from "./pages/Auth.tsx";
 import TradingRules from "./pages/TradingRules.tsx";
+import RulesReport from "./pages/RulesReport.tsx";
 import MarketNews from "./pages/MarketNews.tsx";
 import HabitTracking from "./pages/HabitTracking.tsx";
 import SpikeAlerts from "./pages/SpikeAlerts.tsx";
@@ -63,6 +64,7 @@ const App = () => (
                   <Route path="/mt5" element={<MT5Connection />} />
                   <Route path="/charts" element={<ChartAnalysis />} />
                   <Route path="/rules" element={<TradingRules />} />
+                  <Route path="/rules/report" element={<RulesReport />} />
                   <Route path="/news" element={<MarketNews />} />
                   <Route path="/habits" element={<HabitTracking />} />
                   <Route path="/spike-alerts" element={<SpikeAlerts />} />

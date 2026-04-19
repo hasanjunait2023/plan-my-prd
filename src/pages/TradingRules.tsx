@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -332,7 +333,17 @@ const TradingRules = () => {
         </TabsList>
 
         <TabsContent value="checkin" className="mt-0"><DailyCheckinTab /></TabsContent>
-        <TabsContent value="report" className="mt-0"><AdherenceReport /></TabsContent>
+        <TabsContent value="report" className="mt-0 space-y-4">
+          <div className="flex justify-end">
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link to="/rules/report">
+                <BarChart3 className="w-4 h-4" />
+                Open Full Report
+              </Link>
+            </Button>
+          </div>
+          <AdherenceReport />
+        </TabsContent>
         <TabsContent value="coach" className="mt-0"><CoachingPlanCard /></TabsContent>
 
         <TabsContent value="rules" className="space-y-5 mt-0">
