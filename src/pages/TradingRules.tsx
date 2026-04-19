@@ -214,18 +214,12 @@ const TradingRules = () => {
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
               className="flex-1"
             />
-            <Select value={newCategory} onValueChange={setNewCategory}>
-              <SelectTrigger className="sm:w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {allCategories.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CategoryCombobox
+              value={newCategory}
+              onChange={setNewCategory}
+              options={allCategories}
+              className="sm:w-44"
+            />
             <Button onClick={handleAdd} disabled={!newRule.trim() || insertRule.isPending}>
               <Plus className="w-4 h-4 mr-1" /> Add
             </Button>
@@ -279,18 +273,13 @@ const TradingRules = () => {
                           className="flex-1 h-8 text-sm"
                           autoFocus
                         />
-                        <Select value={editCategory} onValueChange={setEditCategory}>
-                          <SelectTrigger className="w-32 h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {allCategories.map((c) => (
-                              <SelectItem key={c} value={c}>
-                                {c}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <CategoryCombobox
+                          value={editCategory}
+                          onChange={setEditCategory}
+                          options={allCategories}
+                          className="w-36"
+                          size="sm"
+                        />
                         <Button size="icon" variant="ghost" onClick={saveEdit} className="h-8 w-8">
                           <Check className="w-4 h-4 text-emerald-400" />
                         </Button>
