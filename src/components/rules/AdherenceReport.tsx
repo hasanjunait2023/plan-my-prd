@@ -163,15 +163,15 @@ export function AdherenceReport({ range = 30 }: AdherenceReportProps = {}) {
       {/* Overview cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard icon={<Flame className="w-4 h-4 text-amber-400" />} label="Perfect streak" value={`${stats.perfectStreak}d`} />
-        <StatCard icon={<TrendingUp className="w-4 h-4 text-primary" />} label="7-day avg" value={`${stats.last7Avg}%`} accent={scoreText(stats.last7Avg)} />
-        <StatCard icon={<Target className="w-4 h-4 text-indigo-400" />} label="30-day avg" value={`${stats.last30Avg}%`} accent={scoreText(stats.last30Avg)} />
+        <StatCard icon={<TrendingUp className="w-4 h-4 text-primary" />} label="Recent 7d avg" value={`${stats.recentAvg}%`} accent={scoreText(stats.recentAvg)} />
+        <StatCard icon={<Target className="w-4 h-4 text-indigo-400" />} label={`${windowDays}d avg`} value={`${stats.rangeAvg}%`} accent={scoreText(stats.rangeAvg)} />
         <StatCard icon={<BarChart3 className="w-4 h-4 text-emerald-400" />} label="Total logs" value={String(stats.totalLogs)} />
       </div>
 
       {/* Heatmap */}
       <Card className="border-border/40 bg-card/60">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm">30-day Adherence Heatmap</CardTitle>
+          <CardTitle className="text-sm">{Math.min(windowDays, 120)}-day Adherence Heatmap</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-15 gap-1.5" style={{ gridTemplateColumns: 'repeat(15, minmax(0, 1fr))' }}>
