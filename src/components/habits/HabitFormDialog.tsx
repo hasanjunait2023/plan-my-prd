@@ -93,6 +93,7 @@ export function HabitFormDialog({ open, onOpenChange, editHabit }: HabitFormDial
         submission_time: submissionTime,
         timezone,
         category,
+        mission_id: missionId === 'none' ? null : missionId,
         vacation_start: vacationStart || null,
         vacation_end: vacationEnd || null,
       };
