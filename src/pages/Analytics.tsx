@@ -7,6 +7,9 @@ import { useAccountSettings } from '@/hooks/useAccountSettings';
 import { defaultAccountSettings } from '@/data/mockData';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DailyPnL } from '@/types/trade';
+import { SectionVisibilityProvider } from '@/contexts/SectionVisibilityContext';
+import { HiddenSectionsBar } from '@/components/common/HiddenSectionsBar';
+import { HideableSection } from '@/components/common/HideableSection';
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 const tooltipStyle = { backgroundColor: 'hsl(0, 0%, 8%)', border: '1px solid hsla(0,0%,100%,0.1)', borderRadius: '8px', color: 'hsl(0, 0%, 95%)' };
@@ -91,80 +94,90 @@ const Analytics = () => {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center border border-blue-500/20">
-          <BarChart3 className="w-5 h-5 text-blue-400" />
+    <SectionVisibilityProvider pageKey="analytics">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center border border-blue-500/20">
+            <BarChart3 className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
+            <p className="text-sm text-muted-foreground">Performance overview & statistics</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
-          <p className="text-sm text-muted-foreground">Performance overview & statistics</p>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {metrics.map((m, i) => (
-          <Card key={m.label} className={`${glassCard} bg-gradient-to-br ${gradientAccents[i]} to-transparent`}>
-            <CardContent className="pt-4 pb-3">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{m.label}</p>
-              <p className={`text-xl font-bold ${m.color}`}>{m.value}</p>
+        <HiddenSectionsBar />
+
+        <HideableSection id="metrics" title="Key Metrics">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {metrics.map((m, i) => (
+              <Card key={m.label} className={`${glassCard} bg-gradient-to-br ${gradientAccents[i]} to-transparent`}>
+                <CardContent className="pt-4 pb-3">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{m.label}</p>
+                  <p className={`text-xl font-bold ${m.color}`}>{m.value}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </HideableSection>
+
+        <HideableSection id="equity-curve" title="Equity Curve">
+          <Card className={glassCard}>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                  <TrendingUp className="w-3 h-3 text-primary" />
+                </div>
+                Equity Curve
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={equityCurve}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsla(0,0%,100%,0.06)" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(0, 0%, 45%)' }} />
+                    <YAxis tick={{ fontSize: 11, fill: 'hsl(0, 0%, 45%)' }} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v.toFixed(0)}`, 'Balance']} />
+                    <Line type="monotone" dataKey="balance" stroke="hsl(145, 63%, 49%)" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
-        ))}
+        </HideableSection>
+
+        <HideableSection id="daily-pnl" title="Daily P&L">
+          <Card className={glassCard}>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                  <Activity className="w-3 h-3 text-primary" />
+                </div>
+                Daily P&L
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyPnL}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsla(0,0%,100%,0.06)" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(0, 0%, 45%)' }} />
+                    <YAxis tick={{ fontSize: 11, fill: 'hsl(0, 0%, 45%)' }} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v.toFixed(0)}`, 'P&L']} />
+                    <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
+                      {monthlyPnL.map((entry, i) => (
+                        <Cell key={i} fill={entry.pnl >= 0 ? 'hsl(145, 63%, 49%)' : 'hsl(355, 78%, 56%)'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </HideableSection>
       </div>
-
-      <Card className={glassCard}>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
-              <TrendingUp className="w-3 h-3 text-primary" />
-            </div>
-            Equity Curve
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={equityCurve}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsla(0,0%,100%,0.06)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(0, 0%, 45%)' }} />
-                <YAxis tick={{ fontSize: 11, fill: 'hsl(0, 0%, 45%)' }} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v.toFixed(0)}`, 'Balance']} />
-                <Line type="monotone" dataKey="balance" stroke="hsl(145, 63%, 49%)" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className={glassCard}>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
-              <Activity className="w-3 h-3 text-primary" />
-            </div>
-            Daily P&L
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyPnL}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsla(0,0%,100%,0.06)" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(0, 0%, 45%)' }} />
-                <YAxis tick={{ fontSize: 11, fill: 'hsl(0, 0%, 45%)' }} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`$${v.toFixed(0)}`, 'P&L']} />
-                <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>
-                  {monthlyPnL.map((entry, i) => (
-                    <Cell key={i} fill={entry.pnl >= 0 ? 'hsl(145, 63%, 49%)' : 'hsl(355, 78%, 56%)'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    </SectionVisibilityProvider>
   );
 };
 
