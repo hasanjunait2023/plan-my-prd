@@ -197,10 +197,14 @@ export function useSyncedPreference<T>(key: string, defaultValue: T): [T, (value
   const { getPref, setPref } = usePreferences();
   const value = getPref<T>(key, defaultValue);
 
+  // Keep a ref to the latest value so functional updaters always see fresh state
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
   const setValue = useCallback((next: T | ((prev: T) => T)) => {
-    const resolved = typeof next === 'function' ? (next as (prev: T) => T)(value) : next;
+    const resolved = typeof next === 'function' ? (next as (prev: T) => T)(valueRef.current) : next;
     setPref(key, resolved);
-  }, [key, value, setPref]);
+  }, [key, setPref]);
 
   return [value, setValue];
 }
