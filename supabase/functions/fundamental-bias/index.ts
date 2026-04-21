@@ -45,14 +45,51 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Set up Supabase client up-front so we can fall back to DB on API failure
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const sb = createClient(supabaseUrl, supabaseKey);
+
+  const readDbAndRespond = async (extra: Record<string, unknown> = {}) => {
+    const { data: dbRows } = await sb
+      .from('fundamental_biases')
+      .select('*')
+      .in('currency', CURRENCIES);
+    const biases: Record<string, BiasResult> = {};
+    for (const row of dbRows || []) {
+      biases[row.currency] = {
+        bias: row.bias as any,
+        event: row.event_title,
+        actual: row.actual,
+        forecast: row.forecast,
+        previous: row.previous,
+        impact: row.impact,
+        date: row.event_date,
+      };
+    }
+    return new Response(
+      JSON.stringify({ biases, fetchedAt: new Date().toISOString(), ...extra }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
+    );
+  };
+
   try {
     const fetchOpts = { headers: { 'User-Agent': 'TradeVault-Pro/1.0' } };
     const [thisWeekRes, lastWeekRes] = await Promise.all([
-      fetch(FF_THIS_WEEK, fetchOpts),
+      fetch(FF_THIS_WEEK, fetchOpts).catch(() => null),
       fetch(FF_LAST_WEEK, fetchOpts).catch(() => null),
     ]);
 
-    if (!thisWeekRes.ok) throw new Error(`FF this-week API returned ${thisWeekRes.status}`);
+    // Rate-limited or upstream failure → serve cached DB data instead of 500
+    if (!thisWeekRes || !thisWeekRes.ok) {
+      const status = thisWeekRes?.status ?? 'network_error';
+      console.warn(`FF this-week unavailable (${status}); serving cached biases from DB`);
+      return await readDbAndRespond({
+        stale: true,
+        reason: status === 429 ? 'rate_limited' : 'upstream_unavailable',
+        upstreamStatus: status,
+      });
+    }
 
     const thisWeekEvents: any[] = await thisWeekRes.json();
     let lastWeekEvents: any[] = [];
