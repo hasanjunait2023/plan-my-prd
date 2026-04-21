@@ -170,7 +170,7 @@ export function WatchlistPanel() {
         return { item };
       }
       const diff = baseEntry.strength - quoteEntry.strength;
-      return { item, diff, bias: calculateBias(diff) };
+      return { item, diff, bias: calculateBias(diff, baseEntry.strength, quoteEntry.strength) };
     });
   }, [strengths]);
 
