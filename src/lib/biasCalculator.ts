@@ -16,6 +16,8 @@ export interface BiasInfo {
   bgColor: string;      // hsla translucent bg
   borderColor: string;  // hsla translucent border
   rank: number;         // higher = stronger conviction (used for sorting)
+  restricted?: boolean; // true when both currencies share same extreme tier (avoid trading)
+  restrictedReason?: 'BOTH_STRONG' | 'BOTH_WEAK';
 }
 
 // Currency strength tiers
@@ -61,6 +63,14 @@ export function calculateBias(
 
   const baseTier = tierOf(baseStrength);
   const quoteTier = tierOf(quoteStrength);
+
+  // Restricted cases: both currencies share an extreme tier → avoid trading this session
+  const baseStrongish = baseTier === 'STRONG' || baseTier === 'MED_STRONG';
+  const quoteStrongish = quoteTier === 'STRONG' || quoteTier === 'MED_STRONG';
+  const baseWeakish = baseTier === 'WEAK' || baseTier === 'MID_WEAK';
+  const quoteWeakish = quoteTier === 'WEAK' || quoteTier === 'MID_WEAK';
+  if (baseStrongish && quoteStrongish) return makeRestricted('BOTH_STRONG');
+  if (baseWeakish && quoteWeakish) return makeRestricted('BOTH_WEAK');
 
   // Decision matrix (in priority order)
   // 1. Strong base vs non-strong quote → HQ BUY
@@ -160,6 +170,23 @@ function makeNeutral(): BiasInfo {
     bgColor: 'hsla(48, 96%, 53%, 0.12)',
     borderColor: 'hsla(48, 96%, 53%, 0.25)',
     rank: 0,
+  };
+}
+
+function makeRestricted(reason: 'BOTH_STRONG' | 'BOTH_WEAK'): BiasInfo {
+  return {
+    quality: 'NEUTRAL',
+    label: reason === 'BOTH_STRONG'
+      ? 'Avoid — both currencies strong'
+      : 'Avoid — both currencies weak',
+    shortLabel: '🚫 AVOID',
+    direction: 'NEUTRAL',
+    color: 'hsl(0, 0%, 70%)',
+    bgColor: 'hsla(0, 0%, 50%, 0.15)',
+    borderColor: 'hsla(0, 0%, 50%, 0.4)',
+    rank: -1,
+    restricted: true,
+    restrictedReason: reason,
   };
 }
 
