@@ -16,6 +16,8 @@ export interface BiasInfo {
   bgColor: string;      // hsla translucent bg
   borderColor: string;  // hsla translucent border
   rank: number;         // higher = stronger conviction (used for sorting)
+  restricted?: boolean; // true when both currencies share same extreme tier (avoid trading)
+  restrictedReason?: 'BOTH_STRONG' | 'BOTH_WEAK';
 }
 
 // Currency strength tiers
