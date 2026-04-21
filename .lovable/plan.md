@@ -1,135 +1,86 @@
 
 
-User চাইছে check-in flow simplify করতে:
-1. **Web check-in**: প্রথমে একটা yes/no question — "আজকে সব rules maintain করেছ?" Yes দিলে সব rules auto-mark followed। No দিলে শুধু broken rules গুলো select করার option আসবে।
-2. **Telegram check-in**: একই flow Telegram এ inline buttons দিয়ে।
+# Floating Watchlist-এ Bias Display + Quality Filter
 
-Let me check current DailyCheckinTab to know what to refactor.
-<br>
-Current: probably shows all rules with toggles individually. Need to invert UX — default assume all followed, only mark violations.
+## কী Add হবে
 
-Telegram side: need 2-way Telegram bot using getUpdates polling (already have telegram-poll pattern via `mind-telegram-sync`). Need new function `rules-telegram-checkin` that handles inline button callbacks. 9:30 PM push already exists — need to send inline keyboard with "✅ All maintained" / "❌ Some broken" buttons. If broken → send list of rules with checkbox-style buttons.
+Floating assistive button → Watchlist panel-এর প্রতিটা forex pair-এর জন্য একটা **Bias badge** দেখাবে (HQ Buy / Med Buy / Neutral / Med Sell / HQ Sell), এবং উপরে একটা **Quality Filter chip bar** থাকবে দ্রুত filter করার জন্য।
 
----
-
-# Plan: Simplified Rules Check-in (Web + Telegram)
-
-## Part 1: Web Check-in UX Refactor
-
-**File**: `src/components/rules/DailyCheckinTab.tsx`
-
-New flow (single page, 2 steps):
+## UI Design (WatchlistPanel-এর ভেতরে)
 
 ```text
-Step 1: Big question card
-  ┌─────────────────────────────────────┐
-  │  আজকে কি সব rules maintain করেছ?     │
-  │                                     │
-  │  [✅ হ্যাঁ, সব mark করো]             │
-  │  [❌ না, কিছু broke করেছি]           │
-  └─────────────────────────────────────┘
-
-Step 2a (Yes clicked):
-  → All rules auto-marked as followed
-  → Mood selector + trade count + note
-  → "Submit Check-in" button
-  → Score = 100%
-
-Step 2b (No clicked):
-  → Show rule list grouped by category
-  → User TICKS only the ones they BROKE (red checkboxes)
-  → Untouched = followed (default)
-  → Counter: "3 broken / 12 total"
-  → Mood + trades + note + Submit
+┌──────────────────────────────────────────┐
+│ Watchlist                            [×] │
+│ ⚡ Strength from NEW YORK      14:32     │
+├──────────────────────────────────────────┤
+│ 🔍 Search pairs...                       │
+├──────────────────────────────────────────┤
+│ [All] [USD] [EUR] [GBP] [JPY] ...        │ ← existing category tabs
+├──────────────────────────────────────────┤
+│ ★ Quality:                               │ ← NEW bias filter row
+│ [All] [HQ Buy] [Med Buy] [Neut]          │
+│ [Med Sell] [HQ Sell]                     │
+│                          12 of 33 pairs  │
+├──────────────────────────────────────────┤
+│ 🇪🇺🇺🇸  EURUSD          EUR +6   ┃      │
+│ Euro / U.S. Dollar      USD -4   ┃      │
+│ [EUR S] / [USD W] [🟢 HQ BUY]    Δ +10   │ ← NEW bias pill
+├──────────────────────────────────────────┤
+│ 🇬🇧🇯🇵  GBPJPY          GBP +5   ┃      │
+│ ...                     [🟡 NEUT] Δ +1   │
+└──────────────────────────────────────────┘
 ```
 
-Logic:
-- `mode: 'unset' | 'all-followed' | 'partial'`
-- If `all-followed`: `violatedIds = []`, score = 100
-- If `partial`: only checked ones go to `rule_violations`, rest counted as followed
+## Bias Logic (existing `src/lib/biasCalculator.ts` reuse)
 
-## Part 2: Telegram Check-in Flow
+প্রতিটা forex pair-এর জন্য:
+- `diff = baseStrength − quoteStrength` (already calculated in `PairRow`)
+- `calculateBias(diff)` → returns `{ quality, shortLabel, color, bgColor, borderColor, rank }`
 
-### New edge function: `rules-telegram-checkin-poll`
+Quality bands (existing thresholds):
+- **|diff| ≥ 3** → HQ Buy / HQ Sell (green/red strong)
+- **1.5 ≤ |diff| < 3** → Med Buy / Med Sell
+- **|diff| < 1.5** → Neutral
+- Non-forex pairs (XAUUSD, BTCUSD ইত্যাদি যাদের একটা leg-এর strength নেই) → bias dekhabe na, "—" দেখাবে; filter active থাকলে এগুলো hide হবে।
 
-Polls Telegram `getUpdates` for callback queries (button clicks). Runs every minute via cron.
+## Filter Behavior
 
-### Updated edge function: `rules-daily-checkin-push` (9:30 PM)
+- Default: **"All"** selected → কোনো filter নেই
+- "HQ Buy" tap → শুধু HQ_BUY pairs
+- Multiple tabs একসাথে combine হবে: **Category tab AND Search AND Bias filter** — তিনটাই AND condition
+- Filter selection **`useSyncedPreference`** দিয়ে save হবে (`watchlist.biasFilter`) → device-cross persisted
+- Sort order: bias filter active থাকলে diff-এর descending order-এ auto-sort (strongest signal উপরে)
 
-Currently sends plain text. Change to send inline keyboard:
+## Files Changed/Created
 
-```text
-🌙 Day's end — Rules check-in
+**New file:**
+- `src/components/floating/BiasPill.tsx` — small inline badge using `BiasInfo` colors (similar pattern to `StrengthBadge.tsx`)
 
-আজকে কি সব rules maintain করেছ?
-
-[✅ All maintained]  [❌ Some broken]
-[📝 Open in app]
-```
-
-### Callback handling logic
-
-When user clicks button, Telegram sends `callback_query`. Poller processes:
-
-1. **`✅ All maintained`** → Insert `daily_rule_adherence` (score 100, all followed). Edit message: "✅ Logged — all rules maintained! 100%"
-
-2. **`❌ Some broken`** → Edit message to show rule list with one button per rule:
-   ```
-   কোন rules broke করেছ? (tap to toggle)
-   
-   [⬜ No revenge trades]
-   [⬜ Wait for confirmation]
-   [⬜ Risk max 1%]
-   ...
-   [✅ Done — Submit]
-   ```
-   Tapping a rule toggles ⬜ ↔ 🔴. State stored in a new table `telegram_checkin_state` (chat_id + date + selected_rule_ids[]).
-
-3. **`✅ Done — Submit`** → Insert adherence + violations to DB. Confirm: "Logged — 3 broken, 9 followed (75%)"
-
-### Database additions
-
-New table for Telegram interaction state:
-```sql
-create table telegram_checkin_state (
-  chat_id bigint not null,
-  date date not null,
-  user_id uuid not null,
-  selected_rule_ids uuid[] default '{}',
-  message_id bigint,
-  updated_at timestamptz default now(),
-  primary key (chat_id, date)
-);
-```
-
-User-to-chat mapping: use existing `alert_settings.telegram_chat_id` to identify which user a chat belongs to.
-
-### Cron job
-
-Add new pg_cron job: `rules-telegram-checkin-poll` every minute.
+**Modified:**
+- `src/components/floating/WatchlistPanel.tsx`:
+  - Import `calculateBias`, `BIAS_FILTER_OPTIONS`, `BiasQuality` from `@/lib/biasCalculator`
+  - Add `biasFilter` state via `useSyncedPreference<BiasQuality | 'ALL'>('watchlist.biasFilter', 'ALL')`
+  - Add filter chip row between category tabs and list (compact horizontal scroll, similar style to existing tabs but smaller)
+  - In `useMemo` items filter: compute bias for each forex pair, then filter by `biasFilter` (skip non-forex when filter ≠ 'ALL')
+  - When filter ≠ 'ALL', sort by `|diff|` descending
+  - Pass `bias` prop into `PairRow`
+- `PairRow` component (same file):
+  - Render `<BiasPill>` next to existing `PairStrengthBadges` (or below on narrow widths)
+  - Color the pill using `bias.bgColor` / `bias.color` / `bias.borderColor`
+- Show "X of Y pairs" counter when filter active
 
 ## Technical Details
 
-**Files to modify**:
-- `src/components/rules/DailyCheckinTab.tsx` — invert UX (yes/no → conditional rule list)
-- `src/hooks/useDailyAdherence.ts` — add `submitAllFollowed()` helper
-- `supabase/functions/rules-daily-checkin-push/index.ts` — send inline keyboard
+- **No DB changes needed** — bias is derived live from existing `currency_strength` snapshot already loaded by `useStrengthSnapshot()`
+- **Non-forex pairs** (Metals/Crypto/Oil): বাদ পড়বে যখন quality filter active। "All" mode-এ "—" placeholder দেখাবে।
+- **Performance**: bias calculation cheap (one subtract + threshold check per pair); recomputed inside existing `useMemo`
+- **Persistence key**: `watchlist.biasFilter` synced via `PreferencesContext` (same pattern as `watchlist.lastPair`)
+- **Mobile-first**: filter chips horizontally scrollable, identical styling pattern to existing category tabs but with quality-specific colors (green/yellow/red shades from `biasCalculator`)
+- **Empty state**: if filter yields 0 pairs, show "No pairs match this bias quality" message
 
-**Files to create**:
-- `supabase/functions/rules-telegram-checkin-poll/index.ts` — polls callback_queries, handles state machine
-- migration: `telegram_checkin_state` table + cron job
+## Out of Scope (not in this change)
 
-**Telegram API methods used**:
-- `sendMessage` with `reply_markup.inline_keyboard`
-- `editMessageText` to update buttons after each tap
-- `answerCallbackQuery` to dismiss spinner
-- `getUpdates` with `allowed_updates: ['callback_query']`
-
-## Open Questions
-
-1. **Telegram identification**: `alert_settings` has only ONE shared `telegram_chat_id`। Single-user app বলে assume করছি — তোমার নিজের user_id এর সাথে map করব। ঠিক আছে?
-2. **Rule list size**: যদি 15+ rules থাকে, Telegram message এ অনেক button হবে। 8+ হলে category-wise group করব?
-3. **Web yes/no**: "All maintained" click করলে কি immediately submit হবে নাকি mood/trades fill করার option থাকবে?
-
-Defaults if no answer: single user mapping, group by category if >8 rules, show mood/trades after Yes click before final submit.
+- Bias trend over time / history
+- Bias-based push notifications
+- Editing bias thresholds from UI
 
