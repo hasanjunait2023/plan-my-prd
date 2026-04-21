@@ -254,6 +254,32 @@ Deno.serve(async (req) => {
       currencyScores[currency] = { score: totalScore, category };
     }
 
+    // === DATA QUALITY GUARD ===
+    // If too many pairs failed OR every currency scored exactly 0,
+    // the result is meaningless — skip DB insert + Telegram broadcast.
+    const totalScannedPairs = Object.keys(pairResults).length;
+    const nonZeroPairs = Object.values(pairResults).filter(r => r !== 0).length;
+    const allZeroScores = Object.values(currencyScores).every(c => c.score === 0);
+    const failureRate = totalScannedPairs > 0 ? errors.length / totalScannedPairs : 1;
+
+    if (allZeroScores || failureRate > 0.5 || nonZeroPairs === 0) {
+      const reason = allZeroScores
+        ? "all currency scores are zero (likely all pair fetches failed or returned identical values)"
+        : `too many pair fetch failures (${errors.length}/${totalScannedPairs})`;
+      console.error(`[ai-currency-scanner] Skipping broadcast — ${reason}`);
+      return new Response(JSON.stringify({
+        success: false,
+        skipped: true,
+        reason,
+        scan_batch_id: scanBatchId,
+        errors,
+        currencyScores,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Determine storage timeframe label based on session
     let storageTimeframe = timeframe;
     if (session === "New York") storageTimeframe = "New York";
