@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
-import { Search, X } from 'lucide-react';
+import { Search, X, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFloatingWatchlist } from '@/contexts/FloatingWatchlistContext';
+import { useSyncedPreference } from '@/contexts/PreferencesContext';
 import {
   WATCHLIST,
   WATCHLIST_CATEGORIES,
@@ -14,18 +15,30 @@ import { getPairFlags } from '@/lib/pairFlags';
 import { cn } from '@/lib/utils';
 import { useStrengthSnapshot } from '@/hooks/useCurrencyStrengths';
 import { PairStrengthBadges } from './StrengthBadge';
+import { BiasPill } from './BiasPill';
+import {
+  calculateBias,
+  BIAS_FILTER_OPTIONS,
+  type BiasQuality,
+  type BiasInfo,
+} from '@/lib/biasCalculator';
 import { Activity } from 'lucide-react';
 
 type TabKey = WatchlistCategory | 'ALL';
+type BiasFilter = BiasQuality | 'ALL';
 
 function PairRow({
   item,
   onClick,
   strengths,
+  bias,
+  diff,
 }: {
   item: WatchlistItem;
   onClick: () => void;
   strengths: ReturnType<typeof useStrengthSnapshot>['data'];
+  bias?: BiasInfo;
+  diff?: number;
 }) {
   const { base, quote } = getPairFlags(item.symbol);
   const baseCur = item.symbol.slice(0, 3);
@@ -35,7 +48,6 @@ function PairRow({
 
   const baseStr = baseEntry?.strength;
   const quoteStr = quoteEntry?.strength;
-  const diff = baseStr !== undefined && quoteStr !== undefined ? baseStr - quoteStr : undefined;
 
   const tierColor = (s?: number): string => {
     if (s === undefined) return 'hsl(0, 0%, 50%)';
@@ -59,20 +71,23 @@ function PairRow({
         <span className="absolute left-0 top-0 text-2xl">{base}</span>
         <span className="absolute right-0 bottom-0 text-2xl">{quote}</span>
       </div>
-      {/* Name + tier badges */}
+      {/* Name + tier badges + bias pill */}
       <div className="flex-1 min-w-0">
         <div className="text-sm font-semibold text-foreground truncate">{item.symbol}</div>
         <div className="text-[10px] text-muted-foreground truncate mb-1">{item.name}</div>
-        {(baseEntry || quoteEntry) && (
-          <PairStrengthBadges
-            base={baseCur}
-            quote={quoteCur}
-            baseTier={baseEntry?.tier}
-            quoteTier={quoteEntry?.tier}
-            baseStrength={baseEntry?.strength}
-            quoteStrength={quoteEntry?.strength}
-          />
-        )}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {(baseEntry || quoteEntry) && (
+            <PairStrengthBadges
+              base={baseCur}
+              quote={quoteCur}
+              baseTier={baseEntry?.tier}
+              quoteTier={quoteEntry?.tier}
+              baseStrength={baseEntry?.strength}
+              quoteStrength={quoteEntry?.strength}
+            />
+          )}
+          {(baseEntry && quoteEntry) && <BiasPill bias={bias} />}
+        </div>
       </div>
       {/* Right side: numeric strength values + differential */}
       <div className="text-right shrink-0 flex flex-col items-end gap-0.5 min-w-[72px]">
@@ -114,39 +129,83 @@ function PairRow({
   );
 }
 
+// Color hint for bias filter chip when active
+const BIAS_CHIP_ACCENT: Record<BiasQuality | 'ALL', string> = {
+  ALL: 'hsl(var(--primary))',
+  HIGH_BUY: 'hsl(142, 76%, 50%)',
+  MEDIUM_BUY: 'hsl(142, 60%, 55%)',
+  NEUTRAL: 'hsl(48, 96%, 53%)',
+  MEDIUM_SELL: 'hsl(15, 85%, 60%)',
+  HIGH_SELL: 'hsl(0, 84%, 62%)',
+};
+
+const BIAS_CHIP_SHORT: Record<BiasQuality | 'ALL', string> = {
+  ALL: 'All',
+  HIGH_BUY: 'HQ Buy',
+  MEDIUM_BUY: 'Med Buy',
+  NEUTRAL: 'Neutral',
+  MEDIUM_SELL: 'Med Sell',
+  HIGH_SELL: 'HQ Sell',
+};
+
 export function WatchlistPanel() {
   const isMobile = useIsMobile();
   const { watchlistOpen, closeWatchlist, openChart } = useFloatingWatchlist();
   const [tab, setTab] = useState<TabKey>('ALL');
   const [search, setSearch] = useState('');
+  const [biasFilter, setBiasFilter] = useSyncedPreference<BiasFilter>('watchlist.biasFilter', 'ALL');
   const snapshot = useStrengthSnapshot();
   const strengths = snapshot.data;
 
-  // Filter items
-  const items = useMemo(() => {
-    let list = WATCHLIST;
+  // Compute bias for each item once
+  type EnrichedItem = { item: WatchlistItem; diff?: number; bias?: BiasInfo };
+
+  const enrichedAll = useMemo<EnrichedItem[]>(() => {
+    return WATCHLIST.map((item) => {
+      const baseCur = item.symbol.slice(0, 3);
+      const quoteCur = item.symbol.slice(3, 6);
+      const baseEntry = strengths[baseCur];
+      const quoteEntry = strengths[quoteCur];
+      if (baseEntry?.strength === undefined || quoteEntry?.strength === undefined) {
+        return { item };
+      }
+      const diff = baseEntry.strength - quoteEntry.strength;
+      return { item, diff, bias: calculateBias(diff) };
+    });
+  }, [strengths]);
+
+  // Filter items: category → search → bias quality
+  const items = useMemo<EnrichedItem[]>(() => {
+    let list = enrichedAll;
     if (tab === 'JPY') {
-      list = WATCHLIST.filter((w) => w.symbol.includes('JPY'));
+      list = list.filter((e) => e.item.symbol.includes('JPY'));
     } else if (tab !== 'ALL') {
-      list = WATCHLIST.filter((w) => w.category === tab);
+      list = list.filter((e) => e.item.category === tab);
     }
     if (search.trim()) {
       const q = search.trim().toUpperCase();
-      list = list.filter((w) => w.symbol.includes(q) || w.name.toUpperCase().includes(q));
+      list = list.filter((e) => e.item.symbol.includes(q) || e.item.name.toUpperCase().includes(q));
+    }
+    if (biasFilter !== 'ALL') {
+      list = list.filter((e) => e.bias?.quality === biasFilter);
+      // sort by |diff| descending — strongest signal first
+      list = [...list].sort((a, b) => Math.abs(b.diff ?? 0) - Math.abs(a.diff ?? 0));
     }
     return list;
-  }, [tab, search]);
+  }, [enrichedAll, tab, search, biasFilter]);
 
-  // Group by category for "All Pair"
+  // Group by category for "All Pair" — only when no bias filter (sorting would conflict)
   const grouped = useMemo(() => {
-    if (tab !== 'ALL') return null;
-    const map = new Map<string, WatchlistItem[]>();
-    for (const it of items) {
-      if (!map.has(it.category)) map.set(it.category, []);
-      map.get(it.category)!.push(it);
+    if (tab !== 'ALL' || biasFilter !== 'ALL') return null;
+    const map = new Map<string, EnrichedItem[]>();
+    for (const e of items) {
+      if (!map.has(e.item.category)) map.set(e.item.category, []);
+      map.get(e.item.category)!.push(e);
     }
     return Array.from(map.entries());
-  }, [items, tab]);
+  }, [items, tab, biasFilter]);
+
+  const filterActive = biasFilter !== 'ALL';
 
   return (
     <Sheet open={watchlistOpen} onOpenChange={(o) => !o && closeWatchlist()}>
@@ -196,7 +255,7 @@ export function WatchlistPanel() {
           </div>
         </div>
 
-        {/* Tabs (horizontal scroll) */}
+        {/* Category Tabs (horizontal scroll) */}
         <div className="px-2 border-b border-border/40">
           <div className="flex gap-1 overflow-x-auto no-scrollbar pb-2 pt-1">
             {WATCHLIST_CATEGORIES.map((cat) => {
@@ -219,10 +278,58 @@ export function WatchlistPanel() {
           </div>
         </div>
 
+        {/* Bias Quality Filter */}
+        <div className="px-2 border-b border-border/40 bg-muted/10">
+          <div className="flex items-center gap-2 px-1 pt-2 pb-1">
+            <Sparkles className="w-3 h-3 text-primary shrink-0" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Quality
+            </span>
+            {filterActive && (
+              <span className="ml-auto text-[10px] text-muted-foreground tabular-nums">
+                {items.length} of {enrichedAll.length}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-1 overflow-x-auto no-scrollbar pb-2 pt-0.5">
+            {BIAS_FILTER_OPTIONS.map((opt) => {
+              const active = biasFilter === opt.value;
+              const accent = BIAS_CHIP_ACCENT[opt.value];
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => setBiasFilter(opt.value as BiasFilter)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all border'
+                  )}
+                  style={
+                    active
+                      ? {
+                          color: accent,
+                          backgroundColor: `${accent.replace('hsl', 'hsla').replace(')', ', 0.15)')}`,
+                          borderColor: `${accent.replace('hsl', 'hsla').replace(')', ', 0.4)')}`,
+                          boxShadow: `0 0 8px ${accent.replace('hsl', 'hsla').replace(')', ', 0.25)')}`,
+                        }
+                      : undefined
+                  }
+                >
+                  <span className={cn(!active && 'text-muted-foreground')}>
+                    {BIAS_CHIP_SHORT[opt.value]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* List */}
         <div className="flex-1 overflow-y-auto">
           {items.length === 0 && (
-            <div className="p-8 text-center text-sm text-muted-foreground">No pairs found.</div>
+            <div className="p-8 text-center text-sm text-muted-foreground">
+              {filterActive
+                ? 'No pairs match this bias quality.'
+                : 'No pairs found.'}
+            </div>
           )}
 
           {grouped ? (
@@ -231,14 +338,28 @@ export function WatchlistPanel() {
                 <div className="px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-muted/20">
                   {cat}
                 </div>
-                {list.map((item) => (
-                  <PairRow key={item.symbol} item={item} strengths={strengths} onClick={() => openChart(item.symbol)} />
+                {list.map((e) => (
+                  <PairRow
+                    key={e.item.symbol}
+                    item={e.item}
+                    strengths={strengths}
+                    bias={e.bias}
+                    diff={e.diff}
+                    onClick={() => openChart(e.item.symbol)}
+                  />
                 ))}
               </div>
             ))
           ) : (
-            items.map((item) => (
-              <PairRow key={item.symbol} item={item} strengths={strengths} onClick={() => openChart(item.symbol)} />
+            items.map((e) => (
+              <PairRow
+                key={e.item.symbol}
+                item={e.item}
+                strengths={strengths}
+                bias={e.bias}
+                diff={e.diff}
+                onClick={() => openChart(e.item.symbol)}
+              />
             ))
           )}
         </div>
