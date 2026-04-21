@@ -229,8 +229,9 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Premium Header */}
+    <SectionVisibilityProvider pageKey="dashboard">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Premium Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
