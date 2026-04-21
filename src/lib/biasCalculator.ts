@@ -173,6 +173,23 @@ function makeNeutral(): BiasInfo {
   };
 }
 
+function makeRestricted(reason: 'BOTH_STRONG' | 'BOTH_WEAK'): BiasInfo {
+  return {
+    quality: 'NEUTRAL',
+    label: reason === 'BOTH_STRONG'
+      ? 'Avoid — both currencies strong'
+      : 'Avoid — both currencies weak',
+    shortLabel: '🚫 AVOID',
+    direction: 'NEUTRAL',
+    color: 'hsl(0, 0%, 70%)',
+    bgColor: 'hsla(0, 0%, 50%, 0.15)',
+    borderColor: 'hsla(0, 0%, 50%, 0.4)',
+    rank: -1,
+    restricted: true,
+    restrictedReason: reason,
+  };
+}
+
 export const BIAS_FILTER_OPTIONS: Array<{ value: BiasQuality | 'ALL'; label: string }> = [
   { value: 'ALL', label: 'All' },
   { value: 'HIGH_BUY', label: 'High Quality Buy' },
