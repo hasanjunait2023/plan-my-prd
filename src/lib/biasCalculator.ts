@@ -64,6 +64,14 @@ export function calculateBias(
   const baseTier = tierOf(baseStrength);
   const quoteTier = tierOf(quoteStrength);
 
+  // Restricted cases: both currencies share an extreme tier → avoid trading this session
+  const baseStrongish = baseTier === 'STRONG' || baseTier === 'MED_STRONG';
+  const quoteStrongish = quoteTier === 'STRONG' || quoteTier === 'MED_STRONG';
+  const baseWeakish = baseTier === 'WEAK' || baseTier === 'MID_WEAK';
+  const quoteWeakish = quoteTier === 'WEAK' || quoteTier === 'MID_WEAK';
+  if (baseStrongish && quoteStrongish) return makeRestricted('BOTH_STRONG');
+  if (baseWeakish && quoteWeakish) return makeRestricted('BOTH_WEAK');
+
   // Decision matrix (in priority order)
   // 1. Strong base vs non-strong quote → HQ BUY
   if (baseTier === 'STRONG' && isNonStrong(quoteTier)) {
