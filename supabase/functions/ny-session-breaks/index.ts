@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     }
 
     const priceUrl = `${TWELVEDATA_BASE}/price?symbol=${encodeURIComponent(symbols)}&apikey=__API_KEY__`
-    const priceResponse = await fetchWithRotation(priceUrl, "twelvedata", sb)
+    const priceResponse = await fetchWithRotation(priceUrl, "twelvedata", sb, { maxWaitMs: 3000, waitChunkMs: 1500 })
     const priceData = await priceResponse.json()
 
     if (priceData?.fallback === true) {
