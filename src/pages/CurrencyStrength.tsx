@@ -25,6 +25,9 @@ import { SupplyDemandPanel } from '@/components/correlation/SupplyDemandPanel';
 import { MARKET_SESSIONS, getSessionHours, isSessionActive, getBDHour, getBDMinute } from '@/lib/timezone';
 import { TierLegend } from '@/components/correlation/TierLegend';
 import { useSyncedPreference } from '@/contexts/PreferencesContext';
+import { SectionVisibilityProvider } from '@/contexts/SectionVisibilityContext';
+import { HiddenSectionsBar } from '@/components/common/HiddenSectionsBar';
+import { HideableSection } from '@/components/common/HideableSection';
 
 function getDefaultTab(): string {
   const now = new Date();
