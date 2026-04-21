@@ -33,16 +33,23 @@ export function HideableSection({ id, title, children, className }: HideableSect
     <div className={cn('relative group/hideable', className)}>
       <button
         type="button"
-        onClick={() => ctx.hide(id)}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          ctx.hide(id);
+        }}
         title={`Hide "${title}"`}
         aria-label={`Hide ${title}`}
         className={cn(
           'absolute top-2 right-2 z-30 h-7 w-7 rounded-md',
           'flex items-center justify-center',
-          'bg-card/70 backdrop-blur-sm border border-border/40',
-          'text-muted-foreground hover:text-foreground',
-          'opacity-0 group-hover/hideable:opacity-100 focus:opacity-100',
-          'transition-opacity duration-150 shadow-sm',
+          'bg-card/80 backdrop-blur-sm border border-border/40',
+          'text-muted-foreground hover:text-foreground hover:bg-card',
+          'opacity-100 sm:opacity-0 sm:group-hover/hideable:opacity-100 focus:opacity-100',
+          'transition-opacity duration-150 shadow-sm cursor-pointer',
         )}
       >
         <EyeOff className="h-3.5 w-3.5" />
