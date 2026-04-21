@@ -18,44 +18,90 @@ export interface BiasInfo {
   rank: number;         // higher = stronger conviction (used for sorting)
 }
 
+// Currency strength tiers
+type Tier = 'STRONG' | 'MED_STRONG' | 'NEUTRAL' | 'MID_WEAK' | 'WEAK';
+
+const STRENGTH_TIERS = {
+  STRONG: 5,
+  MED_STRONG: 2,
+  NEUTRAL_LOW: -2,
+  MID_WEAK_LOW: -5,
+} as const;
+
+function tierOf(s: number): Tier {
+  if (s >= STRENGTH_TIERS.STRONG) return 'STRONG';
+  if (s >= STRENGTH_TIERS.MED_STRONG) return 'MED_STRONG';
+  if (s > STRENGTH_TIERS.NEUTRAL_LOW) return 'NEUTRAL';
+  if (s > STRENGTH_TIERS.MID_WEAK_LOW) return 'MID_WEAK';
+  return 'WEAK';
+}
+
+// Quote/base "non-strong" — i.e. NEUTRAL or weaker (qualifies as a target for a strong base buy)
+function isNonStrong(t: Tier): boolean {
+  return t === 'NEUTRAL' || t === 'MID_WEAK' || t === 'WEAK';
+}
+
 /**
- * Calculate bias from a strength differential (base − quote).
- * Positive diff → BUY bias, negative → SELL bias.
+ * Calculate bias using STRICT major-currency logic.
+ * A real BUY/SELL signal requires ONE currency to be strong (or medium-strong)
+ * AND the other to be neutral/weak. Two strong or two weak currencies → Neutral.
  *
- * Optionally pass baseStrength + quoteStrength to apply a HYBRID quality
- * downgrade: when both currencies share the same sign (both bullish or both
- * bearish), the signal is less clean → downgrade by one tier
- * (HQ → MED, MED → NEUTRAL).
+ * Falls back to differential-only logic when base/quote strengths are not provided
+ * (e.g. non-forex pairs like XAUUSD/BTCUSD).
  */
 export function calculateBias(
   diff: number,
   baseStrength?: number,
   quoteStrength?: number,
 ): BiasInfo {
+  // Fallback: non-forex pair → use diff-only logic
+  if (baseStrength === undefined || quoteStrength === undefined) {
+    return calculateBiasFromDiff(diff);
+  }
+
+  const baseTier = tierOf(baseStrength);
+  const quoteTier = tierOf(quoteStrength);
+
+  // Decision matrix (in priority order)
+  // 1. Strong base vs non-strong quote → HQ BUY
+  if (baseTier === 'STRONG' && isNonStrong(quoteTier)) {
+    return makeBias('HIGH', 'BUY');
+  }
+  // 2. Strong quote vs non-strong base → HQ SELL
+  if (quoteTier === 'STRONG' && isNonStrong(baseTier)) {
+    return makeBias('HIGH', 'SELL');
+  }
+  // 3. Med-strong base vs non-strong quote → MED BUY
+  if (baseTier === 'MED_STRONG' && isNonStrong(quoteTier)) {
+    return makeBias('MEDIUM', 'BUY');
+  }
+  // 4. Med-strong quote vs non-strong base → MED SELL
+  if (quoteTier === 'MED_STRONG' && isNonStrong(baseTier)) {
+    return makeBias('MEDIUM', 'SELL');
+  }
+  // 5. Weak quote drives a buy when base is at least neutral
+  if (quoteTier === 'WEAK' && (baseTier === 'NEUTRAL' || baseTier === 'MED_STRONG' || baseTier === 'STRONG')) {
+    return makeBias('MEDIUM', 'BUY');
+  }
+  // 6. Weak base drives a sell when quote is at least neutral
+  if (baseTier === 'WEAK' && (quoteTier === 'NEUTRAL' || quoteTier === 'MED_STRONG' || quoteTier === 'STRONG')) {
+    return makeBias('MEDIUM', 'SELL');
+  }
+  // 7. Everything else → Neutral
+  return makeNeutral();
+}
+
+/** Legacy diff-only path for non-forex pairs. */
+function calculateBiasFromDiff(diff: number): BiasInfo {
   const abs = Math.abs(diff);
-
-  if (abs < BIAS_THRESHOLDS.MEDIUM) {
-    return makeNeutral();
-  }
-
+  if (abs < BIAS_THRESHOLDS.MEDIUM) return makeNeutral();
   const isBuy = diff > 0;
+  const tier: 'HIGH' | 'MEDIUM' = abs >= BIAS_THRESHOLDS.HIGH ? 'HIGH' : 'MEDIUM';
+  return makeBias(tier, isBuy ? 'BUY' : 'SELL');
+}
 
-  // Base tier from differential alone
-  let tier: 'HIGH' | 'MEDIUM' = abs >= BIAS_THRESHOLDS.HIGH ? 'HIGH' : 'MEDIUM';
-
-  // Hybrid downgrade: when both currencies share the same sign, the trade
-  // is less of a true divergence — downgrade by one tier.
-  if (
-    baseStrength !== undefined &&
-    quoteStrength !== undefined &&
-    baseStrength !== 0 &&
-    quoteStrength !== 0 &&
-    Math.sign(baseStrength) === Math.sign(quoteStrength)
-  ) {
-    if (tier === 'HIGH') tier = 'MEDIUM';
-    else return makeNeutral();
-  }
-
+function makeBias(tier: 'HIGH' | 'MEDIUM', dir: 'BUY' | 'SELL'): BiasInfo {
+  const isBuy = dir === 'BUY';
   if (tier === 'HIGH') {
     return isBuy
       ? {
