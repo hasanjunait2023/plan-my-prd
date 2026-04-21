@@ -32,41 +32,34 @@ export function useLifeNodes() {
     setLoading(false);
   }, [user]);
 
-  // Keep latest fetchAll in a ref so realtime callback never goes stale
-  // and the subscription effect doesn't re-run on every render.
-  const fetchAllRef = useRef(fetchAll);
-  useEffect(() => {
-    fetchAllRef.current = fetchAll;
+  const scheduleRefetch = useCallback(() => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      fetchAll();
+      debounceRef.current = null;
+    }, 350);
   }, [fetchAll]);
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    fetchAllRef.current();
+    fetchAll();
+    if (!user) return;
 
     const channelTopic = `life_nodes_realtime_${user.id}_${Math.random().toString(36).slice(2)}`;
-    const channel = supabase
-      .channel(channelTopic)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "life_nodes", filter: `user_id=eq.${user.id}` },
-        () => {
-          if (debounceRef.current) window.clearTimeout(debounceRef.current);
-          debounceRef.current = window.setTimeout(() => {
-            fetchAllRef.current();
-            debounceRef.current = null;
-          }, 350);
-        }
-      )
-      .subscribe();
+    const channel = supabase.channel(channelTopic);
+
+    channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "life_nodes", filter: `user_id=eq.${user.id}` },
+      scheduleRefetch
+    );
+
+    channel.subscribe();
 
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user, fetchAll, scheduleRefetch]);
 
   const createNode = useCallback(
     async (input: Omit<LifeNodeInsert, "user_id">) => {
