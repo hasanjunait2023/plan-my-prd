@@ -16,9 +16,6 @@ import { usePsychologyLogs } from '@/hooks/usePsychologyLogs';
 import { useTradingRules } from '@/hooks/useTradingRules';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DailyPnL } from '@/types/trade';
-import { SectionVisibilityProvider } from '@/contexts/SectionVisibilityContext';
-import { HiddenSectionsBar } from '@/components/common/HiddenSectionsBar';
-import { HideableSection } from '@/components/common/HideableSection';
 
 const glassCard = "border-border/30 bg-card/50 backdrop-blur-sm shadow-[0_4px_24px_hsla(0,0%,0%,0.3)]";
 const tooltipStyle = { backgroundColor: 'hsl(0, 0%, 8%)', border: '1px solid hsla(0,0%,100%,0.1)', borderRadius: '8px', color: 'hsl(0, 0%, 95%)' };
@@ -229,9 +226,8 @@ const Dashboard = () => {
   }
 
   return (
-    <SectionVisibilityProvider pageKey="dashboard">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Premium Header */}
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Premium Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
@@ -255,11 +251,7 @@ const Dashboard = () => {
         </ToggleGroup>
       </div>
 
-      <HiddenSectionsBar />
-
-      <HideableSection id="session-panel" title="Session Panel">
-        <SessionPanel />
-      </HideableSection>
+      <SessionPanel />
 
       {/* Pending Trades Alert */}
       {allTrades.filter(t => t.status === 'PENDING').length > 0 && (
@@ -664,8 +656,7 @@ const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
-      </div>
-    </SectionVisibilityProvider>
+    </div>
   );
 };
 
