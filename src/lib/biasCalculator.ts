@@ -21,26 +21,42 @@ export interface BiasInfo {
 /**
  * Calculate bias from a strength differential (base − quote).
  * Positive diff → BUY bias, negative → SELL bias.
+ *
+ * Optionally pass baseStrength + quoteStrength to apply a HYBRID quality
+ * downgrade: when both currencies share the same sign (both bullish or both
+ * bearish), the signal is less clean → downgrade by one tier
+ * (HQ → MED, MED → NEUTRAL).
  */
-export function calculateBias(diff: number): BiasInfo {
+export function calculateBias(
+  diff: number,
+  baseStrength?: number,
+  quoteStrength?: number,
+): BiasInfo {
   const abs = Math.abs(diff);
 
   if (abs < BIAS_THRESHOLDS.MEDIUM) {
-    return {
-      quality: 'NEUTRAL',
-      label: 'Neutral',
-      shortLabel: 'NEUT',
-      direction: 'NEUTRAL',
-      color: 'hsl(48, 96%, 53%)',
-      bgColor: 'hsla(48, 96%, 53%, 0.12)',
-      borderColor: 'hsla(48, 96%, 53%, 0.25)',
-      rank: 0,
-    };
+    return makeNeutral();
   }
 
   const isBuy = diff > 0;
 
-  if (abs >= BIAS_THRESHOLDS.HIGH) {
+  // Base tier from differential alone
+  let tier: 'HIGH' | 'MEDIUM' = abs >= BIAS_THRESHOLDS.HIGH ? 'HIGH' : 'MEDIUM';
+
+  // Hybrid downgrade: when both currencies share the same sign, the trade
+  // is less of a true divergence — downgrade by one tier.
+  if (
+    baseStrength !== undefined &&
+    quoteStrength !== undefined &&
+    baseStrength !== 0 &&
+    quoteStrength !== 0 &&
+    Math.sign(baseStrength) === Math.sign(quoteStrength)
+  ) {
+    if (tier === 'HIGH') tier = 'MEDIUM';
+    else return makeNeutral();
+  }
+
+  if (tier === 'HIGH') {
     return isBuy
       ? {
           quality: 'HIGH_BUY',
@@ -86,6 +102,19 @@ export function calculateBias(diff: number): BiasInfo {
         borderColor: 'hsla(15, 85%, 60%, 0.25)',
         rank: 2,
       };
+}
+
+function makeNeutral(): BiasInfo {
+  return {
+    quality: 'NEUTRAL',
+    label: 'Neutral',
+    shortLabel: 'NEUT',
+    direction: 'NEUTRAL',
+    color: 'hsl(48, 96%, 53%)',
+    bgColor: 'hsla(48, 96%, 53%, 0.12)',
+    borderColor: 'hsla(48, 96%, 53%, 0.25)',
+    rank: 0,
+  };
 }
 
 export const BIAS_FILTER_OPTIONS: Array<{ value: BiasQuality | 'ALL'; label: string }> = [
