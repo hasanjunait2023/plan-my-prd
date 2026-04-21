@@ -255,7 +255,11 @@ const Dashboard = () => {
         </ToggleGroup>
       </div>
 
-      <SessionPanel />
+      <HiddenSectionsBar />
+
+      <HideableSection id="session-panel" title="Session Panel">
+        <SessionPanel />
+      </HideableSection>
 
       {/* Pending Trades Alert */}
       {allTrades.filter(t => t.status === 'PENDING').length > 0 && (
@@ -660,7 +664,8 @@ const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </SectionVisibilityProvider>
   );
 };
 
