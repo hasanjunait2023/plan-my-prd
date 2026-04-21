@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     const nyWindow = getLastNySessionWindow()
 
     const timeSeriesUrl = `${TWELVEDATA_BASE}/time_series?symbol=${encodeURIComponent(symbols)}&interval=1h&outputsize=120&apikey=__API_KEY__`
-    const tsResponse = await fetchWithRotation(timeSeriesUrl, "twelvedata", sb)
+    const tsResponse = await fetchWithRotation(timeSeriesUrl, "twelvedata", sb, { maxWaitMs: 3000, waitChunkMs: 1500 })
     const tsData = await tsResponse.json()
 
     // Handle API key exhaustion gracefully
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     }
 
     const priceUrl = `${TWELVEDATA_BASE}/price?symbol=${encodeURIComponent(symbols)}&apikey=__API_KEY__`
-    const priceResponse = await fetchWithRotation(priceUrl, "twelvedata", sb)
+    const priceResponse = await fetchWithRotation(priceUrl, "twelvedata", sb, { maxWaitMs: 3000, waitChunkMs: 1500 })
     const priceData = await priceResponse.json()
 
     if (priceData?.fallback === true) {
