@@ -17,6 +17,9 @@ import { DailyQuote } from '@/components/habits/DailyQuote';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import { format, subDays, isWithinInterval, parseISO } from 'date-fns';
+import { SectionVisibilityProvider } from '@/contexts/SectionVisibilityContext';
+import { HiddenSectionsBar } from '@/components/common/HiddenSectionsBar';
+import { HideableSection } from '@/components/common/HideableSection';
 import {
   DndContext,
   closestCenter,
@@ -305,159 +308,183 @@ export default function HabitTracking() {
   const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg">
-            <Target className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Habit Tracker</h1>
-            <p className="text-xs text-muted-foreground">{format(new Date(), 'EEEE, MMMM d')}</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowArchived(!showArchived)} variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
-            <Archive className="w-4 h-4" /> {showArchived ? 'Hide' : 'Archived'}
-          </Button>
-          <Button onClick={() => { setEditHabit(null); setShowForm(true); }} size="sm" className="gap-1.5">
-            <Plus className="w-4 h-4" /> Add Habit
-          </Button>
-        </div>
-      </div>
-
-      {/* Daily Quote */}
-      <DailyQuote />
-
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="p-4 bg-card/60 border-border/30">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <Check className="w-4 h-4 text-green-400" />
-            <span className="text-xs font-medium">Today</span>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{completedCount}/{totalCount}</p>
-          <p className="text-[10px] text-muted-foreground">{completionRate}% done</p>
-        </Card>
-        <Card className="p-4 bg-card/60 border-border/30">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <Flame className="w-4 h-4 text-orange-400" />
-            <span className="text-xs font-medium">Best Streak</span>
-          </div>
-          <p className="text-2xl font-bold text-foreground">
-            {habits.length > 0 ? Math.max(...habits.map(h => h.longest_streak)) : 0}
-          </p>
-          <p className="text-[10px] text-muted-foreground">days</p>
-        </Card>
-        <Card className="p-4 bg-card/60 border-border/30">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <Clock className="w-4 h-4 text-blue-400" />
-            <span className="text-xs font-medium">Active</span>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{totalCount}</p>
-          <p className="text-[10px] text-muted-foreground">habits</p>
-        </Card>
-      </div>
-
-      {/* Focus Panel */}
-      {habits.length > 0 && (
-        <HabitFocusPanel
-          habits={habits}
-          todayLogs={todayLogs}
-          monthLogs={monthLogs}
-          onQuickComplete={(habit) => setCompletionTarget(habit)}
-        />
-      )}
-
-      {/* Category Filter */}
-      {categories.length > 2 && (
-        <Tabs value={categoryFilter} onValueChange={setCategoryFilter}>
-          <TabsList className="bg-card/60 border border-border/30">
-            {categories.map(c => (
-              <TabsTrigger key={c} value={c} className="capitalize text-xs">{c}</TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      )}
-
-      {/* Habits List with DnD */}
-      {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">Loading habits...</div>
-      ) : filteredHabits.length === 0 ? (
-        <Card className="p-12 text-center bg-card/40 border-border/30">
-          <AlertCircle className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">
-            {categoryFilter !== 'all' ? `No ${categoryFilter} habits yet.` : 'No habits yet. Start building one!'}
-          </p>
-          <Button onClick={() => setShowForm(true)} variant="outline" size="sm" className="mt-4 gap-1.5">
-            <Plus className="w-4 h-4" /> Create First Habit
-          </Button>
-        </Card>
-      ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={filteredHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-3">
-              {filteredHabits.map(habit => (
-                <HabitCard
-                  key={habit.id}
-                  habit={habit}
-                  isCompleted={todayLogs.some(l => l.habit_id === habit.id)}
-                  weekLogs={weekLogs.filter(l => l.habit_id === habit.id)}
-                  monthLogs={monthLogs.filter(l => l.habit_id === habit.id)}
-                  onComplete={() => setCompletionTarget(habit)}
-                  onEdit={() => { setEditHabit(habit); setShowForm(true); }}
-                  onUndo={() => undoMutation.mutate(habit.id)}
-                  canUndo={canUndo(habit.id)}
-                />
-              ))}
+    <SectionVisibilityProvider pageKey="habits">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg">
+              <Target className="w-5 h-5 text-white" />
             </div>
-          </SortableContext>
-        </DndContext>
-      )}
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Habit Tracker</h1>
+              <p className="text-xs text-muted-foreground">{format(new Date(), 'EEEE, MMMM d')}</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowArchived(!showArchived)} variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+              <Archive className="w-4 h-4" /> {showArchived ? 'Hide' : 'Archived'}
+            </Button>
+            <Button onClick={() => { setEditHabit(null); setShowForm(true); }} size="sm" className="gap-1.5">
+              <Plus className="w-4 h-4" /> Add Habit
+            </Button>
+          </div>
+        </div>
 
-      {/* Archived Section */}
-      {showArchived && archivedHabits.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-            <Archive className="w-4 h-4" /> Archived Habits
-          </h2>
-          {archivedHabits.map(habit => (
-            <Card key={habit.id} className="p-4 bg-card/30 border-border/20 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">{habit.name}</p>
-                <p className="text-[10px] text-muted-foreground/60">{habit.total_completions} completions · Best streak: {habit.longest_streak}</p>
+        <HiddenSectionsBar />
+
+        {/* Daily Quote */}
+        <HideableSection id="daily-quote" title="Daily Quote">
+          <DailyQuote />
+        </HideableSection>
+
+        <HideableSection id="stats-cards" title="Today's Stats">
+          <div className="grid grid-cols-3 gap-3">
+            <Card className="p-4 bg-card/60 border-border/30">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <Check className="w-4 h-4 text-green-400" />
+                <span className="text-xs font-medium">Today</span>
               </div>
-              <Button onClick={() => reactivateMutation.mutate(habit.id)} variant="outline" size="sm" className="gap-1">
-                <RotateCcw className="w-3.5 h-3.5" /> Reactivate
+              <p className="text-2xl font-bold text-foreground">{completedCount}/{totalCount}</p>
+              <p className="text-[10px] text-muted-foreground">{completionRate}% done</p>
+            </Card>
+            <Card className="p-4 bg-card/60 border-border/30">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <Flame className="w-4 h-4 text-orange-400" />
+                <span className="text-xs font-medium">Best Streak</span>
+              </div>
+              <p className="text-2xl font-bold text-foreground">
+                {habits.length > 0 ? Math.max(...habits.map(h => h.longest_streak)) : 0}
+              </p>
+              <p className="text-[10px] text-muted-foreground">days</p>
+            </Card>
+            <Card className="p-4 bg-card/60 border-border/30">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <Clock className="w-4 h-4 text-blue-400" />
+                <span className="text-xs font-medium">Active</span>
+              </div>
+              <p className="text-2xl font-bold text-foreground">{totalCount}</p>
+              <p className="text-[10px] text-muted-foreground">habits</p>
+            </Card>
+          </div>
+        </HideableSection>
+
+        {/* Focus Panel */}
+        {habits.length > 0 && (
+          <HideableSection id="focus-panel" title="Focus Panel">
+            <HabitFocusPanel
+              habits={habits}
+              todayLogs={todayLogs}
+              monthLogs={monthLogs}
+              onQuickComplete={(habit) => setCompletionTarget(habit)}
+            />
+          </HideableSection>
+        )}
+
+        {/* Category Filter */}
+        {categories.length > 2 && (
+          <Tabs value={categoryFilter} onValueChange={setCategoryFilter}>
+            <TabsList className="bg-card/60 border border-border/30">
+              {categories.map(c => (
+                <TabsTrigger key={c} value={c} className="capitalize text-xs">{c}</TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        )}
+
+        {/* Habits List with DnD */}
+        <HideableSection id="habits-list" title="Habits List">
+          {isLoading ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">Loading habits...</div>
+          ) : filteredHabits.length === 0 ? (
+            <Card className="p-12 text-center bg-card/40 border-border/30">
+              <AlertCircle className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">
+                {categoryFilter !== 'all' ? `No ${categoryFilter} habits yet.` : 'No habits yet. Start building one!'}
+              </p>
+              <Button onClick={() => setShowForm(true)} variant="outline" size="sm" className="mt-4 gap-1.5">
+                <Plus className="w-4 h-4" /> Create First Habit
               </Button>
             </Card>
-          ))}
-        </div>
-      )}
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={filteredHabits.map(h => h.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-3">
+                  {filteredHabits.map(habit => (
+                    <HabitCard
+                      key={habit.id}
+                      habit={habit}
+                      isCompleted={todayLogs.some(l => l.habit_id === habit.id)}
+                      weekLogs={weekLogs.filter(l => l.habit_id === habit.id)}
+                      monthLogs={monthLogs.filter(l => l.habit_id === habit.id)}
+                      onComplete={() => setCompletionTarget(habit)}
+                      onEdit={() => { setEditHabit(habit); setShowForm(true); }}
+                      onUndo={() => undoMutation.mutate(habit.id)}
+                      canUndo={canUndo(habit.id)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+        </HideableSection>
 
-      {/* Analytics */}
-      {habits.length > 0 && <HabitAnalytics habits={habits} logs={monthLogs} />}
+        {/* Archived Section */}
+        {showArchived && archivedHabits.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+              <Archive className="w-4 h-4" /> Archived Habits
+            </h2>
+            {archivedHabits.map(habit => (
+              <Card key={habit.id} className="p-4 bg-card/30 border-border/20 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{habit.name}</p>
+                  <p className="text-[10px] text-muted-foreground/60">{habit.total_completions} completions · Best streak: {habit.longest_streak}</p>
+                </div>
+                <Button onClick={() => reactivateMutation.mutate(habit.id)} variant="outline" size="sm" className="gap-1">
+                  <RotateCcw className="w-3.5 h-3.5" /> Reactivate
+                </Button>
+              </Card>
+            ))}
+          </div>
+        )}
 
-      {/* Rewards */}
-      {habits.length > 0 && <HabitRewards habits={habits} logs={monthLogs} />}
+        {/* Analytics */}
+        {habits.length > 0 && (
+          <HideableSection id="habit-analytics" title="Habit Analytics">
+            <HabitAnalytics habits={habits} logs={monthLogs} />
+          </HideableSection>
+        )}
 
-      {/* Progress Calendar */}
-      {habits.length > 0 && <HabitProgressCalendar habits={habits} logs={monthLogs} />}
+        {/* Rewards */}
+        {habits.length > 0 && (
+          <HideableSection id="habit-rewards" title="Rewards">
+            <HabitRewards habits={habits} logs={monthLogs} />
+          </HideableSection>
+        )}
 
-      {/* Dialogs */}
-      <HabitFormDialog open={showForm} onOpenChange={setShowForm} editHabit={editHabit} />
+        {/* Progress Calendar */}
+        {habits.length > 0 && (
+          <HideableSection id="progress-calendar" title="Progress Calendar">
+            <HabitProgressCalendar habits={habits} logs={monthLogs} />
+          </HideableSection>
+        )}
 
-      <CompletionNoteDialog
-        open={!!completionTarget}
-        onOpenChange={(open) => { if (!open) setCompletionTarget(null); }}
-        habitName={completionTarget?.name || ''}
-        onConfirm={(note) => {
-          if (completionTarget) {
-            completeMutation.mutate({ habitId: completionTarget.id, note });
-            setCompletionTarget(null);
-          }
-        }}
-      />
-    </div>
+        {/* Dialogs */}
+        <HabitFormDialog open={showForm} onOpenChange={setShowForm} editHabit={editHabit} />
+
+        <CompletionNoteDialog
+          open={!!completionTarget}
+          onOpenChange={(open) => { if (!open) setCompletionTarget(null); }}
+          habitName={completionTarget?.name || ''}
+          onConfirm={(note) => {
+            if (completionTarget) {
+              completeMutation.mutate({ habitId: completionTarget.id, note });
+              setCompletionTarget(null);
+            }
+          }}
+        />
+      </div>
+    </SectionVisibilityProvider>
   );
 }

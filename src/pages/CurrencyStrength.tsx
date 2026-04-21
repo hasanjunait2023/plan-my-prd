@@ -25,6 +25,9 @@ import { SupplyDemandPanel } from '@/components/correlation/SupplyDemandPanel';
 import { MARKET_SESSIONS, getSessionHours, isSessionActive, getBDHour, getBDMinute } from '@/lib/timezone';
 import { TierLegend } from '@/components/correlation/TierLegend';
 import { useSyncedPreference } from '@/contexts/PreferencesContext';
+import { SectionVisibilityProvider } from '@/contexts/SectionVisibilityContext';
+import { HiddenSectionsBar } from '@/components/common/HiddenSectionsBar';
+import { HideableSection } from '@/components/common/HideableSection';
 
 function getDefaultTab(): string {
   const now = new Date();
@@ -212,6 +215,21 @@ function SortableSection({ id, children }: { id: string; children: ReactNode }) 
 
 const DEFAULT_ORDER = ['session', 'trade-of-day', 'summary', 'fundamental-bias', 'power-grab', 'supply-demand', 'strength-meter', 'heatmap', 'comparison', 'pair-suggestions', 'trend-chart', 'legend'];
 
+const SECTION_TITLES: Record<string, string> = {
+  'session': 'Session Panel',
+  'trade-of-day': 'Trade of the Day',
+  'summary': 'Summary Cards',
+  'fundamental-bias': 'Fundamental Bias',
+  'power-grab': 'Power Grab',
+  'supply-demand': 'Supply & Demand',
+  'strength-meter': 'Strength Ranking',
+  'heatmap': 'Strength Heatmap',
+  'comparison': 'Timeframe Comparison',
+  'pair-suggestions': 'Pair Suggestions',
+  'trend-chart': 'Strength Trend',
+  'legend': 'Tier Legend',
+};
+
 function reconcileOrder(saved: string[] | null | undefined): string[] {
   if (!Array.isArray(saved)) return DEFAULT_ORDER;
   const filtered = saved.filter((id: string) => DEFAULT_ORDER.includes(id));
@@ -364,97 +382,103 @@ export default function CurrencyStrength() {
   }), [data, isLoading, hasData, prevSessionData, asianData, londonData, nyData, activeTab]);
 
   return (
-    <div className="space-y-5 max-w-6xl mx-auto">
-      {/* Premium Header — bold, gradient, with status pulse */}
-      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card/40 to-card/20 backdrop-blur-md p-4 sm:p-5 shadow-[0_8px_32px_hsla(142,71%,45%,0.08)]">
-        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-12 w-56 h-56 rounded-full bg-primary/8 blur-3xl pointer-events-none" />
-        <div className="relative flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/40 flex items-center justify-center shadow-[0_0_28px_hsla(142,71%,45%,0.25)] relative">
-              <TrendingUp className="w-6 h-6 sm:w-7 sm:h-7 text-primary" strokeWidth={2.5} />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(142,71%,45%)]" />
+    <SectionVisibilityProvider pageKey="currency">
+      <div className="space-y-5 max-w-6xl mx-auto">
+        {/* Premium Header — bold, gradient, with status pulse */}
+        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card/40 to-card/20 backdrop-blur-md p-4 sm:p-5 shadow-[0_8px_32px_hsla(142,71%,45%,0.08)]">
+          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-16 -left-12 w-56 h-56 rounded-full bg-primary/8 blur-3xl pointer-events-none" />
+          <div className="relative flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/40 flex items-center justify-center shadow-[0_0_28px_hsla(142,71%,45%,0.25)] relative">
+                <TrendingUp className="w-6 h-6 sm:w-7 sm:h-7 text-primary" strokeWidth={2.5} />
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(142,71%,45%)]" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-primary via-foreground to-primary/80 bg-clip-text text-transparent">
+                  Currency Strength
+                </h1>
+                <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 font-semibold flex items-center gap-1.5">
+                  <Activity className="w-3 h-3 text-primary" />
+                  {isLoading
+                    ? 'ডেটা লোড হচ্ছে...'
+                    : lastUpdated
+                      ? `Updated · ${formatUtcTimestamp(lastUpdated)} UTC`
+                      : `${format(selectedDate, 'dd MMM yyyy')} (UTC) — কোনো ডেটা নেই`}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-primary via-foreground to-primary/80 bg-clip-text text-transparent">
-                Currency Strength
-              </h1>
-              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 font-semibold flex items-center gap-1.5">
-                <Activity className="w-3 h-3 text-primary" />
-                {isLoading
-                  ? 'ডেটা লোড হচ্ছে...'
-                  : lastUpdated
-                    ? `Updated · ${formatUtcTimestamp(lastUpdated)} UTC`
-                    : `${format(selectedDate, 'dd MMM yyyy')} (UTC) — কোনো ডেটা নেই`}
-              </p>
+
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/80 text-xs font-medium"
+                >
+                  <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                  {format(selectedDate, 'dd MMM yyyy')}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(d) => d && setSelectedDate(d)}
+                  disabled={{ after: new Date() }}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="gap-2 border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/80 text-xs font-medium"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+              রিফ্রেশ
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSectionOrder(DEFAULT_ORDER);
+              }}
+              className="text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              Reset Layout
+            </Button>
             </div>
-          </div>
-
-        <div className="flex items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/80 text-xs font-medium"
-              >
-                <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                {format(selectedDate, 'dd MMM yyyy')}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(d) => d && setSelectedDate(d)}
-                disabled={{ after: new Date() }}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="gap-2 border-border/40 bg-card/50 backdrop-blur-sm hover:bg-card/80 text-xs font-medium"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            রিফ্রেশ
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setSectionOrder(DEFAULT_ORDER);
-            }}
-            className="text-[10px] text-muted-foreground hover:text-foreground"
-          >
-            Reset Layout
-          </Button>
           </div>
         </div>
-      </div>
 
-      {/* Draggable sections */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
-          <div className="space-y-5">
-            {sectionOrder.map(id => {
-              const content = sectionMap[id];
-              if (!content) return null;
-              return (
-                <SortableSection key={id} id={id}>
-                  {content}
-                </SortableSection>
-              );
-            })}
-          </div>
-        </SortableContext>
-      </DndContext>
-    </div>
+        <HiddenSectionsBar />
+
+        {/* Draggable sections */}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
+            <div className="space-y-5">
+              {sectionOrder.map(id => {
+                const content = sectionMap[id];
+                if (!content) return null;
+                return (
+                  <SortableSection key={id} id={id}>
+                    <HideableSection id={id} title={SECTION_TITLES[id] ?? id}>
+                      {content}
+                    </HideableSection>
+                  </SortableSection>
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </div>
+    </SectionVisibilityProvider>
   );
 }
