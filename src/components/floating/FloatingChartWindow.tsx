@@ -184,9 +184,9 @@ export function FloatingChartWindow() {
                     size="sm"
                   />
                 )}
-                {snapshot.timeframe && (
+                {(snapshot.sessionLabel || snapshot.timeframe) && (
                   <span className="text-[8px] uppercase tracking-wider text-muted-foreground bg-muted/30 px-1 py-px rounded">
-                    {snapshot.timeframe}
+                    {snapshot.sessionLabel || snapshot.timeframe}
                   </span>
                 )}
               </div>
@@ -286,9 +286,9 @@ export function FloatingChartWindow() {
                   size="sm"
                 />
               )}
-              {snapshot.timeframe && (
+              {(snapshot.sessionLabel || snapshot.timeframe) && (
                 <span className="text-[8px] uppercase tracking-wider text-muted-foreground bg-muted/30 px-1 py-px rounded">
-                  {snapshot.timeframe}
+                  {snapshot.sessionLabel || snapshot.timeframe}
                 </span>
               )}
             </div>
