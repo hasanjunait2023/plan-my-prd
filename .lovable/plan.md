@@ -1,53 +1,60 @@
 
 
-# Strict Major-Currency Bias Logic
+# Bias panel — show currently-running session's strength
 
-## নতুন নিয়ম
+## সমস্যা
 
-একটা pair-এ true BUY/SELL bias তখনই হবে যখন **একটা currency STRONG (বা Medium-Strong)** এবং **অন্যটা NEUTRAL / Mid-Weak / Weak**। দুটোই strong বা দুটোই weak হলে → Neutral।
+Watchlist panel-এ "Strength from NEW YORK" দেখাচ্ছে যদিও এখন London session চলছে। এর কারণ:
 
-### Direction rule (base − quote logic অনুযায়ী)
+1. **Mismatched labels** — Scanner DB-তে London-এর data **`1H`** label-এ store করে, কিন্তু `detectCurrentSession()` return করে `"London"` string. তাই DB lookup fail হয় এবং fallback `'New York'` (২ দিনের পুরোনো) data accept হয়ে যায়।
+2. **Session overlap priority ভুল** — `detectCurrentSession()` 13:00–22:00 UTC-এর মধ্যে সবসময় "New York" দেয়, কিন্তু 13:00–16:00 হলো London/NY overlap — সেই সময় London-ই primary।
+3. **Stale-data guard fallback-এ নাই** — শুধু `currentSession`-এর জন্য 24h staleness check আছে; fallback session-এর data যত পুরোনোই হোক accept করে নেয়।
 
-- **HQ BUY**: base = STRONG (≥ +5)  AND  quote ∈ {NEUTRAL, MID_WEAK, WEAK}  (quote < +2)
-- **MED BUY**: base = MEDIUM_STRONG (+2 to +4)  AND  quote ∈ {NEUTRAL, MID_WEAK, WEAK}  (quote < +2)
-  - OR base ∈ {NEUTRAL...} AND quote = WEAK (≤ −5) — mirror case where weak quote drives buy
-- **HQ SELL**: quote = STRONG (≥ +5)  AND  base ∈ {NEUTRAL, MID_WEAK, WEAK}
-- **MED SELL**: quote = MEDIUM_STRONG  AND  base ∈ {NEUTRAL, MID_WEAK, WEAK}
-  - OR quote ∈ {NEUTRAL...} AND base = WEAK (≤ −5)
-- **NEUTRAL**: সব বাকি ক্ষেত্রে — যেমন দুটোই strong, দুটোই weak, দুটোই neutral, বা শুধু differential আছে কিন্তু কেউই strong/weak না।
+## কীভাবে ঠিক করব
 
-### উদাহরণ
+### 1. Scanner labels-এর সাথে session detector align (single source of truth)
 
-| Base | Quote | পুরাতন | নতুন |
-|------|-------|--------|------|
-| EUR +6 | USD −4 | HQ BUY | **HQ BUY** ✓ (strong vs weak) |
-| NZD −1 | USD −3 | MED BUY (downgrade Neutral) | **NEUTRAL** ✓ (কেউ strong না) |
-| GBP +3 | JPY −1 | MED BUY | **MED BUY** ✓ (mid-strong vs neutral) |
-| AUD +5 | NZD +4 | NEUTRAL (same sign) | **NEUTRAL** ✓ (দুটোই strong) |
-| CHF +2 | CAD +1 | MED BUY | **NEUTRAL** ✗→✓ (quote neutral না, +1 ও weak না) |
-| EUR +1 | JPY −6 | HQ BUY | **MED BUY** ✓ (weak quote drives, base শুধু neutral) |
+`src/hooks/useCurrencyStrengths.ts`-এর `detectCurrentSession()` rewrite — `MARKET_SESSIONS` (`src/lib/timezone.ts`) থেকে DST-aware active session নির্ধারণ করে সেটাকে DB label-এ map করব:
+
+| Live session | DB `timeframe` label |
+|---|---|
+| Tokyo / Sydney | `Asian` |
+| London (only) | `1H` |
+| London + NY overlap (13–16 UTC) | `1H` (London-priority — overlap-এ London momentum dominant) |
+| New York (only, 16–22 UTC) | `New York` |
+| Off-hours / weekend | latest non-stale snapshot |
+
+(Sydney আলাদাভাবে scan হয় না, তাই Tokyo/Sydney → `Asian` bucket।)
+
+### 2. Display label ↔ DB label আলাদা করা
+
+`StrengthSnapshot`-এ দুইটা ফিল্ড:
+- `timeframe` (DB row) — internal
+- `sessionLabel` (UI banner-এ দেখানোর জন্য) — যেমন `"London"`, `"New York"`, `"Tokyo"`, `"London/NY Overlap"`
+
+`WatchlistPanel.tsx`-এর banner এই `sessionLabel` দেখাবে, raw `1H` না।
+
+### 3. Fallback chain-এ universal staleness guard
+
+প্রতিটা fallback timeframe-এর জন্যও 24h staleness check apply করব (শুধু currentSession-এর জন্য না)। Weekend/holiday-এর সময় 7 দিন পর্যন্ত fallback allow করব যাতে UI খালি না থাকে, কিন্তু banner-এ "Last seen: X ago" দেখাব।
+
+### 4. Cache invalidation session boundary-তে
+
+বর্তমানে cache 60s TTL — session change হলে immediate refresh হয় না। Fix: `useStrengthSnapshot` mount/visibility-change-এ যদি detected session আগের cached `timeframe`-এর সাথে না মেলে, immediately refresh trigger করব।
 
 ## Files Changed
 
-**`src/lib/biasCalculator.ts`** — `calculateBias()` সম্পূর্ণ rewrite:
-- Differential-based gating বাদ; এর পরিবর্তে base/quote-এর tier দেখে decision হবে।
-- Helper: `tierOf(strength)` reuse করবে existing thresholds (≥5 STRONG, ≥2 MED_STRONG, >−2 NEUTRAL, >−5 MID_WEAK, else WEAK)।
-- Decision matrix:
-  1. If base STRONG and quote ≤ NEUTRAL (i.e. quote < +2) → **HQ BUY**
-  2. Else if quote STRONG and base ≤ NEUTRAL → **HQ SELL**
-  3. Else if base MED_STRONG and quote ≤ NEUTRAL → **MED BUY**
-  4. Else if quote MED_STRONG and base ≤ NEUTRAL → **MED SELL**
-  5. Else if quote WEAK (≤ −5) and base ≥ NEUTRAL (>−2) → **MED BUY** (weak-quote driver)
-  6. Else if base WEAK and quote ≥ NEUTRAL → **MED SELL**
-  7. Else → **NEUTRAL**
-- `diff` parameter signature backwards-compatible রাখা হবে কিন্তু internally আর ব্যবহার হবে না (only for sorting elsewhere)।
-- যদি `baseStrength` / `quoteStrength` undefined হয় (non-forex pair), পুরাতন diff-only fallback রাখব যাতে existing callers ভাঙে না।
+- **`src/hooks/useCurrencyStrengths.ts`** —
+  - `detectCurrentSession()` rewrite করে `MARKET_SESSIONS` ব্যবহার করব এবং `{ dbTimeframe, displayLabel }` return করব।
+  - `StrengthSnapshot` interface-এ `sessionLabel: string | null` add।
+  - `fetchSnapshot()`-এ universal staleness check ও session-mismatch detection।
+  - Cache key-তে detected session inclusion যাতে boundary cross করলে stale data না দেখায়।
 
-**`src/components/floating/WatchlistPanel.tsx`** — কোনো বদল লাগবে না; ইতিমধ্যে base/quote strength pass করছে।
+- **`src/components/floating/WatchlistPanel.tsx`** — banner-এ `snapshot.sessionLabel || snapshot.timeframe` দেখাব (label friendly হবে: "LONDON" / "NEW YORK" / "TOKYO" / "LONDON/NY OVERLAP")।
 
 ## Out of Scope
 
-- Strength threshold (5 / 2 / −2 / −5) পরিবর্তন
-- UI label / color change
-- Sort logic পরিবর্তন (এখনও |diff| descending)
+- Cron schedule / scanner change (already correct)।
+- Bias calculation logic (already strict)।
+- DB label rename (`1H` → `London`) — backwards compat-এর জন্য DB যেমন আছে রেখে hook-এ map করব।
 
