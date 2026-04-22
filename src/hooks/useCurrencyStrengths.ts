@@ -44,20 +44,38 @@ const TTL = 60_000; // 1 min cache
 const subscribers = new Set<(s: StrengthSnapshot) => void>();
 
 async function fetchLatestForTimeframe(tf: string) {
-  const { data: latest } = await supabase
+  // Pull the last few snapshots so we can skip any "all-zero" corrupted batch
+  // and fall back to the most recent valid one.
+  const { data: recent } = await supabase
     .from('currency_strength')
     .select('recorded_at')
     .eq('timeframe', tf)
     .order('recorded_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!latest) return null;
-  const { data } = await supabase
-    .from('currency_strength')
-    .select('currency, strength, recorded_at, timeframe')
-    .eq('timeframe', tf)
-    .eq('recorded_at', latest.recorded_at);
-  return { rows: data || [], recordedAt: latest.recorded_at as string };
+    .limit(10);
+  if (!recent || recent.length === 0) return null;
+
+  const seen = new Set<string>();
+  const uniqueStamps = recent
+    .map((r) => r.recorded_at as string)
+    .filter((ts) => (seen.has(ts) ? false : (seen.add(ts), true)));
+
+  for (const stamp of uniqueStamps) {
+    const { data } = await supabase
+      .from('currency_strength')
+      .select('currency, strength, recorded_at, timeframe')
+      .eq('timeframe', tf)
+      .eq('recorded_at', stamp);
+    const rows = data || [];
+    if (rows.length === 0) continue;
+    // Reject corrupted batches where every strength is 0.
+    const totalAbs = rows.reduce((sum, r) => sum + Math.abs(Number(r.strength) || 0), 0);
+    if (totalAbs === 0) {
+      console.warn(`[useCurrencyStrengths] Skipping zeroed snapshot for ${tf} @ ${stamp}`);
+      continue;
+    }
+    return { rows, recordedAt: stamp };
+  }
+  return null;
 }
 
 async function fetchSnapshot(): Promise<StrengthSnapshot> {
