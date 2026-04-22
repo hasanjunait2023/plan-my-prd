@@ -277,7 +277,29 @@ Deno.serve(async (req) => {
       }
     }
 
-    // === AGGREGATE per currency ===
+    // === STRICT COMPLETENESS GATE ===
+    // For "second" / "all" runs we MUST have data for every pair in ALL_PAIRS.
+    // If anything is missing (e.g. first-batch failures), abort publish.
+    const requiredPairs = batch === "second" ? ALL_PAIRS : pairsToScan;
+    const missingPairs = requiredPairs.filter(p => !(p in pairResults));
+    if (missingPairs.length > 0) {
+      console.error(`[ai-currency-scanner] ABORTING publish — missing ${missingPairs.length} required pair(s): ${missingPairs.join(", ")}`);
+      await supabase.from("ai_scan_results").delete().eq("scan_batch_id", scanBatchId);
+      return new Response(JSON.stringify({
+        success: false,
+        skipped: true,
+        reason: "incomplete_data",
+        message: `Missing data for ${missingPairs.length} pair(s) — refusing to publish partial result`,
+        missing_pairs: missingPairs,
+        scan_batch_id: scanBatchId,
+        errors,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === AGGREGATE per currency (all data present, safe to compute) ===
     const currencyScores: Record<string, { score: number; category: string }> = {};
     const recorded_at = new Date().toISOString();
 
@@ -289,32 +311,6 @@ Deno.serve(async (req) => {
       }
       const category = classify(totalScore);
       currencyScores[currency] = { score: totalScore, category };
-    }
-
-    // === DATA QUALITY GUARD ===
-    // If too many pairs failed OR every currency scored exactly 0,
-    // the result is meaningless — skip DB insert + Telegram broadcast.
-    const totalScannedPairs = Object.keys(pairResults).length;
-    const nonZeroPairs = Object.values(pairResults).filter(r => r !== 0).length;
-    const allZeroScores = Object.values(currencyScores).every(c => c.score === 0);
-    const failureRate = totalScannedPairs > 0 ? errors.length / totalScannedPairs : 1;
-
-    if (allZeroScores || failureRate > 0.5 || nonZeroPairs === 0) {
-      const reason = allZeroScores
-        ? "all currency scores are zero (likely all pair fetches failed or returned identical values)"
-        : `too many pair fetch failures (${errors.length}/${totalScannedPairs})`;
-      console.error(`[ai-currency-scanner] Skipping broadcast — ${reason}`);
-      return new Response(JSON.stringify({
-        success: false,
-        skipped: true,
-        reason,
-        scan_batch_id: scanBatchId,
-        errors,
-        currencyScores,
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
     // Determine storage timeframe label based on session
