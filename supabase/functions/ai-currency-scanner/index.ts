@@ -150,26 +150,20 @@ Deno.serve(async (req) => {
     if (batch === "first") pairsToScan = ALL_PAIRS.slice(0, 14);
     else if (batch === "second") pairsToScan = ALL_PAIRS.slice(14);
 
-    const CHUNK_SIZE = 1;
     const CHUNK_DELAY_MS = 1500;
-    
-    for (let i = 0; i < pairsToScan.length; i += CHUNK_SIZE) {
-      const chunk = pairsToScan.slice(i, i + CHUNK_SIZE);
-      
-      // Process pairs in chunk sequentially to avoid hitting same key simultaneously
-      for (const pair of chunk) {
+    const MAX_RETRIES_PER_PAIR = 4; // total attempts per pair
+    const RETRY_BACKOFF_MS = [2000, 4000, 8000, 15000]; // backoff between retries
+    const failedPairs: string[] = []; // pairs that failed after all retries
+
+    // Helper: scan a single pair with retries. Returns true on success.
+    const scanPairWithRetry = async (pair: string): Promise<boolean> => {
+      for (let attempt = 1; attempt <= MAX_RETRIES_PER_PAIR; attempt++) {
         try {
-          processed++;
-          console.log(`[${processed}/${pairsToScan.length}] Scanning ${pair}...`);
-          
           const { price, ema200 } = await fetchEmaData(pair, interval, supabase);
           const analysis = analyzePair(price, ema200);
-          
           const pairKey = pair.replace("/", "");
           pairResults[pair] = analysis.result;
-          
-          console.log(`  ${pair}: Price=${price.toFixed(5)}, EMA200=${ema200.toFixed(5)}, Result=${analysis.result} (${analysis.strength})`);
-          
+          console.log(`  ✓ ${pair} (attempt ${attempt}): Price=${price.toFixed(5)}, EMA200=${ema200.toFixed(5)}, Result=${analysis.result} (${analysis.strength})`);
           await supabase.from("ai_scan_results").insert({
             scan_batch_id: scanBatchId,
             timeframe,
@@ -177,17 +171,60 @@ Deno.serve(async (req) => {
             result: analysis.result,
             strength_label: analysis.strength,
           });
-        } catch (err) {
-          console.error(`Error scanning ${pair}:`, err.message);
-          errors.push(`${pair}: ${err.message}`);
-          pairResults[pair] = 0;
+          return true;
+        } catch (err: any) {
+          console.warn(`  ✗ ${pair} attempt ${attempt}/${MAX_RETRIES_PER_PAIR} failed: ${err.message}`);
+          if (attempt < MAX_RETRIES_PER_PAIR) {
+            const wait = RETRY_BACKOFF_MS[attempt - 1] ?? 15000;
+            await new Promise(r => setTimeout(r, wait));
+          } else {
+            errors.push(`${pair}: ${err.message}`);
+          }
         }
       }
+      return false;
+    };
 
-      // Delay between chunks to respect per-minute rate limits
-      if (i + CHUNK_SIZE < pairsToScan.length) {
+    // === PASS 1: Scan all pairs sequentially ===
+    for (const pair of pairsToScan) {
+      processed++;
+      console.log(`[${processed}/${pairsToScan.length}] Scanning ${pair}...`);
+      const ok = await scanPairWithRetry(pair);
+      if (!ok) failedPairs.push(pair);
+      await new Promise(r => setTimeout(r, CHUNK_DELAY_MS));
+    }
+
+    // === PASS 2: Final retry sweep for any still-failed pairs ===
+    if (failedPairs.length > 0) {
+      console.log(`[ai-currency-scanner] Final retry sweep for ${failedPairs.length} failed pair(s): ${failedPairs.join(", ")}`);
+      await new Promise(r => setTimeout(r, 10000)); // cool-off before sweep
+      const stillFailed: string[] = [];
+      for (const pair of failedPairs) {
+        const ok = await scanPairWithRetry(pair);
+        if (!ok) stillFailed.push(pair);
         await new Promise(r => setTimeout(r, CHUNK_DELAY_MS));
       }
+      failedPairs.length = 0;
+      failedPairs.push(...stillFailed);
+    }
+
+    // === STRICT GATE: do NOT publish if any pair is still missing ===
+    if (failedPairs.length > 0) {
+      console.error(`[ai-currency-scanner] ABORTING publish — ${failedPairs.length} pair(s) still missing after retries: ${failedPairs.join(", ")}`);
+      // Clean up partial DB rows for this batch so caller can safely retry
+      await supabase.from("ai_scan_results").delete().eq("scan_batch_id", scanBatchId);
+      return new Response(JSON.stringify({
+        success: false,
+        skipped: true,
+        reason: "incomplete_data",
+        message: `${failedPairs.length} pair(s) failed to fetch after retries — refusing to publish partial data`,
+        failed_pairs: failedPairs,
+        scan_batch_id: scanBatchId,
+        errors,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // For "first" batch, self-invoke the second batch then return
@@ -240,7 +277,29 @@ Deno.serve(async (req) => {
       }
     }
 
-    // === AGGREGATE per currency ===
+    // === STRICT COMPLETENESS GATE ===
+    // For "second" / "all" runs we MUST have data for every pair in ALL_PAIRS.
+    // If anything is missing (e.g. first-batch failures), abort publish.
+    const requiredPairs = batch === "second" ? ALL_PAIRS : pairsToScan;
+    const missingPairs = requiredPairs.filter(p => !(p in pairResults));
+    if (missingPairs.length > 0) {
+      console.error(`[ai-currency-scanner] ABORTING publish — missing ${missingPairs.length} required pair(s): ${missingPairs.join(", ")}`);
+      await supabase.from("ai_scan_results").delete().eq("scan_batch_id", scanBatchId);
+      return new Response(JSON.stringify({
+        success: false,
+        skipped: true,
+        reason: "incomplete_data",
+        message: `Missing data for ${missingPairs.length} pair(s) — refusing to publish partial result`,
+        missing_pairs: missingPairs,
+        scan_batch_id: scanBatchId,
+        errors,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === AGGREGATE per currency (all data present, safe to compute) ===
     const currencyScores: Record<string, { score: number; category: string }> = {};
     const recorded_at = new Date().toISOString();
 
@@ -252,32 +311,6 @@ Deno.serve(async (req) => {
       }
       const category = classify(totalScore);
       currencyScores[currency] = { score: totalScore, category };
-    }
-
-    // === DATA QUALITY GUARD ===
-    // If too many pairs failed OR every currency scored exactly 0,
-    // the result is meaningless — skip DB insert + Telegram broadcast.
-    const totalScannedPairs = Object.keys(pairResults).length;
-    const nonZeroPairs = Object.values(pairResults).filter(r => r !== 0).length;
-    const allZeroScores = Object.values(currencyScores).every(c => c.score === 0);
-    const failureRate = totalScannedPairs > 0 ? errors.length / totalScannedPairs : 1;
-
-    if (allZeroScores || failureRate > 0.5 || nonZeroPairs === 0) {
-      const reason = allZeroScores
-        ? "all currency scores are zero (likely all pair fetches failed or returned identical values)"
-        : `too many pair fetch failures (${errors.length}/${totalScannedPairs})`;
-      console.error(`[ai-currency-scanner] Skipping broadcast — ${reason}`);
-      return new Response(JSON.stringify({
-        success: false,
-        skipped: true,
-        reason,
-        scan_batch_id: scanBatchId,
-        errors,
-        currencyScores,
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
 
     // Determine storage timeframe label based on session
